@@ -1,8 +1,25 @@
 "use client";
 
-import { useId, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 type Status = "idle" | "pending" | "done" | "error";
+
+/**
+ * The confirmation is a part passing down the line, not a terminus: it wipes
+ * in over the field, holds long enough to read its ~10 words, then clears off
+ * to the right and hands the empty field back. Signing up a second address is
+ * the common case here — one student, a friend, a sibling — so the form must
+ * never be spent.
+ */
+const CONFIRM_HOLD_MS = 3000;
+const CONFIRM_EXIT_MS = 220;
 
 /**
  * Email capture. Sizing is entirely `em`-relative, so the caller sets one
@@ -24,10 +41,38 @@ export default function SignupForm({
   const id = useId();
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  const [leaving, setLeaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const holdRef = useRef<number | null>(null);
+  const exitRef = useRef<number | null>(null);
+
+  const clearTimers = useCallback(() => {
+    if (holdRef.current !== null) window.clearTimeout(holdRef.current);
+    if (exitRef.current !== null) window.clearTimeout(exitRef.current);
+    holdRef.current = null;
+    exitRef.current = null;
+  }, []);
+
+  useEffect(() => clearTimers, [clearTimers]);
+
+  /** Wipes the plate off to the right and re-arms the field behind it. */
+  const dismiss = useCallback(() => {
+    clearTimers();
+    setLeaving(true);
+    exitRef.current = window.setTimeout(() => {
+      setLeaving(false);
+      setStatus("idle");
+      setMessage("");
+    }, CONFIRM_EXIT_MS);
+  }, [clearTimers]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // A second submit supersedes a confirmation still on screen: the user
+    // acted, so the new state replaces the old one outright rather than
+    // playing an exit nobody is waiting for.
+    clearTimers();
+    setLeaving(false);
     const email = inputRef.current?.value.trim() ?? "";
 
     if (!email) {
@@ -62,6 +107,8 @@ export default function SignupForm({
 
       setStatus("done");
       setMessage("You're on the list — watch your inbox for week one.");
+      if (inputRef.current) inputRef.current.value = "";
+      holdRef.current = window.setTimeout(dismiss, CONFIRM_HOLD_MS);
     } catch {
       setStatus("error");
       setMessage("You look offline. Reconnect and try again.");
@@ -70,76 +117,100 @@ export default function SignupForm({
   }
 
   const pending = status === "pending";
-
-  if (status === "done") {
-    return (
-      <div className={className} style={{ ...style, fontSize }}>
-        <p
-          className="flex items-center gap-[0.6em] bg-hl-cyan px-[0.8em] text-hl-ink font-semibold"
-          style={{ minHeight: "2.1667em" }}
-          role="status"
-        >
-          <Check draw className="h-[0.95em] w-[0.98em] shrink-0" />
-          <span>{message}</span>
-        </p>
-      </div>
-    );
-  }
+  const confirming = status === "done";
 
   return (
     <div className={className} style={{ ...style, fontSize }}>
-      <form onSubmit={onSubmit} noValidate className="flex w-full">
-        <label htmlFor={id} className="sr-only">
-          Email address
-        </label>
-        <input
-          ref={inputRef}
-          id={id}
-          name="email"
-          type="email"
-          autoComplete="email"
-          inputMode="email"
-          required
-          disabled={pending}
-          placeholder="email@email.com"
-          aria-describedby={message ? `${id}-msg` : undefined}
-          aria-invalid={status === "error" || undefined}
-          onChange={() => {
-            if (status === "error") {
-              setStatus("idle");
-              setMessage("");
-            }
-          }}
-          className="min-w-0 flex-1 bg-hl-paper px-[0.667em] text-hl-ink placeholder:text-hl-ink-soft disabled:opacity-70"
-          style={{ height: "2.1667em" }}
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className="grid shrink-0 place-items-center bg-hl-cyan text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue"
-          style={{ height: "2.1667em", width: "2.8em" }}
-        >
-          <span className="sr-only">
-            {pending ? "Signing you up" : "Sign up"}
-          </span>
-          {pending ? (
-            <Spinner className="h-[0.9em] w-[0.9em] animate-spin" />
-          ) : (
-            <Check className="h-[0.95em] w-[0.98em]" />
-          )}
-        </button>
-      </form>
+      {/* The row is the positioning context for the confirmation plate, so
+          the plate is exactly the field's footprint and nothing below it ever
+          moves. overflow-hidden keeps the wipe's cut edge crisp. */}
+      <div className="relative overflow-hidden">
+        <form onSubmit={onSubmit} noValidate className="flex w-full">
+          <label htmlFor={id} className="sr-only">
+            Email address
+          </label>
+          <input
+            ref={inputRef}
+            id={id}
+            name="email"
+            type="email"
+            autoComplete="email"
+            inputMode="email"
+            required
+            disabled={pending}
+            placeholder="email@email.com"
+            aria-describedby={status === "error" ? `${id}-msg` : undefined}
+            aria-invalid={status === "error" || undefined}
+            onFocus={() => {
+              // Reaching the field is the clearest signal the confirmation has
+              // been read; clear the plate ahead of its own timer.
+              if (confirming && !leaving) dismiss();
+            }}
+            onChange={() => {
+              if (confirming && !leaving) dismiss();
+              if (status === "error") {
+                setStatus("idle");
+                setMessage("");
+              }
+            }}
+            className="min-w-0 flex-1 bg-hl-paper px-[0.667em] text-hl-ink placeholder:text-hl-ink-soft disabled:opacity-70"
+            style={{ height: "2.1667em" }}
+          />
+          <button
+            type="submit"
+            disabled={pending}
+            className="grid shrink-0 place-items-center bg-hl-cyan text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue"
+            style={{ height: "2.1667em", width: "2.8em" }}
+          >
+            <span className="sr-only">
+              {pending ? "Signing you up" : "Sign up"}
+            </span>
+            {pending ? (
+              <Spinner className="h-[0.9em] w-[0.9em] animate-spin" />
+            ) : (
+              <Check className="h-[0.95em] w-[0.98em]" />
+            )}
+          </button>
+        </form>
 
+        {/* Set at 0.75em so the full sentence holds one line on the comp stage
+            and, where it wraps on a narrow phone, two lines still sit inside
+            the field's own height. */}
+        {confirming ? (
+          <p
+            aria-hidden
+            className={`pointer-events-none absolute inset-0 flex items-center gap-[0.6em] bg-hl-cyan px-[0.8em] font-semibold leading-tight text-hl-ink ${
+              leaving ? "hl-confirm-out" : "hl-confirm-in"
+            }`}
+            style={{ fontSize: "0.75em" }}
+          >
+            <Check draw className="h-[0.95em] w-[0.98em] shrink-0" />
+            <span>{message}</span>
+          </p>
+        ) : null}
+      </div>
+
+      {/* Errors are shown here and reserve their line whether or not one is
+          up, so the plate above never moves. The confirmation is not repeated
+          here: it is already on the plate, and a second copy at 0.6em would
+          wrap on a phone and push the page around under it. */}
       <p
         id={`${id}-msg`}
-        role="status"
-        aria-live="polite"
         className={`mt-[0.45em] font-semibold ${
           status === "error" ? "text-hl-cyan" : "text-transparent"
         }`}
         style={{ fontSize: "0.6em", minHeight: "1.4em" }}
       >
-        {message || " "}
+        {status === "error" ? message : " "}
+      </p>
+
+      {/* One persistent live region does all the announcing. The confirmation
+          plate mounts with its text already in it, and a live region created
+          that way is unreliably announced; this one is always in the tree, so
+          every status change is a change to it. It carries no layout, which is
+          what lets the visible confirmation live on the plate alone. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {message}
       </p>
     </div>
   );

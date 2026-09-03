@@ -25,7 +25,7 @@ additional hues were invented.
 | `--color-hl-ink`      | `#31222c` | Page ground, process band, footer, image-slot interiors  |
 | `--color-hl-paper`    | `#ededed` | Step plates, FAQ plates, carousel cards, body text on ink |
 | `--color-hl-cyan`     | `#8ed3dc` | Connector bands, primary CTA, focus ring, section accents |
-| `--color-hl-blue`     | `#619cc3` | Carousel rail ground, disabled CTA                        |
+| `--color-hl-blue`     | `#619cc3` | Carousel belt ground (inset in cyan), disabled CTA        |
 | `--color-hl-blue-deep`| `#397cbe` | Hero plate                                                |
 | `--color-hl-periwinkle`| `#a39bd6`| FAQ band                                                  |
 | `--color-hl-lavender` | `#c9c7ec` | Aside plates                                              |
@@ -70,9 +70,8 @@ from that:
   `.font-hand` sets `font-synthesis-weight: none`, and the weight utilities
   were dropped from the elements that use it.
 - **It sets wider.** "how does it work?" ran 4% past its 918 plate at the
-  comp's 100, and the hero caption's first letter fell 14 units off the left
-  edge of the stage. The plate line is set at 84; the caption keeps its size
-  and its frame moved right instead, so it still rakes across the group shot.
+  comp's 100, so the plate line is set at 84 instead — 87% of the plate, which
+  keeps a paper margin rather than running the ink off its own edge.
 - **Its cap height is 0.568em** against Bricolage's ~0.72, so a size carried
   over unchanged reads a fifth smaller. The footer's column labels are set at
   0.95rem where they were `text-xs`, which lands the caps where they were.
@@ -94,9 +93,46 @@ Two systems, deliberately:
 2. **Flow layout** (< 1180px) — the same content stacked, with the connector
    bands re-drawn as short vertical tapers between plates.
 
+The hero is split in two: a fold block that is at least one viewport tall
+(`min-h: 100svh`), and a second block below it carrying "how does it work?".
+The comp put that header at y 970 of a 1092-tall hero, so it broke the fold by
+sitting half in view — an invitation you could miss. Below the fold it is
+reliably out of sight on load and is the first thing a scroll reveals, with the
+cue pointing at it. The fold block is three grid rows, `1fr / auto / 1fr`:
+equal outer rows centre the plate, and the cue lives in the last row in flow
+rather than absolutely positioned, so on a short wide window the two cannot
+land on top of each other. The below-fold block keeps the comp's own numbers
+re-based onto a 96-unit lead-in, so the header still overhangs the band beneath
+it by 79 and the connector still drops 179 into it.
+
+Because the fold is now a real viewport, the plate is centred in that block
+rather than at a fixed y: one number cannot stay centred in a height that
+varies. On a 16:9 viewport, where the painting exactly fills the fold, it lands
+on 486 — the painting's own centre, exactly where it sat before.
+
+One deliberate departure from the comp: the hero plate and everything set on
+it are scaled to 0.688 of their comp size, taking the plate from 1256 wide to
+864 — half the grid, and literally 50vw at every width the stage layout runs
+at — and the group is then centred on the grid rather than left at the comp's
+x. The comp's 73%-wide plate spanned the painting behind it frame to frame and
+closed its open middle; at half the width, centred, it sits in the opening
+bg.png was painted to leave and both pipe columns read. `.stage` and the art
+layer both cap at 1728 and centre, so the plate is centred over the painting's
+own centre at every width.
+
+Two consequences. The comp's hand-placed absolute boxes inside the plate are
+gone: once the group is centred, per-child comp offsets fight the centring, so
+the plate is a flex column with `items-center` / `justify-center` and centring
+is structural. The comp still owns every size and the rhythm between them,
+scaled, and `justify-center` reproduces the comp's own 123/109 vertical padding
+to within 7 units. And the comp's caption and group shot are gone from the
+hero: at half width and centred, the plate's footprint covered both, and the
+carousel band already answers what you can build. Uncovering that corner also
+lets the painting's fox read for the first time.
+
 Rhythm: more space above a heading than below it; tight groups, generous band
-separation. The `how does it work?` plate deliberately overhangs the band below
-it so it breaks the fold.
+separation. The `how does it work?` plate still overhangs the band below it,
+though it no longer breaks the fold -- it now sits wholly beneath one.
 
 ## Components
 
@@ -109,8 +145,10 @@ it so it breaks the fold.
   page's own grammar: ink plate, cyan registration ticks at the corners, a
   measured grid masked to the centre, and a label with the artwork's native
   size. Replace with `next/image` in place; the wrapper box is already correct.
-  Currently standing in for the carousel's project photos, the hero's group
-  shot, and the artwork behind each week pairing in step 1.
+  Currently standing in for the artwork behind each week pairing in step 1.
+  The carousel's cards have taken their real photographs: `photo` on a
+  `BuildCard` is optional, so a card without one still draws the slot and the
+  belt can fill up a project at a time.
 
   Two variants. `tone="light"` swaps the ink plate for lavender, for slots that
   land on paper and carry the page's ink over them; its grid rules are drawn in
@@ -127,16 +165,28 @@ it so it breaks the fold.
   down. Deliberately ragged rather than a uniform band: the comp hand-places
   the five at different heights, and squaring them into a row would flatten
   that. Neighbours clear each other by 19-28 and the plate by 13.
-- **Group shot** — one photograph of every project under "here's what you'll
-  make!", where the comp scattered five separate prints (275:183). It keeps
-  the pile's angle (-17.21deg) and its centre of mass, so the corner carries
-  the same weight; the box clears the signup form above and the "how does it
-  work?" plate below, and rides the hero plate's lower-left corner as the
-  tallest scattered print did. The handwritten caption rakes within 1.4deg of
-  it and is lifted above it on `z-index` with the carousel's ink shadow — a
-  pile has gaps to read the caption through, one print does not.
 - **CTA** — square cyan block with the comp's exported check vector. Hover and
   focus go to white; pending goes to `--color-hl-blue` with a spinner.
+- **Hero backdrop** — `public/art/bg.png`, one painted plant-room scene at
+  1920x1080, shown whole. It is composed rather than tileable: piping and
+  foliage frame its left and right edges, the fox sits in its lower-left
+  corner, and the middle is left open — which is where the hero plate now
+  sits. So the art layer takes the painting's aspect ratio instead of the
+  section's — full width,
+  top-aligned, capped and centred at the comp's 1728 exactly as `.stage` is,
+  with nothing cropped and nothing repeated. 1092/1728 is taller than 1/1.778,
+  so the picture always fits inside the stage's own height. It sits at 0.66
+  opacity over ink and dissolves into it over the bottom 22% of its own box,
+  so the fade scales with the picture rather than eating a third of it on a
+  phone.
+- **Confirmation plate** — the success state is a cyan plate absolutely
+  positioned over the field row, exactly its footprint, `pointer-events-none`
+  and `aria-hidden`, so nothing on the page moves while it is up and the field
+  underneath stays reachable. Its sentence is set at 0.75em: that holds one
+  line inside the comp stage's 866 and, where it wraps on a narrow phone, two
+  lines still sit within the field's own 2.1667em. Announcement is not its job
+  — a persistent `sr-only` live region carries every status, because a live
+  region that mounts with its text already in it is unreliably read out.
 - **Rail** — a continuously travelling belt built on a native scroll container,
   and the one component with no controls of its own: no buttons, no progress
   bar, no scrollbar. A moving belt already says there is more, and a cycle bar
@@ -144,13 +194,40 @@ it so it breaks the fold.
   the wrap point is never in view, and the scroller carries `tabindex="0"` so
   the keyboard path survives the missing buttons.
 
+  The comp ran the belt full-bleed across its 1728 grid with 386 cards. It is
+  brought in to 1360 — card, gap, inset and card padding all times 1360/1728,
+  so 386 cards become 304 and 3.31 of them stand in view exactly as before.
+  The belt now reads as an object sitting inside the cyan band rather than as
+  the band itself, and the cyan shows on all four sides of it: the band carries
+  bottom padding to match the padding above its heading, where previously it
+  ended on the blue block's own edge and the colour naming the section only
+  ever read above the carousel.
+
+  The 1360 wrapper is a container, and the belt's parts are sized in `cqw`
+  against it rather than `vw` against the viewport. As `vw` they kept growing
+  past the cap, and above 1360 the cards would have outgrown their own stage.
+
+  Project photographs are contained, never cropped — a build is the thing on
+  show, and a macropad with its ends cut off is not the macropad. The box is a
+  4:3 frame the whole picture sits inside, and the paper left around it is the
+  card's own colour, so it reads as a mount rather than a gap. The comp's
+  portrait 329 x 377 could not hold this photography, which runs square to wide
+  (1.05 to 1.83); where the frame lands inside that spread barely matters, as
+  every ratio from 1.25 to 1.5 leaves the same ~19% of the box unused. What
+  matters is that there is one ratio, so every card carries the same photo
+  footprint and the row does not jump as it travels.
+
+  Card width is set by the credit rather than by the comp: `width: max-content`
+  is the width at which the line does not wrap, so the card is exactly as wide
+  as its credit needs. The comp's 304 survives as the floor.
+
 Icons are drawn SVG at a consistent square-cap 2.75px stroke. No icon fonts, no
 emoji, no unicode glyphs standing in for icons.
 
 ## Motion
 
-**Nothing enters on scroll.** Plates, cards, asides, FAQ answers, the hero
-group shot and the connector bands all ship in their finished state — no
+**Nothing enters on scroll.** Plates, cards, asides, FAQ answers and the
+connector bands all ship in their finished state — no
 fade, no rise, no stagger, no draw-on. Reinterpreting every scrolled section as
 a staggered list is animation debt, not a thesis.
 
@@ -159,19 +236,41 @@ a diagram of the ten-week programme, and a diagram is either legible or it is
 not; making it a reward for scrolling would mean the reader who lands halfway
 down the page sees a broken line. The bands' meaning is spatial, not temporal.
 
-The page has exactly one authored moment and one piece of feedback:
+The page has one authored moment, one piece of feedback, and one standing
+invitation:
 
 - **The belt runs.** The `What can I build?` rail is the one place the
   production line is still in motion: finished work travels past at a constant
   mechanical pace, linear like the bands are drawn, one card every 8s at every
-  breakpoint. Speed is derived from the measured card pitch rather than fixed
-  in pixels, so a phone and the comp stage read at the same tempo. Nothing
+  breakpoint. Speed is derived from the set's measured pitch rather than fixed
+  in pixels, so a phone and the comp stage read at the same tempo — averaged
+  across the set, since a card is only as wide as its own credit. The position
+  is held modulo that pitch and measured off rects rather than whole-pixel
+  `offsetLeft`, so the loop comes back into range in one step and on identical
+  content however far out something else has put the scroller. Nothing
   snaps — snapping would yank a card out from under the cursor at the exact
   moment you stopped the belt to look at it.
-- **The confirmation check strokes itself in.** On a successful signup the
-  comp's exported tick draws over 460ms on `stroke-dashoffset` with
-  `cubic-bezier(0.16, 1, 0.3, 1)`, spent at the one moment a state actually
-  changes.
+- **The confirmation passes down the line.** A successful signup is a part on
+  the belt, not a terminus. A cyan plate wipes in over the email field from the
+  left on a `clip-path` cut (320ms, `cubic-bezier(0.16, 1, 0.3, 1)`), the comp's
+  exported tick draws itself over 460ms on `stroke-dashoffset`, the sentence
+  holds for 3s, and the plate then carries on off the right (220ms,
+  `cubic-bezier(0.4, 0, 1, 1)`) and hands back an empty field. It leaves in the
+  direction it was travelling — retreating the way it came would read as the
+  signup being undone — and it leaves faster than it arrives, because by then it
+  has been read and the field is what is wanted. A clip cut is the only exit
+  this world has: these plates are flat, square-cornered and shadowless, so
+  there is nothing to fade or lift. Reaching the field early, by click or by
+  tab, clears the plate ahead of its timer; a second submit replaces it
+  outright.
+
+- **The scroll cue beckons.** A downward arrow sits at the bottom of the fold,
+  and it is the one element on the page whose entire meaning is a direction of
+  travel — so it is the one place a loop earns its keep. A 16% nudge over 2.6s,
+  on the glyph rather than the link box, which is doing the centring. Slow and
+  small on purpose: a scroll hint that bounces reads as a toy, and this page is
+  a workshop. It is a real link to `#how-it-works`, because an arrow above the
+  fold is a thing people click, which also puts it on the keyboard path.
 
 Supporting states are the smallest change that makes cause and result clear:
 the CTA swaps to white on hover and focus, to `--color-hl-blue` with a spinner

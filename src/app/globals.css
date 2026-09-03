@@ -110,6 +110,78 @@ body {
   }
 }
 
+/* Signup confirmation. The plate is a part passing down the line: it arrives
+   from the left, and when its time is up it carries on off the right rather
+   than retreating the way it came. One material — a clip-path cut, in the
+   grammar of a page whose containers are flat plates with hard square corners
+   and no shadow to fade. It leaves faster than it arrives; by then the reader
+   has read it and wants the field back. */
+@keyframes hl-confirm-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes hl-confirm-out {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 100%);
+  }
+}
+
+.hl-confirm-in {
+  animation: hl-confirm-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hl-confirm-out {
+  animation: hl-confirm-out 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-confirm-in,
+  .hl-confirm-out {
+    animation: none;
+  }
+
+  /* With no wipe to carry it off, the plate is simply gone for the 220ms the
+     component still needs before it re-arms the field. */
+  .hl-confirm-out {
+    visibility: hidden;
+  }
+}
+
+/* The scroll cue. The belt says there is more sideways; this says there is
+   more downward, and it is the one element on the page whose entire meaning is
+   a direction of travel — so it is the one place a loop earns its keep. Slow
+   and small: a 16% nudge over 2.6s reads as a beckon rather than a bouncing
+   toy. On the glyph, never the link box, whose transform is doing the
+   centring. */
+@keyframes hl-scroll-cue {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(16%);
+  }
+}
+
+.hl-scroll-cue {
+  animation: hl-scroll-cue 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-scroll-cue {
+    animation: none;
+  }
+}
+
+
 /* Carousel: a native scroll container, so touch, trackpad, keyboard and
    momentum all come for free — which is what lets the belt carry no controls
    of its own. It is driven by writing scrollLeft every frame, so

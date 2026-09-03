@@ -8,7 +8,6 @@
 export const BRAND = {
   name: "Half Life",
   tagline: "become a hardware expert in 10 weeks, get a 3D printer",
-  taglineAside: "or a laptop!",
 } as const;
 
 export type DesignWeek = { subject: string; week: string };
@@ -72,44 +71,50 @@ export const ASIDES: Aside[] = [
 
 export type BuildCard = {
   id: string;
+  /** Names the project. Not drawn -- it is the photograph's alt text. */
   label: string;
   credit: string;
-  /** Placeholder until real project photography lands. */
+  /**
+   * The project photograph, as a path under `public/`. Optional on purpose: a
+   * card without one falls back to the drawn slot, so the belt fills up one
+   * project at a time instead of needing the whole set before it renders.
+   */
+  photo?: string;
+  /** The drawn footprint, standing in until `photo` lands. */
   slot: { label: string; ratio: string };
 };
 
 export const BUILD_CARDS: BuildCard[] = [
   {
-    id: "cool",
-    label: "cool project",
-    credit: "by Meghana, 17, from Ohio",
-    slot: { label: "project photo", ratio: "329 × 377" },
+    id: "hexapod",
+    label: "hexapod",
+    credit: "by Joshua, 18, from Quebec",
+    photo: "/imgs/hexapod.png",
+    slot: { label: "project photo", ratio: "329 x 377" },
   },
   {
-    id: "basic",
-    label: "basic project",
-    credit: "by Meghana, 17, from Ohio",
-    slot: { label: "project photo", ratio: "329 × 377" },
+    id: "jukebox",
+    label: "jukebox",
+    credit: "by Dani, 17, from New York",
+    photo: "/imgs/jukebox.png",
+    slot: { label: "project photo", ratio: "329 x 377" },
   },
   {
-    id: "artsy",
-    label: "artsy project",
-    credit: "by Meghana, 17, from Ohio",
-    slot: { label: "project photo", ratio: "329 × 377" },
+    id: "macropad",
+    label: "macropad",
+    credit: "by Nirvaan, 14, from New Jersey",
+    photo: "/imgs/macropad.png",
+    slot: { label: "project photo", ratio: "329 x 377" },
   },
   {
-    id: "funny",
-    label: "funny project",
-    credit: "by Meghana, 17, from Ohio",
-    slot: { label: "project photo", ratio: "329 × 377" },
-  },
-  {
-    id: "loud",
-    label: "loud project",
-    credit: "by Meghana, 17, from Ohio",
-    slot: { label: "project photo", ratio: "329 × 377" },
+    id: "flightcontroller",
+    label: "flight controller",
+    credit: "by Archit, 15, from Australia",
+    photo: "/imgs/flightcontroller.png",
+    slot: { label: "project photo", ratio: "329 x 377" },
   },
 ];
+
 
 export type Faq = { q: string; a: string };
 
