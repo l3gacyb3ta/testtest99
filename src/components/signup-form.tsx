@@ -129,33 +129,60 @@ export default function SignupForm({
           <label htmlFor={id} className="sr-only">
             Email address
           </label>
-          <input
-            ref={inputRef}
-            id={id}
-            name="email"
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            required
-            disabled={pending}
-            placeholder="email@email.com"
-            aria-describedby={status === "error" ? `${id}-msg` : undefined}
-            aria-invalid={status === "error" || undefined}
-            onFocus={() => {
-              // Reaching the field is the clearest signal the confirmation has
-              // been read; clear the plate ahead of its own timer.
-              if (confirming && !leaving) dismiss();
-            }}
-            onChange={() => {
-              if (confirming && !leaving) dismiss();
-              if (status === "error") {
-                setStatus("idle");
-                setMessage("");
-              }
-            }}
-            className="min-w-0 flex-1 bg-hl-paper px-[0.667em] text-hl-ink placeholder:text-hl-ink-soft disabled:opacity-70"
+          {/* The field is a slot cut into the hero plate, not a control
+              sitting on it: ink ground, one soft cyan edge, and an input that
+              carries no surface of its own — no background, no border, no ring
+              of its own, because the slot is the control. The cyan caret is
+              the only accent, and it is only there while someone is typing.
+
+              It briefly also carried the image slot's registration ticks, its
+              measured grid and an uppercase legend. At 33px tall none of that
+              resolved: the grid ran three cells deep and the ticks were 8px
+              specks, so it read as detail for its own sake rather than as an
+              instrument. One surface, one boundary, one accent does the job
+              the five of them were failing to. */}
+          <div
+            className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${
+              pending ? "opacity-70" : ""
+            }`}
             style={{ height: "2.1667em" }}
-          />
+          >
+            <input
+              ref={inputRef}
+              id={id}
+              name="email"
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              required
+              disabled={pending}
+              placeholder="Email address"
+              aria-describedby={status === "error" ? `${id}-msg` : undefined}
+              aria-invalid={status === "error" || undefined}
+              onFocus={() => {
+                // Reaching the field is the clearest signal the confirmation has
+                // been read; clear the plate ahead of its own timer.
+                if (confirming && !leaving) dismiss();
+              }}
+              onChange={() => {
+                if (confirming && !leaving) dismiss();
+                if (status === "error") {
+                  setStatus("idle");
+                  setMessage("");
+                }
+              }}
+              className="h-full w-full bg-transparent px-[0.667em] text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+            />
+
+            {/* Edge at 55% rather than the slot component's 45%: on ink that
+                is 3.71:1 where 45% is 2.96, and this boundary belongs to a
+                control rather than to a picture. */}
+            <span
+              aria-hidden
+              className="hl-field-edge pointer-events-none absolute inset-0 border-2 border-hl-cyan/55"
+            />
+          </div>
+
           <button
             type="submit"
             disabled={pending}

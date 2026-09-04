@@ -152,12 +152,12 @@ export default function Hero() {
           style={box(474, howY(970), 918, 201)}
         >
           <p
-            className="whitespace-nowrap font-hand text-hl-ink"
+            className="whitespace-nowrap font-display font-bold text-hl-ink"
             style={{
-              // Masterpiece sets this line 4% wider than the 918 plate at the
-              // comp's 100. 84 puts it at 87% of the plate, so the paper keeps
-              // a margin instead of the ink running off its own edge.
-              fontSize: u(84),
+              // The comp's own 100, restored. The 84 it had been stepped down
+              // to was compensation for Masterpiece, which set this line 4%
+              // past its 918 plate; Urbanist has room to spare at 100.
+              fontSize: u(100),
               lineHeight: 1,
               letterSpacing: "-0.03em",
             }}
@@ -209,12 +209,12 @@ export default function Hero() {
         <div className="flex flex-col items-start px-4 sm:px-8">
           <div className="relative -mb-9 mt-14 bg-hl-paper px-5 py-3 sm:px-8 sm:py-4">
             <p
-              className="font-hand text-hl-ink"
+              className="font-display font-bold text-hl-ink"
               style={{
-                // Stepped down from 1.75rem/8vw/3.25rem: this line is nowrap
-                // inside a self-sizing plate, and Masterpiece sets it wide
-                // enough to push past a 320px viewport at the old floor.
-                fontSize: "clamp(1.5rem, 7vw, 3rem)",
+                // The floor was held down by Masterpiece, which set this line
+                // wide enough to push past a 320px viewport; Urbanist sets it
+                // narrower, so the plate can carry the comp's weight again.
+                fontSize: "clamp(1.75rem, 8vw, 3.25rem)",
                 letterSpacing: "-0.03em",
                 lineHeight: 1.05,
               }}
@@ -260,10 +260,10 @@ function ScrollCue({
         aria-hidden
         className="hl-scroll-cue block w-full"
       >
-        <path d="M12 3V32" stroke="currentColor" strokeWidth={2.75} strokeLinecap="square" />
+        <path d="M12 3V32" stroke="white" strokeWidth={2.75} strokeLinecap="square" />
         <path
           d="M3 23L12 34L21 23"
-          stroke="currentColor"
+          stroke="white"
           strokeWidth={2.75}
           strokeLinecap="square"
           strokeLinejoin="miter"
@@ -290,25 +290,32 @@ function ScrollCue({
  * hairline of bare ink the way `object-contain` would under sub-pixel rounding.
  * Below the picture is the ink the page already stands on.
  *
- * It caps at the comp's own 1728 and centres, exactly as `.stage` does. Past
- * that width an uncapped 16:9 box grows taller than the 1092-unit section and
- * the clip takes the fox's body and the bottom-right cloud with it — and the
- * ink shoulders it leaves at the sides are the ones every other band on the
- * page already has.
+ * It spans the screen at every width. Capped at the comp's 1728 it left ink
+ * shoulders on anything wider, and the painting is the hero's ground rather
+ * than an object standing on it.
+ *
+ * `max-height: 100%` is the guard that buys. Uncapped, a 16:9 box on a wide
+ * screen grows taller than the section it sits in -- a 2560 window only 800
+ * tall wants 1440 of painting against 1018 of section -- and `overflow-hidden`
+ * would take the difference off the bottom as a hard cut, gradient and all.
+ * Clamped to the section instead, the box stops being 16:9 and `object-cover`
+ * trims the picture rather than the layer, so the fade still lands on the
+ * bottom edge that is actually visible. Below that width nothing is cropped at
+ * all: the box is the painting's own ratio and cover has nothing to take.
  */
 function HeroArt() {
   return (
     <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden">
       <div
-        className="relative mx-auto w-full"
-        style={{ maxWidth: COMP_WIDTH, aspectRatio: `${ART.w} / ${ART.h}` }}
+        className="relative w-full"
+        style={{ aspectRatio: `${ART.w} / ${ART.h}`, maxHeight: "100%" }}
       >
         <Image
           src="/art/bg.png"
           alt=""
           fill
           priority
-          sizes="(min-width: 1728px) 1728px, 100vw"
+          sizes="100vw"
           className="object-cover"
         />
         {/* The scene dissolves into the ink at its own lower edge rather than

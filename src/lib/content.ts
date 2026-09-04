@@ -80,6 +80,14 @@ export type BuildCard = {
    * project at a time instead of needing the whole set before it renders.
    */
   photo?: string;
+  /**
+   * ── PUT THE GITHUB LINK HERE ──────────────────────────────────────────
+   * Full URL to the project's repo, e.g.
+   *   repo: "https://github.com/hackclub/half-life",
+   * Optional: a card left empty here simply shows no button, so the repos
+   * can be filled in one project at a time.
+   */
+  repo?: string;
   /** The drawn footprint, standing in until `photo` lands. */
   slot: { label: string; ratio: string };
 };
@@ -87,30 +95,42 @@ export type BuildCard = {
 export const BUILD_CARDS: BuildCard[] = [
   {
     id: "hexapod",
-    label: "hexapod",
+    label: "Hexapod robot",
     credit: "by Joshua, 18, from Quebec",
     photo: "/imgs/hexapod.png",
+    repo: "https://github.com/Josh4minee/HEX-B12.V1",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
   {
     id: "jukebox",
-    label: "jukebox",
+    label: "Minecraft Jukebox",
     credit: "by Dani, 17, from New York",
     photo: "/imgs/jukebox.png",
+    repo: "https://github.com/danieliscrazy/Jukebox",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
   {
     id: "macropad",
-    label: "macropad",
+    label: "12-key Macropad",
     credit: "by Nirvaan, 14, from New Jersey",
     photo: "/imgs/macropad.png",
+    repo: "https://github.com/OakTreeWC/12KEMPV2.1",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
   {
     id: "flightcontroller",
-    label: "flight controller",
+    label: "Rocket Flight Controller",
     credit: "by Archit, 15, from Australia",
     photo: "/imgs/flightcontroller.png",
+    repo: "https://github.com/codinga593/IRIS",
+    slot: { label: "project photo", ratio: "329 x 377" },
+  },
+  {
+    id: "icepi",
+    label: "Icepi Zero FPGA Devboard",
+    credit: "by Cyao, 18, from France",
+    photo: "/imgs/icepi.png",
+    repo: "https://github.com/cheyao/icepi-zero",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
 ];

@@ -25,21 +25,29 @@ additional hues were invented.
 | `--color-hl-ink`      | `#31222c` | Page ground, process band, footer, image-slot interiors  |
 | `--color-hl-paper`    | `#ededed` | Step plates, FAQ plates, carousel cards, body text on ink |
 | `--color-hl-cyan`     | `#8ed3dc` | Connector bands, primary CTA, focus ring, section accents |
-| `--color-hl-blue`     | `#619cc3` | Carousel belt ground (inset in cyan), disabled CTA        |
+| `--color-hl-blue`     | `#619cc3` | Disabled CTA                                             |
+| `--color-hl-yellow`   | `#ffdf5e` | Carousel card ground, behind the project photographs      |
+| `--color-hl-yellow-pale`| `#fffcd8`| Carousel card border and caption band                    |
 | `--color-hl-blue-deep`| `#397cbe` | Hero plate                                                |
 | `--color-hl-periwinkle`| `#a39bd6`| FAQ band                                                  |
 | `--color-hl-lavender` | `#c9c7ec` | Aside plates                                              |
 
-Strategy: **full palette** — four named band roles, each owning a whole scroll
-region rather than appearing as an accent. The scroll reads
-`hero art → ink → cyan/blue → periwinkle → ink`.
+Strategy: **full palette** — named band roles owning whole scroll regions
+rather than appearing as accents. The scroll reads
+`hero art → ink → periwinkle → ink`, and the carousel is the one section with
+no band of its own: the reworked comp runs it straight on the page's ink and
+puts all of its colour into the cards, so five yellow blocks arrive after the
+longest ink stretch on the page. Cyan keeps its other jobs — connector bands,
+the primary CTA, the focus ring.
 
 Secondary text is never gray. It is tinted from the surface's own foreground:
 
 - `--color-hl-ink-soft` = ink 80% over paper — 5.14:1 on `#ededed`
 - `--color-hl-paper-soft` = paper 78% over ink — used on the ink footer
 
-Verified contrast: ink on cyan 8.98:1, ink on periwinkle 5.92:1, ink on
+Verified contrast: ink on pale yellow 14.45:1 and at 80% 7.66:1, ink on
+yellow 11.44:1, white on ink 15.05:1, a card against the ink behind it
+14.45:1. Ink on cyan 8.98:1, ink on periwinkle 5.92:1, ink on
 lavender 9.22:1, ink on paper 12.3:1, paper on ink 12.3:1. On a light image
 slot the worst case is a soft week label over a paper grid rule, at 5.10:1. Text on the deep
 blue hero plate is 3.64:1 and is therefore only ever set at large scale
@@ -47,19 +55,25 @@ blue hero plate is 3.64:1 and is therefore only ever set at large scale
 
 ## Typography
 
-- **Hand** — Masterpiece, `--font-hand`. The comp's own brush face, and the
-  page's bookends: the wordmark (hero and footer), the two hand-angled hero
-  labels, and the footer column labels. One 400 weight only.
-- **Display** — Bricolage Grotesque (variable), `--font-display`. Everything
-  between the bookends: process, carousel and FAQ headlines, step titles, week
-  subjects. Tracking −0.02em to −0.045em at display sizes.
-- **Body** — Archivo (variable), `--font-body`. Paragraphs, captions, form
-  fields, links — including inside the hero and footer, which take the brush
-  face on their display type only.
+- **Hand** — Masterpiece, `--font-hand`. The comp's own brush face, now the
+  page's signature rather than its voice: the wordmark (hero and footer) and
+  the footer's column labels. One 400 weight only.
+- **Display** — Urbanist (variable), `--font-display`. Every header: "how does
+  it work?", process step titles, week subjects, carousel and FAQ headlines,
+  FAQ questions. Tracking −0.02em to −0.045em at display sizes.
+- **Body** — Open Sans (variable), `--font-body`. Paragraphs, captions, form
+  fields, links — the asides' copy and the FAQ's answers among them.
 
-Archivo and Bricolage are self-hosted through `next/font/google`; Masterpiece
+"how does it work?" was set in the brush face, as the comp had it, and moved to
+the display face with the other headers. The brush now bookends the page at the
+wordmark alone, which is the one place it is doing identity rather than
+carrying a sentence.
+
+Urbanist and Open Sans are self-hosted through `next/font/google`; Masterpiece
 through `next/font/local` from `public/fonts`. It is free per the author's
-read-me, which asks for a charitable donation on commercial use.
+read-me, which asks for a charitable donation on commercial use. Only those
+three are loaded — the faces they replaced, Bricolage Grotesque and Archivo,
+are no longer requested.
 
 Masterpiece is not a drop-in for Bricolage's metrics, and three things follow
 from that:
@@ -69,12 +83,14 @@ from that:
   heavy, and a synthesised bold smears the strokes into each other.
   `.font-hand` sets `font-synthesis-weight: none`, and the weight utilities
   were dropped from the elements that use it.
-- **It sets wider.** "how does it work?" ran 4% past its 918 plate at the
-  comp's 100, so the plate line is set at 84 instead — 87% of the plate, which
-  keeps a paper margin rather than running the ink off its own edge.
+- **It set wider**, which is why the two lines it used to carry were stepped
+  down. Both have since moved to Urbanist and been given the comp's own sizes
+  back: "how does it work?" ran 4% past its 918 plate at the comp's 100 in the
+  brush face and sits at 84% of it in Urbanist.
 - **Its cap height is 0.568em** against Bricolage's ~0.72, so a size carried
   over unchanged reads a fifth smaller. The footer's column labels are set at
-  0.95rem where they were `text-xs`, which lands the caps where they were.
+  0.95rem where they were `text-xs`, which lands the caps where they were. This
+  is the one place the rule still bites, the wordmark being the only other.
 
 Scale is not a fixed ramp. Inside the comp stage every size is a comp pixel
 expressed in `cqw`; outside it, sizes are `clamp()` pairs. Body measure stays
@@ -116,9 +132,9 @@ it are scaled to 0.688 of their comp size, taking the plate from 1256 wide to
 at — and the group is then centred on the grid rather than left at the comp's
 x. The comp's 73%-wide plate spanned the painting behind it frame to frame and
 closed its open middle; at half the width, centred, it sits in the opening
-bg.png was painted to leave and both pipe columns read. `.stage` and the art
-layer both cap at 1728 and centre, so the plate is centred over the painting's
-own centre at every width.
+bg.png was painted to leave and both pipe columns read. `.stage` caps at 1728
+and centres and the painting spans the screen, so both share the screen's
+centre line and the plate sits on the painting's own centre at every width.
 
 Two consequences. The comp's hand-placed absolute boxes inside the plate are
 gone: once the group is centred, per-child comp offsets fight the centring, so
@@ -165,6 +181,69 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
   down. Deliberately ragged rather than a uniform band: the comp hand-places
   the five at different heights, and squaring them into a row would flatten
   that. Neighbours clear each other by 19-28 and the plate by 13.
+- **Section grounds** — one low-opacity pattern per band, so a reader scrolling
+  knows which room they are in without being told. All three are drafting marks
+  from the same silkscreen vocabulary, at an opacity where they register as
+  texture rather than as content: **raked arcs** on the process band, a supplied
+  70×8 tile of overlapping curves turned 60° and doubled, carried as a data-URI
+  SVG — the line running on, rather than a sheet ruled for it; a **hexagonal
+  lattice** on the carousel, a supplied 40×59.428 tile turned 20°, also a
+  data-URI SVG; and ink **section hatching** at 45° on the FAQ, the drawing
+  convention for a cut surface. Colour is diluted into the gradient with `color-mix` rather than
+  carried by an opacity layer, so each is a `background-image` on the section
+  itself — no extra element, no stacking context to arrange, and nothing in the
+  accessibility tree.
+
+  Both supplied patterns arrived stroked #ecc94b over an opaque #2b2b31 ground,
+  and both needed the same two changes. The ground rect is dropped in each, so
+  the section's own ink shows through and stays the single place that colour is
+  set. The stroke takes the band's own colour rather than one shared accent:
+  cyan on the process band, which already draws its connector bands and week
+  marks in it; the card yellow on the carousel, which has no cyan left anywhere
+  in it since the belt gave up its blue, so cyan there would import an accent
+  the section does not use. Both are 12%.
+
+  Each hex is written out inside its SVG, because a data URI is a separate
+  document that no custom property reaches into — those two copies have to be
+  kept in step with `--color-hl-cyan` and `--color-hl-yellow` by hand. Both
+  also pin `background-size: 100% 100%` and `no-repeat`: the rule that an image
+  with no intrinsic dimensions is drawn at the size of its box is what makes
+  them work, and a browser falling back to the 300×150 default would tile a
+  rotated pattern and seam it.
+
+  Measured at the worst case, text sitting directly on a mark: white on the
+  carousel's ground 10.92:1 and paper 9.33:1; ink on the FAQ's 5.07:1; paper on
+  an arc of the process band's 9.88:1.
+
+- **Aside plate** — lavender block, 555 × 261 on the comp grid, carrying a
+  title over a paragraph. One departure from the comp: the title is centred on
+  the plate rather than set from its left edge at 44.5. It is pinned to both
+  edges with the comp's 490 measure kept as a cap, so the line still wraps
+  where it did and the centre it finds is the plate's, not the text box's. The
+  body stays left-aligned under it — the title is a label for the plate, the
+  paragraph is something to read. The stacked layout centres its title too, so
+  the two layouts say the same thing.
+- **Email slot** — the signup field, drawn as a slot cut into the hero plate
+  rather than a control sitting on it: ink ground, one soft cyan edge at 55%,
+  and an `<input>` that carries no surface of its own — no background, no
+  border, no ring — because the slot is the control. The cyan caret is the only
+  accent, and it is only there while someone is typing.
+
+  It briefly also carried the image slot's registration ticks, its measured
+  grid and an uppercase tracked legend, on the reasoning that an empty field is
+  a footprint waiting for its part. The reasoning was sound and the result was
+  not: at 33px tall the grid ran three cells deep and the ticks were 8px
+  specks, so five decorative systems were stacked at a scale where none of them
+  resolved and the bar read as detail for its own sake. One surface, one
+  boundary, one accent does the job the five were failing to — the lesson being
+  that a device borrowed from elsewhere in a system still has to survive the
+  size it is borrowed into.
+
+  The edge sits at 55%, which is 3.71:1 on ink, where a control's boundary has
+  to clear 3. Value text is paper on ink at 12.85:1, the placeholder
+  `--color-hl-paper-soft` at 8.36:1, and the slot reads 3.44:1 against the hero
+  plate it sits on.
+
 - **CTA** — square cyan block with the comp's exported check vector. Hover and
   focus go to white; pending goes to `--color-hl-blue` with a spinner.
 - **Hero backdrop** — `public/art/bg.png`, one painted plant-room scene at
@@ -172,13 +251,20 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
   foliage frame its left and right edges, the fox sits in its lower-left
   corner, and the middle is left open — which is where the hero plate now
   sits. So the art layer takes the painting's aspect ratio instead of the
-  section's — full width,
-  top-aligned, capped and centred at the comp's 1728 exactly as `.stage` is,
-  with nothing cropped and nothing repeated. 1092/1728 is taller than 1/1.778,
-  so the picture always fits inside the stage's own height. It sits at 0.66
-  opacity over ink and dissolves into it over the bottom 22% of its own box,
-  so the fade scales with the picture rather than eating a third of it on a
-  phone.
+  section's — full width at every size, top-aligned, nothing repeated. It sits
+  at 0.66 opacity over ink and dissolves into it over the bottom 22% of its own
+  box, so the fade scales with the picture rather than eating a third of it on
+  a phone.
+
+  It used to cap at the comp's 1728 and centre, which left ink shoulders on
+  anything wider; the painting is the hero's ground, not an object standing on
+  it. Uncapped, a 16:9 box outgrows its section on a wide screen — a 2560
+  window 800 tall wants 1440 of painting against 1018 of section — so
+  `max-height: 100%` clamps the box to the section. Past that point the box
+  stops being 16:9 and `object-cover` trims the picture instead of
+  `overflow-hidden` cutting the layer, which keeps the fade on the bottom edge
+  that is actually visible. Below it nothing is cropped at all: the box is the
+  painting's own ratio and cover has nothing to take.
 - **Confirmation plate** — the success state is a cyan plate absolutely
   positioned over the field row, exactly its footprint, `pointer-events-none`
   and `aria-hidden`, so nothing on the page moves while it is up and the field
@@ -190,36 +276,32 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
 - **Rail** — a continuously travelling belt built on a native scroll container,
   and the one component with no controls of its own: no buttons, no progress
   bar, no scrollbar. A moving belt already says there is more, and a cycle bar
-  on an endless loop measures nothing. The card set is repeated three times so
-  the wrap point is never in view, and the scroller carries `tabindex="0"` so
+  on an endless loop measures nothing. The scroller carries `tabindex="0"` so
   the keyboard path survives the missing buttons.
 
-  The comp ran the belt full-bleed across its 1728 grid with 386 cards. It is
-  brought in to 1360 — card, gap, inset and card padding all times 1360/1728,
-  so 386 cards become 304 and 3.31 of them stand in view exactly as before.
-  The belt now reads as an object sitting inside the cyan band rather than as
-  the band itself, and the cyan shows on all four sides of it: the band carries
-  bottom padding to match the padding above its heading, where previously it
-  ended on the blue block's own edge and the colour naming the section only
-  ever read above the carousel.
+  It is a literal reproduction of the reworked "what can I build" frames on the
+  comp's 1728 grid, every value written as the `cqw` fraction of it: cards
+  386 × 368 on a 514 pitch, so a 128 gap; the run starts 78 in; the heading is
+  60, white, centred, sitting 44 under the band above and 97 over the cards,
+  which clear the band below by 156. The belt runs edge to edge, and carries no
+  ground of its own — the comp gives this section no band, so it runs on the
+  page's ink and the belt is the same colour as what it sits on.
 
-  The 1360 wrapper is a container, and the belt's parts are sized in `cqw`
-  against it rather than `vw` against the viewport. As `vw` they kept growing
-  past the cap, and above 1360 the cards would have outgrown their own stage.
+  Copies of the card set are a function of that width. The belt wraps one set
+  at a time, so at the wrap there must be `COPIES - 1` sets standing to the
+  reader's right for the viewport to fit inside. The set repeats four times,
+  which at a 2569-unit cycle covers any screen.
 
-  Project photographs are contained, never cropped — a build is the thing on
-  show, and a macropad with its ends cut off is not the macropad. The box is a
-  4:3 frame the whole picture sits inside, and the paper left around it is the
-  card's own colour, so it reads as a mount rather than a gap. The comp's
-  portrait 329 x 377 could not hold this photography, which runs square to wide
-  (1.05 to 1.83); where the frame lands inside that spread barely matters, as
-  every ratio from 1.25 to 1.5 leaves the same ~19% of the box unused. What
-  matters is that there is one ratio, so every card carries the same photo
-  footprint and the row does not jump as it travels.
-
-  Card width is set by the credit rather than by the comp: `width: max-content`
-  is the width at which the line does not wrap, so the card is exactly as wide
-  as its credit needs. The comp's 304 survives as the floor.
+- **Project card** — the comp's `Plugin icon - 1` frame (301:56): a 30-radius
+  block with a 20 border in pale yellow, yellow inside, and a pale-yellow
+  caption band filling the bottom 105 of its 328 of content. The photograph
+  sits on the yellow above it, contained and never cropped — a build is the
+  thing on show, and the yellow left around it is the card's own ground rather
+  than a gap, which is how the comp mounts these: each photograph a different
+  size on the same field. Label at 25 over credit at 17, centred, both Open
+  Sans, ink and ink at 80% rather than the comp's flat black so the card stays
+  inside the page's palette. The card is a fixed 386 wide, so every card in the
+  belt matches and the pitch the loop measures is the pitch it travels.
 
 Icons are drawn SVG at a consistent square-cap 2.75px stroke. No icon fonts, no
 emoji, no unicode glyphs standing in for icons.
@@ -297,14 +379,19 @@ off.
 ## Accessibility
 
 - Skip link to `#how-it-works`.
-- `:focus-visible` is a 3px cyan outline with 3px offset, everywhere but the
-  belt: cyan on `--color-hl-blue` is 1.77:1, so the rail's ring is ink (5.05:1)
+- `:focus-visible` is a 3px cyan outline with 3px offset. The email slot takes
+  it on the slot rather than the input, through `:focus-within` — a text input
+  matches `:focus-visible` whenever it is focused, pointer or keyboard, so the
+  two fire together and the ring lands on the frame that is actually the
+  control. The edge goes to full cyan under it. Everywhere but the belt: cyan on `--color-hl-blue` is 1.77:1, so the rail's ring is ink (5.05:1)
   and inset, since a full-bleed scroller's outer ring would be clipped.
 - The form has a real label, `aria-describedby`, `aria-invalid`, and an
   `aria-live` status region; errors name the problem and the recovery.
 - Carousel slides are `role="group"` with `aria-roledescription="slide"`; the
   rail is `aria-roledescription="carousel"`, focusable, and arrow-scrollable.
   The two repeated copies behind it are `aria-hidden` and `inert`.
-- Decorative art, connector bands and the schematic ground are `aria-hidden`.
+- Decorative art and connector bands are `aria-hidden`. The section grounds
+  need no such marking: they are background images, so they were never in the
+  accessibility tree to remove.
 - Only one `<h1>` is ever in the accessibility tree — the stage and flow
   layouts are mutually `display: none`.

@@ -17,50 +17,47 @@ const SECONDS_PER_CARD = 8;
 const STOP_TAU = 0.11;
 const START_TAU = 0.34;
 
-/** Enough repeats of the set that the wrap point is never in view. */
-const COPIES = 3;
+/**
+ * Enough repeats of the set that the wrap point is never in view.
+ *
+ * The belt wraps a set at a time, so at the moment it wraps there must be
+ * `COPIES - 1` sets standing to the right of the reader: the viewport has to
+ * fit inside them or the far end of the belt runs out of cards. While the
+ * blue block was capped at 1360 that could not be in question. Full-bleed it
+ * can be, and three sets of five cards cover screens to about 3900px --
+ * enough for 4K, short of a 5K display. Four covers past 5800px.
+ */
+const COPIES = 4;
+
+/** Comp pixels on the 1728 grid, as the `cqw` fraction of it. */
+const CARD_W = "clamp(13rem, 22.338cqw, 386px)";
+const CARD_RATIO = "386 / 368";
+const CARD_BORDER = "clamp(0.55rem, 1.157cqw, 20px)";
+const CARD_RADIUS = "clamp(0.9rem, 1.736cqw, 30px)";
+/** The caption band is 105 of the card's 328 of content height. */
+const BAND_H = "32.012%";
+const GAP = "clamp(1rem, 7.407cqw, 128px)";
+const INSET = "clamp(1rem, 4.514cqw, 78px)";
+const LABEL = "clamp(0.95rem, 1.447cqw, 25px)";
+const CREDIT = "clamp(0.7rem, 0.984cqw, 17px)";
+/** Card content is the card less its two borders: 22.338 - 2 x 1.157. */
+const PHOTO_SIZES = "(min-width: 1728px) 346px, 20vw";
 
 /**
- * The belt's own stage.
+ * The belt, from the reworked "what can I build" frames.
  *
- * The comp runs the belt full-bleed across its 1728 grid with 386 cards. Both
- * come in to 1360, so the belt reads as an object sitting inside the cyan band
- * rather than as the band itself, and the cyan gets to show on all four sides
- * of it. One number moves both: every measurement below is the comp's, times
- * 1360/1728.
+ * Every measurement below is a literal pixel off the comp's 1728 grid
+ * (275:8), expressed as the `cqw` fraction of it, so the section reproduces
+ * the frame and scales continuously: card 386 x 368 on a 514 pitch, so a 128
+ * gap; the run starts 78 in; the heading is 60 and sits 44 under the band
+ * above it and 97 over the cards, which clear the band below by 156.
  *
- * The wrapper is a container, so the belt's parts size against the belt rather
- * than the viewport. As `vw` they kept growing past the cap and the cards would
- * have outgrown their own stage above 1360. The coefficients are the comp's,
- * unchanged -- the card and its stage scaled by the same factor, so the ratio
- * between them did not move.
+ * The card itself is the `Plugin icon - 1` frame (301:56): a 30-radius block
+ * with a 20 border in pale yellow, yellow inside, and a pale-yellow caption
+ * band filling the bottom 105 of its 328 of content. The photograph sits on
+ * the yellow above it.
  */
-const BELT_MAX = 1360;
 
-/**
- * The photo box.
- *
- * Photographs are contained, never cropped: a build is the thing being shown,
- * and a macropad with its ends cut off is not the macropad. So the box is a
- * frame the whole picture sits inside, and the paper it leaves around the
- * edges is the card's own colour -- a mount, not a gap.
- *
- * The comp drew the card portrait, 329 x 377, which the real photography does
- * not fit: it runs square to wide, 1.05 to 1.83. 4:3 is the frame instead.
- * Where the box lands inside that spread barely matters -- every ratio from
- * 1.25 to 1.5 leaves the same ~19% of the box unused across these four -- so
- * it goes to the familiar one. What does matter is that there is a single
- * ratio: one photo footprint on every card, which is what keeps a row that
- * moves from jumping as it travels.
- */
-const PHOTO_ASPECT = "4 / 3";
-
-/**
- * The photo is the card minus its padding: 256px once the belt hits its cap,
- * ~18.7vw between there and the point the card meets its 13rem floor, and the
- * floor's width below that.
- */
-const PHOTO_SIZES = "(min-width: 1360px) 256px, (min-width: 931px) 19vw, 208px";
 
 type Metrics = { cycle: number; speed: number };
 
@@ -221,94 +218,82 @@ export default function BuildCarousel() {
       ref={sectionRef}
       id="what-can-i-build"
       aria-labelledby="build-heading"
-      // pb is what puts cyan under the belt: the band used to end on the
-      // blue block's own edge, so the colour that names this section only
-      // ever read above it. It mirrors the pt above the heading.
-      className="relative bg-hl-cyan pb-16 text-hl-ink min-[1180px]:pb-24"
+      // The comp gives this section no ground of its own: it runs between the
+      // process band above and the FAQ band below on the page's own ink, and
+      // the belt carries no colour either. The cards are the whole event.
+      className="hl-ground-hex relative bg-hl-ink text-hl-paper"
+      style={{
+        containerType: "inline-size",
+        paddingBottom: "clamp(3rem, 9.028cqw, 156px)",
+      }}
     >
       <div
-        className="mx-auto w-full"
-        style={{ maxWidth: BELT_MAX, containerType: "inline-size" }}
+        className="px-4 sm:px-8"
+        style={{
+          paddingTop: "clamp(2rem, 2.546cqw, 44px)",
+          paddingBottom: "clamp(2rem, 5.613cqw, 97px)",
+        }}
       >
-        <div className="px-4 pt-16 pb-7 sm:px-8 min-[1180px]:pt-24 min-[1180px]:pb-9">
-          <h2
-            id="build-heading"
-            className="text-center font-display font-bold tracking-[-0.02em]"
-            style={{ fontSize: "clamp(2rem, 4.6cqw, 3.75rem)" }}
-          >
-            What can I build?
-          </h2>
-        </div>
-
-        <div
-          className="bg-hl-blue"
-          // The belt's clearance is fluid rather than stepped, and written here
-          // rather than as `sm:py-10 min-[1180px]:py-14`: Tailwind v4 emits the
-          // arbitrary min-[1180px] block *before* the named sm: block, so the
-          // sm: value silently wins above 1180px. 32px → 56px, same intent.
-          style={{ paddingBlock: "clamp(2rem, 4.75cqw, 3.5rem)" }}
-          onPointerEnter={() => stop("hover")}
-          onPointerLeave={() => start("hover")}
-          onPointerCancel={() => start("hover")}
-          onFocusCapture={() => stop("focus")}
-          onBlurCapture={() => start("focus")}
+        <h2
+          id="build-heading"
+          className="text-center font-display font-bold tracking-[-0.02em] text-white"
+          style={{ fontSize: "clamp(2rem, 3.472cqw, 3.75rem)" }}
         >
-          <ul
-            ref={railRef}
-            // With no buttons, the scroller itself is the control: tabbable
-            // everywhere rather than only in browsers that focus overflow
-            // containers on their own, and the belt halts as focus lands.
-            tabIndex={0}
-            className="rail flex overflow-x-auto"
-            style={{
-              gap: "clamp(1rem, 6.48cqw, 88px)",
-              paddingInline: "clamp(1rem, 5.56cqw, 76px)",
-            }}
-            aria-roledescription="carousel"
-            aria-label="Projects Half Life teenagers have built"
-          >
-            {Array.from({ length: COPIES }).flatMap((_, copy) =>
-              BUILD_CARDS.map((card, index) => (
-                <li
-                  key={`${copy}-${card.id}`}
-                  className="shrink-0 bg-hl-paper rounded-[2rem]"
-                  // The credit sets the card's width. `max-content` is the
-                  // width at which a line does not wrap, so the card is exactly
-                  // as wide as its credit needs and no wider -- which beats
-                  // guessing a pixel figure, since what a string measures
-                  // depends on the font rather than on its character count.
-                  // The comp's card width survives as the floor, so a short
-                  // credit cannot shrink a card, and the ceiling keeps a long
-                  // one from running away with the belt.
-                  style={{
-                    width: "max-content",
-                    minWidth: "clamp(13rem, 22.34cqw, 304px)",
-                    maxWidth: "min(85vw, 34rem)",
-                    padding: "clamp(0.85rem, 1.8cqw, 24px)",
-                  }}
-                  role={copy === 0 ? "group" : undefined}
-                  aria-roledescription={copy === 0 ? "slide" : undefined}
-                  aria-label={
-                    copy === 0
-                      ? `${index + 1} of ${BUILD_CARDS.length}`
-                      : undefined
-                  }
-                  aria-hidden={copy === 0 ? undefined : true}
-                  inert={copy !== 0}
-                >
-                  <div
-                    className="relative w-full overflow-hidden"
-                    style={{ aspectRatio: PHOTO_ASPECT }}
-                  >
+          What can I build?
+        </h2>
+      </div>
+
+      <div
+        onPointerEnter={() => stop("hover")}
+        onPointerLeave={() => start("hover")}
+        onPointerCancel={() => start("hover")}
+        onFocusCapture={() => stop("focus")}
+        onBlurCapture={() => start("focus")}
+      >
+        <ul
+          ref={railRef}
+          // With no buttons, the scroller itself is the control: tabbable
+          // everywhere rather than only in browsers that focus overflow
+          // containers on their own, and the belt halts as focus lands.
+          tabIndex={0}
+          className="rail flex overflow-x-auto"
+          style={{ gap: GAP, paddingInline: INSET }}
+          aria-roledescription="carousel"
+          aria-label="Projects Half Life teenagers have built"
+        >
+          {Array.from({ length: COPIES }).flatMap((_, copy) =>
+            BUILD_CARDS.map((card, index) => (
+              <li
+                key={`${copy}-${card.id}`}
+                className="shrink-0 overflow-hidden bg-hl-yellow"
+                style={{
+                  width: CARD_W,
+                  aspectRatio: CARD_RATIO,
+                  borderRadius: CARD_RADIUS,
+                  border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
+                }}
+                role={copy === 0 ? "group" : undefined}
+                aria-roledescription={copy === 0 ? "slide" : undefined}
+                aria-label={
+                  copy === 0
+                    ? `${index + 1} of ${BUILD_CARDS.length}`
+                    : undefined
+                }
+                aria-hidden={copy === 0 ? undefined : true}
+                inert={copy !== 0}
+              >
+                <div className="flex h-full w-full flex-col">
+                  {/* Contained, never cropped: a build is the thing on show,
+                      and the yellow left around it is the card's own ground
+                      rather than a gap — which is how the comp mounts these,
+                      each photograph a different size on the same field. */}
+                  <div className="relative min-h-0 flex-1">
                     {card.photo ? (
                       <Image
                         src={card.photo}
-                        // The label used to be painted over the photo, which
-                        // is what made an empty alt correct. With it gone the
-                        // only text left is the credit, and that names the
-                        // builder rather than the build -- so the label now
-                        // does its naming here instead.
-                        alt={card.label}
+                        // The label under the picture names the project, so a
+                        // description here would only be read out twice.
+                        alt=""
                         fill
                         sizes={PHOTO_SIZES}
                         className="object-contain"
@@ -322,22 +307,70 @@ export default function BuildCarousel() {
                       />
                     )}
                   </div>
-                  {/* nowrap is the guarantee, not the mechanism: the card is
-                      already sized to hold this on one line, and this makes
-                      sure a rounding error at the edge cannot break it over
-                      two. */}
-                  <p
-                    className="mt-[0.9em] whitespace-nowrap text-hl-ink"
-                    style={{ fontSize: "clamp(0.9rem, 1.5cqw, 1.3rem)" }}
+
+                  <div
+                    className="flex flex-col items-center justify-center bg-hl-yellow-pale text-center"
+                    style={{ flex: `0 0 ${BAND_H}` }}
                   >
-                    {card.credit}
-                  </p>
-                </li>
-              )),
-            )}
-          </ul>
-        </div>
+                    <p
+                      className="font-body whitespace-nowrap text-hl-ink"
+                      style={{ fontSize: LABEL, lineHeight: 1.1 }}
+                    >
+                      {card.label}
+                    </p>
+
+                    <div
+                      className="flex items-center gap-[0.7em]"
+                      style={{ fontSize: CREDIT, marginTop: "0.55em" }}
+                    >
+                      <p className="font-body whitespace-nowrap text-hl-ink/80">
+                        {card.credit}
+                      </p>
+
+                      {card.repo ? (
+                        <a
+                          href={card.repo}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          // Inverts to ink on hover and focus. The focus ring
+                          // goes ink too: the page's cyan is 1.4:1 on this
+                          // pale yellow and would read as a disabled control.
+                          className="grid h-[1.7em] w-[1.7em] shrink-0 place-items-center rounded-full text-hl-ink transition-colors hover:bg-hl-ink hover:text-hl-yellow-pale focus-visible:bg-hl-ink focus-visible:text-hl-yellow-pale focus-visible:outline-hl-ink"
+                        >
+                          <span className="sr-only">
+                            {`${card.label} on GitHub (opens in a new tab)`}
+                          </span>
+                          <GithubMark className="h-[1.15em] w-[1.15em]" />
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            )),
+          )}
+        </ul>
       </div>
     </section>
+  );
+}
+
+/**
+ * The GitHub mark.
+ *
+ * A brand mark, so it is filled rather than drawn at the page's 2.75 stroke
+ * like every other icon here -- GitHub's shape is not ours to restyle.
+ *
+ * Icon from Material Design Icons by Pictogrammers, Apache-2.0:
+ * https://github.com/Templarian/MaterialDesign/blob/master/LICENSE
+ */
+function GithubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className}>
+      <path
+        fill="currentColor"
+        d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
+      />
+    </svg>
   );
 }

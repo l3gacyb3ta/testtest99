@@ -73,10 +73,8 @@ export default function Process() {
     <section
       id="how-it-works"
       aria-label="How Half Life works"
-      className="relative z-0 isolate bg-hl-ink"
+      className="hl-ground-wave relative z-0 isolate bg-hl-ink"
     >
-      <SchematicGround />
-
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       <div
         className="stage hidden min-[1180px]:block"
@@ -265,14 +263,14 @@ export default function Process() {
           aside={viral}
           className="absolute"
           style={box(1114, 1451, 555, 261.227)}
-          titleAt={at(44.5, 33.4)}
+          titleTop={u(33.4)}
           bodyAt={at(21.4, 106.2)}
         />
         <Aside
           aside={community}
           className="absolute"
           style={box(59, 2123, 555, 261.227)}
-          titleAt={at(44.5, 33.4)}
+          titleTop={u(33.4)}
           bodyAt={at(21.4, 106.2)}
         />
 
@@ -444,7 +442,8 @@ type AsideProps = {
   aside: (typeof ASIDES)[number];
   className?: string;
   style?: React.CSSProperties;
-  titleAt?: { left: string; top: string };
+  /** The title centres on the plate, so it needs its top and nothing else. */
+  titleTop?: string;
   bodyAt?: { left: string; top: string };
   stacked?: boolean;
 };
@@ -453,14 +452,14 @@ function Aside({
   aside,
   className = "",
   style,
-  titleAt,
+  titleTop,
   bodyAt,
   stacked = false,
 }: AsideProps) {
   if (stacked) {
     return (
       <div className="bg-hl-lavender px-5 py-6 text-hl-ink sm:px-7">
-        <h3 className="font-display text-xl font-bold sm:text-2xl">
+        <h3 className="text-center font-display text-xl font-bold sm:text-2xl">
           {aside.title}
         </h3>
         <p className="mt-3 text-[0.975rem] leading-relaxed sm:text-base">
@@ -475,11 +474,18 @@ function Aside({
       className={`bg-hl-lavender text-hl-ink ${className}`}
       style={style}
     >
+      {/* Centred across the plate rather than set from its left edge. The
+          comp's 490 measure is kept as a cap so the line still wraps where it
+          did; pinning both edges and letting the margins settle it is what
+          makes the centre the plate's centre and not the text box's. */}
       <h3
-        className="absolute font-display font-bold"
+        className="absolute text-center font-display font-bold"
         style={{
-          ...titleAt,
-          width: u(490),
+          top: titleTop,
+          left: 0,
+          right: 0,
+          marginInline: "auto",
+          maxWidth: u(490),
           fontSize: u(30.833),
           lineHeight: 1.1,
         }}
@@ -501,16 +507,3 @@ function Aside({
   );
 }
 
-/** A faint measured grid so the ink ground reads as a board, not a void. */
-function SchematicGround() {
-  return (
-    <div
-      aria-hidden
-      className="absolute inset-0 -z-10 opacity-[0.16]"
-      style={{
-        backgroundImage:
-          "repeating-linear-gradient(to right, var(--color-hl-cyan) 0 1px, transparent 1px 96px), repeating-linear-gradient(to bottom, var(--color-hl-cyan) 0 1px, transparent 1px 96px)",
-      }}
-    />
-  );
-}

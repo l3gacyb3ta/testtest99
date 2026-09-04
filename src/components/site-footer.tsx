@@ -26,7 +26,7 @@ export default function SiteFooter() {
           {FOOTER_COLUMNS.map((column) => (
             <nav key={column.heading} aria-label={column.heading}>
               {/* 0.95rem, not text-xs: Masterpiece's cap height is 0.568em against
-                  Bricolage's ~0.72, so 12px would read a fifth smaller than the
+                  Urbanist's ~0.71, so 12px would read a fifth smaller than the
                   label it replaces. This lands the caps at the same height. */}
               <h2 className="font-hand text-[0.95rem] uppercase tracking-[0.18em] text-hl-cyan">
                 {column.heading}

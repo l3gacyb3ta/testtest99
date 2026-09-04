@@ -5,12 +5,13 @@
    Palette is the Figma "color scheme" frame (node 275:222), verbatim.
    ───────────────────────────────────────────────────────────── */
 @theme {
-  --font-display: var(--font-bricolage), "Archivo", ui-sans-serif, system-ui,
-    sans-serif;
-  /* The comp's brush face. Bookends the page: hero and footer only. */
-  --font-hand: var(--font-masterpiece), var(--font-bricolage), "Archivo",
-    ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
+  /* The comp's brush face. Now the wordmark and the footer's column labels
+     only: "how does it work?" moved to the display face with the other
+     headers, so the brush is the page's signature rather than its voice. */
+  --font-hand: var(--font-masterpiece), var(--font-urbanist), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
 
   --color-hl-ink: #31222c;
   --color-hl-paper: #ededed;
@@ -18,6 +19,11 @@
   --color-hl-blue: #619cc3;
   --color-hl-blue-deep: #397cbe;
   --color-hl-periwinkle: #a39bd6;
+  /* The carousel's own pair, from the reworked "what can I build" frames
+     (301:56). Yellow is the ground the project photographs sit on; pale
+     yellow is the card's border and its caption band. */
+  --color-hl-yellow: #ffdf5e;
+  --color-hl-yellow-pale: #fffcd8;
   --color-hl-lavender: #c9c7ec;
 
   /* text tinted from the surface it sits on — never gray */
@@ -110,6 +116,28 @@ body {
   }
 }
 
+/* The email field, drawn as one of the page's own reserved slots.
+
+   The input inside it carries no surface: the slot is the control, so the
+   slot is what takes the focus ring. A text input always matches
+   `:focus-visible` whenever it is focused, pointer or keyboard, so
+   `:focus-within` here is that same moment — the page's own 3px cyan ring at
+   3px offset, moved out to the frame it belongs to. The edge goes to full
+   cyan underneath it, so the slot reads as live even at a glance. */
+.hl-field:focus-within {
+  outline: 3px solid var(--color-hl-cyan);
+  outline-offset: 3px;
+}
+
+.hl-field:focus-within .hl-field-edge {
+  border-color: var(--color-hl-cyan);
+}
+
+.hl-field ::selection {
+  background-color: var(--color-hl-cyan);
+  color: var(--color-hl-ink);
+}
+
 /* Signup confirmation. The plate is a part passing down the line: it arrives
    from the left, and when its time is up it carries on off the right rather
    than retreating the way it came. One material — a clip-path cut, in the
@@ -181,6 +209,80 @@ body {
   }
 }
 
+
+/* ─────────────────────────────────────────────────────────────
+   Section grounds
+
+   One pattern per band, so a reader scrolling knows which room
+   they are in without being told. All three are drafting marks
+   from the same silkscreen vocabulary, at an opacity where they
+   register as texture rather than as content:
+
+     wave   the process band — overlapping arcs raked at 60 degrees,
+            the line running on rather than a sheet ruled for it
+     hex    the carousel — a hexagonal lattice, in the yellow the
+            cards standing on it are made of
+     hatch  the FAQ — section hatching, the drawing convention
+            for a cut surface
+
+   The colour is diluted into the gradient rather than carried by
+   an opacity layer, so each is a background-image on the section
+   itself: no extra element, and no stacking context to arrange.
+   ───────────────────────────────────────────────────────────── */
+.hl-ground-wave {
+  /* The supplied pattern, in the band's own colour: overlapping arcs on a
+     70x8 tile, turned 60 degrees and doubled. Two changes to what came in.
+     The stroke was #ecc94b, a yellow this page does not have and which would
+     have read as the carousel's; it is cyan, which is what the process band
+     already draws its connector bands and week marks in. And the pattern's
+     own opaque #2b2b31 ground rect is gone, so the section's ink shows
+     through and stays the one place that colour is defined.
+
+     The hex is written out because a data URI is a separate document: no
+     custom property reaches inside it, so `--color-hl-cyan` cannot be read
+     here and this copy has to be kept in step with it by hand.
+
+     Size and repeat are pinned rather than left to the rule that an image
+     with no intrinsic dimensions is drawn at the size of its box. That rule
+     is what makes this work, but leaning on it silently means a browser that
+     reached for the 300x150 default would tile a rotated pattern and seam it.
+     With no viewBox there is nothing to scale from, so the SVG's user units
+     stay CSS pixels and the arcs hold their 140x16 at any section height. */
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='70' height='8' patternTransform='rotate(60)scale(2)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%238ed3dc' stroke-opacity='.12' stroke-width='1.5' d='M-.02 22c8.373 0 11.938-4.695 16.32-9.662C20.785 7.258 25.728 2 35 2s14.215 5.258 18.7 10.338C58.082 17.305 61.647 22 70.02 22M-.02 14.002C8.353 14 11.918 9.306 16.3 4.339 20.785-.742 25.728-6 35-6S49.215-.742 53.7 4.339c4.382 4.967 7.947 9.661 16.32 9.664M70 6.004c-8.373-.001-11.918-4.698-16.3-9.665C49.215-8.742 44.272-14 35-14S20.785-8.742 16.3-3.661C11.918 1.306 8.353 6-.02 6.002'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+}
+
+.hl-ground-hex {
+  /* The supplied pattern, in the band's own colour: a hexagonal lattice on a
+     40x59.428 tile, turned 20 degrees. Two changes to what came in, the same
+     two the process band's arcs needed. The stroke was #ecc94b; it is the
+     card yellow, because this band has no cyan left anywhere in it — the belt
+     gave up its blue, the cards are yellow on ink — so cyan would be importing
+     an accent the section does not use, where yellow is already its own. And
+     the pattern's opaque #2b2b31 ground rect is dropped so the section's ink
+     shows through and stays the one place that colour is set.
+
+     The hex is written out because a data URI is a separate document that no
+     custom property reaches into; this copy has to be kept in step with
+     `--color-hl-yellow` by hand.
+
+     Size and repeat are pinned for the same reason as the arcs: the rule that
+     an image with no intrinsic dimensions is drawn at the size of its box is
+     what makes this work, and a browser falling back to 300x150 instead would
+     tile a rotated lattice and seam it. */
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='40' height='59.428' patternTransform='rotate(20)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23ffdf5e' stroke-opacity='.12' stroke-linecap='square' d='M0 70.975V47.881m20-1.692L8.535 52.808v13.239L20 72.667l11.465-6.62V52.808zm0-32.95 11.465-6.62V-6.619L20-13.24 8.535-6.619V6.619L20 13.24m8.535 4.927v13.238L40 38.024l11.465-6.62V18.166L40 11.546zM20 36.333 0 47.88m0 0v23.094m0 0 20 11.548 20-11.548V47.88m0 0L20 36.333m0 0 20 11.549M0 11.547l-11.465 6.619v13.239L0 38.025l11.465-6.62v-13.24L0 11.548v-23.094l20-11.547 20 11.547v23.094M20 36.333V13.24'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+}
+
+.hl-ground-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--color-hl-ink) 10%, transparent) 0 1px,
+    transparent 1px 18px
+  );
+}
 
 /* Carousel: a native scroll container, so touch, trackpad, keyboard and
    momentum all come for free — which is what lets the belt carry no controls

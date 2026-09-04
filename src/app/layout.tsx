@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Archivo, Bricolage_Grotesque } from "next/font/google";
+import { Open_Sans, Urbanist } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -20,15 +20,15 @@ const masterpiece = localFont({
   display: "swap",
 });
 
-const archivo = Archivo({
+const urbanist = Urbanist({
   subsets: ["latin"],
-  variable: "--font-archivo",
+  variable: "--font-urbanist",
   display: "swap",
 });
 
-const bricolage = Bricolage_Grotesque({
+const openSans = Open_Sans({
   subsets: ["latin"],
-  variable: "--font-bricolage",
+  variable: "--font-open-sans",
   display: "swap",
 });
 
@@ -60,7 +60,7 @@ every program page ships.
 OWN-WORLD: Palette is the Figma "color scheme" frame verbatim — ink #31222c
 ground, paper #ededed panels, cyan #8ed3dc traces, deep blue #397cbe hero
 block, periwinkle #a39bd6 and lavender #c9c7ec bands. Masterpiece brush on the
-hero and footer, Bricolage Grotesque display between, Archivo body. Square corners, no shadows: flat plates and thick
+wordmark and footer labels, Urbanist display between, Open Sans body. Square corners, no shadows: flat plates and thick
 tapering vector bands, like control-panel silkscreen.
 
 STORY: A 13-18 year old sees the offer and the prize in one viewport, drops an
@@ -82,7 +82,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${archivo.variable} ${bricolage.variable} ${masterpiece.variable} h-full antialiased`}
+      className={`${openSans.variable} ${urbanist.variable} ${masterpiece.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
         <div hidden dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} />
