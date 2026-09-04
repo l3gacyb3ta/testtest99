@@ -17,16 +17,34 @@ export const BRAND = {
   eligibility: "teens 13–18 only. no experience necessary",
 } as const;
 
-export type DesignWeek = { subject: string; week: string };
+export type DesignWeek = {
+  subject: string;
+  week: string;
+  /**
+   * The artwork behind this pairing, as a path under `public/`. Optional on
+   * the same terms as a `BuildCard`'s photo: a week without one falls back to
+   * the drawn slot, so the five fill in one week at a time. Both layouts read
+   * it from here, so a new picture lands on the stage and in the stacked
+   * column from one edit.
+   *
+   * Week 3 has none yet — `public/art/weeks` ships PCB, cad, display and
+   * breadboard, and no synth.
+   */
+  art?: string;
+};
 
 /** Week 1 leads at display scale; weeks 2–5 sit beneath it. */
 export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
-  lead: { subject: "PCBs", week: "week 1" },
+  lead: { subject: "PCBs", week: "week 1", art: "/art/weeks/PCB.png" },
   rest: [
-    { subject: "CAD", week: "week 2" },
+    { subject: "CAD", week: "week 2", art: "/art/weeks/cad.png" },
     { subject: "synths", week: "week 3" },
-    { subject: "displays", week: "week 4" },
-    { subject: "breadboard logic", week: "week 5" },
+    { subject: "displays", week: "week 4", art: "/art/weeks/display.png" },
+    {
+      subject: "breadboard logic",
+      week: "week 5",
+      art: "/art/weeks/breadboard.png",
+    },
   ],
 };
 

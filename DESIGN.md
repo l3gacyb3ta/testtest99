@@ -52,7 +52,9 @@ yellow 11.44:1, white on ink 15.05:1, a card against the ink behind it
 14.45:1. Ink on cyan 8.98:1, ink on periwinkle 5.92:1, ink on
 lavender 9.22:1, indigo on lavender 7.14:1, ink on paper 12.3:1, paper on
 ink 12.3:1. On a light image
-slot the worst case is a soft week label over a paper grid rule, at 5.10:1. Text on the deep
+slot the worst case is a soft week label over a paper grid rule, at 5.10:1;
+over a week backdrop's photograph it is 5.07:1, the screened picture being
+unable to darken the lavender under it. Text on the deep
 blue hero plate is 3.64:1 and is therefore only ever set at large scale
 (≥ 24px, or ≥ 18.66px bold), which is how the comp sets it.
 
@@ -190,10 +192,11 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
   page's own grammar: ink plate, cyan registration ticks at the corners, a
   measured grid masked to the centre, and a label with the artwork's native
   size. Replace with `next/image` in place; the wrapper box is already correct.
-  Currently standing in for the artwork behind each week pairing in step 1.
-  The carousel's cards have taken their real photographs: `photo` on a
-  `BuildCard` is optional, so a card without one still draws the slot and the
-  belt can fill up a project at a time.
+  Two places still draw it, both on the same terms: an optional path on the
+  content record, with the slot as the fallback, so each fills in one piece at
+  a time. `photo` on a `BuildCard` — every carousel card now has one — and
+  `art` on a `DesignWeek`, where weeks 1, 2, 4 and 5 have their pictures and
+  week 3 is still waiting for a synth shot.
 
   Two variants. `tone="light"` swaps the ink plate for lavender, for slots that
   land on paper and carry the page's ink over them; its grid rules are drawn in
@@ -205,11 +208,24 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
   there. Position comes from `style`, not a class: as a class, the component's
   own `relative` could not be beaten by a caller's `absolute`, and positioned
   slots silently fell into flow.
-- **Week backdrops** — one light slot behind each subject-and-week pairing in
-  step 1, each the measured union of its own two lines padded 22 across and 18
-  down. Deliberately ragged rather than a uniform band: the comp hand-places
+- **Week backdrops** — one artwork patch behind each subject-and-week pairing
+  in step 1, each the measured union of its own two lines padded 22 across and
+  18 down. Deliberately ragged rather than a uniform band: the comp hand-places
   the five at different heights, and squaring them into a row would flatten
   that. Neighbours clear each other by 19-28 and the plate by 13.
+
+  The photograph is screened onto the lavender at 0.55 rather than laid on it.
+  These boxes are the type's own bounding box, so the week label stands
+  directly on the picture, and at 13.7px it needs 4.5:1 against a ground that
+  gives it only 5.07:1 bare. `mix-blend-mode: screen` can only lift a channel,
+  never lower one, so the composite is at least as light as the lavender
+  whatever the picture does and that floor holds for every pixel of every
+  photograph — including ones not taken yet. It is the paper-grid-rule
+  reasoning above, applied to a picture instead of a line. At 0.55 the
+  composite runs from the patch's own `#c9c7ec` at the picture's black to
+  `#e6e6f6` at its white, which is the step plate's `#E6E5FC`: the photograph
+  is carried by the two colours the section already owns. The blend is
+  `isolate`d, because the guarantee only holds against the lavender.
 - **Section grounds** — one low-opacity pattern per band, so a reader scrolling
   knows which room they are in without being told. All three are drafting marks
   from the same silkscreen vocabulary, at an opacity where they register as

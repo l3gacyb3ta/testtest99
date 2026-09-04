@@ -52,28 +52,59 @@ const ART = { w: 1920, h: 1080 } as const;
  * own centre, which is precisely where it sat before.
  */
 /**
- * How much of the stage the wordmark art runs across.
+ * How wide the wordmark art runs on the stage.
  *
- * 60 is very nearly the ceiling, and it is worth knowing why: the file is
- * 1125 x 787, so width buys height at 0.7 to 1. At 60 the mark stands 725
- * units tall, the copy and form under it another 172, and the cue another 90 —
- * 987 against a 16:9 fold's 972. The fold is `min-h`, so it grows by those 14
- * rather than clipping, and 60 fits outright on any viewport squarer than
- * 1.75:1. Past about 65 the hero starts pushing itself off the first screen.
+ * 604.8 is the plate column's 864 taken down 30%, which is where this was
+ * asked to sit. It is now its own number rather than `u(PLATE_W)`: at 70% of
+ * the column the mark no longer spans it, so the two have to be free to differ
+ * — see `PLATE_SIZE` below, which holds the column at the comp's half-grid so
+ * that shrinking the mark does not drag the tagline and the form in with it.
+ *
+ * What the number buys, since the file carries its own inset: the ink is 1125
+ * of a 1280 canvas and the box crops nothing horizontally, so the visible mark
+ * is 88% of the box — 532 units. Height follows at 0.7 to 1, so it stands 423.
+ *
+ * Worth knowing before this moves again. 532 of ink sits *under* the 585
+ * tagline and the 596 form beneath it, so the mark is no longer the widest
+ * thing in the column; it still leads on mass, standing 423 tall against a
+ * 22px line, but the three widths are now close enough to read as an
+ * near-miss rather than a decision. The two clean stops either side are
+ * `u(678)`, where the ink lands on the form's own 596 and the group shares one
+ * edge, and `u(PLATE_W)`, where it spans the column outright.
+ *
+ * The fold has room to spare: 423 for the mark, 172 for the copy and form, 90
+ * for the cue — 685 against a 16:9 fold's 972, so anything squarer than 2.5:1
+ * fits outright and `min-h` grows the block rather than clipping it.
  */
-const LOGO_STAGE_VW = 60;
+const LOGO_STAGE_W = u(604.8);
+
+/**
+ * The stacked layout's own width, also taken down 30% — 60 to 42, and the
+ * ceiling below from 24rem to 16.8rem.
+ *
+ * This one is worth watching. The column here is not the comp's plate but
+ * whatever the phone's padding leaves — 318 units on a 390 screen — so the
+ * stage's proportions do not carry over. At 42 the mark's ink is 144 of that
+ * 318, which sets it at about half the width of the tagline block beneath it,
+ * and a wordmark narrower than its own tagline stops reading as the page's
+ * h1. It was 60 for that reason. 55 is roughly where the mark and the tagline
+ * come level, if this wants pulling back.
+ */
+const LOGO_FLOW_VW = 42;
 
 /**
  * The plate is a content column, not a box with a ground, so it is sized to
  * hold what it carries rather than to a drawn rectangle.
  *
  * `minHeight`, not `height`: at the comp's 466 a wordmark this size spilled
- * out of its grid row and into the scroll cue's. And the width takes whichever
- * is greater of the comp's half-grid plate and the art itself, so the art is
- * never wider than the column it is centred in.
+ * out of its grid row and into the scroll cue's. The width is the comp's
+ * half-grid plate outright, and deliberately not the mark's: the column has to
+ * hold a 585 tagline and a 596 form whatever the wordmark above them is doing,
+ * so a mark taken below the column's width shrinks alone rather than crushing
+ * the two rows under it.
  */
 const PLATE_SIZE = {
-  width: `max(${u(PLATE_W)}, ${LOGO_STAGE_VW}cqw)`,
+  width: u(PLATE_W),
   minHeight: u(PLATE_H),
 } as const;
 
@@ -147,26 +178,44 @@ export default function Hero() {
         >
           {/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a
               real `vw` would keep growing the mark on a wider monitor while
-              everything around it had stopped. Against the stage it is 60vw up
-              to the cap and 60% of the composition after it. `fontSize` is
+              everything around it had stopped. Against the stage it is 35vw up
+              to the cap and 35% of the composition after it. `fontSize` is
               still here for the live-type branch, which renders if LOGO_SRC is
               ever cleared again. */}
           <Wordmark
             as="h1"
             art
-            artWidth={`${LOGO_STAGE_VW}cqw`}
+            artWidth={LOGO_STAGE_W}
             fontSize={onPlateU(226.768)}
             className="w-full"
           />
 
-          {/* Balanced rather than ragged: at this measure the line wraps, and
-              centred text that wraps unevenly reads as a mistake. */}
+          {/* One line, and sized so it stays one line.
+
+              The measure is not a guess: set in Ubuntu 400, this sentence is
+              25.301em wide, so its size and its length are the same number and
+              only one of them is free. At `u(32.8)` the line runs 830 units
+              inside the 864 column, leaving 17 either side — enough that the
+              metric-adjusted fallback face can miss Ubuntu's advances by 3.9%
+              before anything touches the edge.
+
+              It has to be a stage unit rather than a fixed px, which is what
+              was actually causing the wrap: at a flat 2rem the sentence needed
+              810px of a box that is only 428px at a 1280 window, because the
+              box scaled with the stage and the type did not. In `cqw` the two
+              move together, so the ratio holds at every width this layout runs
+              at — and at the stage's 1728 cap it lands on 32.8px, which is
+              where the 2rem was aiming.
+
+              No `width`, no `text-balance`: with one line there is nothing to
+              balance, and an explicit measure narrower than the line would only
+              give the text something to overflow. As a centred flex item it
+              takes its own content width. */}
           <p
-            className="font-tagline text-balance text-hl-paper"
+            className="font-tagline whitespace-nowrap text-hl-paper"
             style={{
               marginTop: onPlateU(27),
-              width: onPlateU(851),
-              fontSize: onPlateU(31.788),
+              fontSize: u(32.8),
               lineHeight: 1.1,
             }}
           >
@@ -232,14 +281,15 @@ export default function Hero() {
             the plate against the cue and the two crowd each other. */}
         <div className="relative flex min-h-[100svh] flex-col justify-center px-4 pt-16 pb-28 sm:px-8">
           <div className="bg-hl-blue-deep px-5 pt-7 pb-8 sm:px-9 sm:pt-10 sm:pb-11">
-            {/* The same 60vw, with a ceiling. Uncapped it is right on a phone
-                and wrong by 768, where 60vw is 460 across for a mark sitting
-                above a form — the stacked layout runs to 1180, and 24rem holds
-                it at a wordmark's size rather than a splash screen's. */}
+            {/* 42vw here, with a ceiling. Uncapped it is right on a phone and
+                wrong by 768, where even 42vw is 323 across for a mark sitting
+                above a form — the stacked layout runs to 1180, and 16.8rem
+                holds it at a wordmark's size rather than a splash screen's.
+                Both numbers are the old 60 and 24rem less 30%. */}
             <Wordmark
               as="h1"
               art
-              artWidth={`min(${LOGO_STAGE_VW}vw, 24rem)`}
+              artWidth={`min(${LOGO_FLOW_VW}vw, 16.8rem)`}
               fontSize="clamp(3.2rem, 15vw, 7.5rem)"
               className="w-full"
             />
@@ -343,14 +393,7 @@ function ScrollCue({
 
           The negative margin takes back the trailing letter-space that 0.14em
           adds after the final L, which would otherwise push the word half a
-          space left of the centre it is being centred on. */}
-      <span
-        className="hl-scroll-cue block"
-        style={{ lineHeight: 1, marginRight: "-0.14em" }}
-      >
-        scroll
-        <span className="sr-only"> to see how it works</span>
-      </span>
+          space left of the centre it is being centred on. */}  
     </a>
   );
 }

@@ -77,7 +77,7 @@ export default function Wordmark({
             alt=""
             fill
             priority
-            sizes="(min-width: 1180px) 57vw, 88vw"
+            sizes="(min-width: 1180px) 35vw, 42vw"
             className="object-cover"
           />
         </span>
