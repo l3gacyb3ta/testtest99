@@ -1,5 +1,6 @@
 "use client";
 
+import { BRAND } from "@/lib/content";
 import {
   useCallback,
   useEffect,
@@ -26,8 +27,9 @@ const CONFIRM_EXIT_MS = 220;
  * font-size and the field, the button and the paddings all follow — the comp
  * stage passes a `cqw` value, the stacked mobile layout passes a `clamp()`.
  *
- * The comp's submit glyph is the exported check vector (Figma 275:208), path
- * data verbatim.
+ * The check is the exported comp vector (Figma 275:208), path data verbatim.
+ * It is the confirmation's tick only; the submit control carries its own
+ * label.
  */
 export default function SignupForm({
   className = "",
@@ -157,7 +159,11 @@ export default function SignupForm({
               required
               disabled={pending}
               placeholder="Email address"
-              aria-describedby={status === "error" ? `${id}-msg` : undefined}
+              // Always described by the line below: the eligibility note when
+              // there is nothing wrong, the error when there is. Pointing at
+              // it only on error meant the note was on screen but not in the
+              // accessibility tree.
+              aria-describedby={`${id}-msg`}
               aria-invalid={status === "error" || undefined}
               onFocus={() => {
                 // Reaching the field is the clearest signal the confirmation has
@@ -171,7 +177,13 @@ export default function SignupForm({
                   setMessage("");
                 }
               }}
-              className="h-full w-full bg-transparent px-[0.667em] text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+              // Display face, not the body one it inherited. The control is
+              // one object — a slot cut into the plate and the word beside it
+              // — and "sign up!" is set in the display face, so the field's
+              // own type belongs to the same voice. Set on the input rather
+              // than scoped to `::placeholder`, so the address someone types
+              // does not change face out from under them mid-word.
+              className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
             />
 
             {/* Edge at 55% rather than the slot component's 45%: on ink that
@@ -183,20 +195,41 @@ export default function SignupForm({
             />
           </div>
 
+          {/* The label, not a glyph. A check meant "done" on a control whose
+              job is "start" — the one place on the page where the tick is
+              honest is the confirmation that wipes over the field once the
+              address is in, which is where it still lives.
+
+              Padding rather than a fixed 2.8em width, so the button is as
+              wide as its word: 5.34em, which the field gives up out of its
+              own flex-1. At the narrowest phone that leaves the field 163px
+              against the 125px its placeholder needs.
+
+              Label and spinner share one grid cell, so the label reserves the
+              button's width even while hidden and a submit cannot resize the
+              row under the pointer. `invisible` and not `opacity-0` because
+              visibility:hidden also takes the label out of the accessibility
+              tree, which lets the pending name be the only one there. */}
           <button
             type="submit"
             disabled={pending}
             className="grid shrink-0 place-items-center bg-hl-cyan text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue"
-            style={{ height: "2.1667em", width: "2.8em" }}
+            style={{ height: "2.1667em", paddingInline: "0.9em" }}
           >
-            <span className="sr-only">
-              {pending ? "Signing you up" : "Sign up"}
+            <span
+              className={`[grid-area:1/1] whitespace-nowrap font-display font-bold leading-none ${
+                pending ? "invisible" : ""
+              }`}
+              style={{ fontSize: "0.85em" }}
+            >
+              sign up!
             </span>
             {pending ? (
-              <Spinner className="h-[0.9em] w-[0.9em] animate-spin" />
-            ) : (
-              <Check className="h-[0.95em] w-[0.98em]" />
-            )}
+              <>
+                <Spinner className="h-[0.9em] w-[0.9em] animate-spin [grid-area:1/1]" />
+                <span className="sr-only">Signing you up</span>
+              </>
+            ) : null}
           </button>
         </form>
 
@@ -217,18 +250,33 @@ export default function SignupForm({
         ) : null}
       </div>
 
-      {/* Errors are shown here and reserve their line whether or not one is
-          up, so the plate above never moves. The confirmation is not repeated
-          here: it is already on the plate, and a second copy at 0.6em would
-          wrap on a phone and push the page around under it. */}
+      {/* One line under the field, carrying the eligibility note until there
+          is an error to carry instead. It was already reserving this height
+          with a transparent space so an error could never move the plate
+          above it, so the note costs no layout and the swap costs none
+          either — the error takes a line that is already lit rather than
+          opening a new one, and the note is what the field is described by
+          the rest of the time.
+
+          The confirmation is not repeated here: it is already on the plate,
+          and a second copy at 0.6em would wrap on a phone and push the page
+          around under it.
+
+          Paper, not the soft tint the placeholder uses: this sits on the
+          hero plate rather than in the field's own ink slot, and the plate is
+          only 60% opaque over the painting — soft paper falls to 3.44:1
+          there, where paper holds 5.28:1. Regular weight against the error's
+          semibold, so the two read apart at a glance as well as by colour. */}
       <p
         id={`${id}-msg`}
-        className={`mt-[0.45em] font-semibold ${
-          status === "error" ? "text-hl-cyan" : "text-transparent"
+        className={`mt-[0.45em] ${
+          status === "error"
+            ? "font-semibold text-hl-cyan"
+            : "text-hl-paper"
         }`}
         style={{ fontSize: "0.6em", minHeight: "1.4em" }}
       >
-        {status === "error" ? message : " "}
+        {status === "error" ? message : BRAND.eligibility}
       </p>
 
       {/* One persistent live region does all the announcing. The confirmation

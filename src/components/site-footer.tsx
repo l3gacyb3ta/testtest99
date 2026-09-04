@@ -28,7 +28,7 @@ export default function SiteFooter() {
               {/* 0.95rem, not text-xs: Masterpiece's cap height is 0.568em against
                   Urbanist's ~0.71, so 12px would read a fifth smaller than the
                   label it replaces. This lands the caps at the same height. */}
-              <h2 className="font-hand text-[0.95rem] uppercase tracking-[0.18em] text-hl-cyan">
+              <h2 className="font-tagline text-[0.95rem] uppercase tracking-[0.18em] text-hl-cyan">
                 {column.heading}
               </h2>
               <ul className="mt-5 space-y-3">

@@ -4,7 +4,7 @@ import Image from "next/image";
 import SignupForm from "@/components/signup-form";
 import Wordmark from "@/components/wordmark";
 import { BRAND } from "@/lib/content";
-import { COMP_WIDTH, box, u } from "@/lib/stage";
+import { COMP_WIDTH, band, box, u } from "@/lib/stage";
 
 const HOW_LABEL = "how does it work?";
 
@@ -51,7 +51,31 @@ const ART = { w: 1920, h: 1080 } as const;
  * where the painting exactly fills the fold, it lands on 486, the painting's
  * own centre, which is precisely where it sat before.
  */
-const PLATE_SIZE = { width: u(PLATE_W), height: u(PLATE_H) } as const;
+/**
+ * How much of the stage the wordmark art runs across.
+ *
+ * 60 is very nearly the ceiling, and it is worth knowing why: the file is
+ * 1125 x 787, so width buys height at 0.7 to 1. At 60 the mark stands 725
+ * units tall, the copy and form under it another 172, and the cue another 90 —
+ * 987 against a 16:9 fold's 972. The fold is `min-h`, so it grows by those 14
+ * rather than clipping, and 60 fits outright on any viewport squarer than
+ * 1.75:1. Past about 65 the hero starts pushing itself off the first screen.
+ */
+const LOGO_STAGE_VW = 60;
+
+/**
+ * The plate is a content column, not a box with a ground, so it is sized to
+ * hold what it carries rather than to a drawn rectangle.
+ *
+ * `minHeight`, not `height`: at the comp's 466 a wordmark this size spilled
+ * out of its grid row and into the scroll cue's. And the width takes whichever
+ * is greater of the comp's half-grid plate and the art itself, so the art is
+ * never wider than the column it is centred in.
+ */
+const PLATE_SIZE = {
+  width: `max(${u(PLATE_W)}, ${LOGO_STAGE_VW}cqw)`,
+  minHeight: u(PLATE_H),
+} as const;
 
 /** A comp length on the plate. */
 function onPlateU(px: number) {
@@ -75,6 +99,18 @@ function onPlateU(px: number) {
 const HOW_LEAD = 96;
 const HOW_BLOCK_H = HOW_LEAD + (1092 - 970);
 const howY = (y: number) => HOW_LEAD + (y - 970);
+
+/**
+ * The band that drops out of the plate into the process section — comp node
+ * 275:181, and the first of the page's four connectors. It shares the other
+ * three's centreline-and-mean construction so it shares their taper: it is the
+ * page's opening move, and an opening that flattens while the three joints
+ * below it gather would read as a different drawing.
+ *
+ * The comp's own axis and 70.6 mean, so it keeps its weight and its 6 units of
+ * overlap into the plate above; only the distribution changes.
+ */
+const ARROW = band([857.5, howY(1165)], [820.75, howY(1165) + 106], 70.6);
 
 export default function Hero() {
   return (
@@ -106,11 +142,19 @@ export default function Hero() {
             signup form's own status line too, and does not reach the stacked
             layout, which stays left-aligned in its column. */}
         <div
-          className="row-start-2 flex flex-col items-center justify-center bg-hl-blue-deep text-center"
+          className="row-start-2 flex flex-col items-center justify-center text-center"
           style={PLATE_SIZE}
         >
+          {/* `cqw` rather than `vw`: the stage caps at 1728 and centres, so a
+              real `vw` would keep growing the mark on a wider monitor while
+              everything around it had stopped. Against the stage it is 60vw up
+              to the cap and 60% of the composition after it. `fontSize` is
+              still here for the live-type branch, which renders if LOGO_SRC is
+              ever cleared again. */}
           <Wordmark
             as="h1"
+            art
+            artWidth={`${LOGO_STAGE_VW}cqw`}
             fontSize={onPlateU(226.768)}
             className="w-full"
           />
@@ -118,7 +162,7 @@ export default function Hero() {
           {/* Balanced rather than ragged: at this measure the line wraps, and
               centred text that wraps unevenly reads as a mistake. */}
           <p
-            className="text-balance text-hl-paper"
+            className="font-tagline text-balance text-hl-paper"
             style={{
               marginTop: onPlateU(27),
               width: onPlateU(851),
@@ -137,7 +181,8 @@ export default function Hero() {
 
         <ScrollCue
           className="row-start-3 self-end"
-          style={{ marginBottom: u(56), width: u(29) }}
+          style={{ marginBottom: u(56) }}
+          fontSize={u(22)}
         />
       </div>
 
@@ -148,7 +193,7 @@ export default function Hero() {
       >
         {/* "how does it work?" — still overhangs the band below */}
         <div
-          className="absolute grid place-items-center bg-hl-paper"
+          className="absolute grid place-items-center bg-hl-lavender-pale"
           style={box(474, howY(970), 918, 201)}
         >
           <p
@@ -167,13 +212,17 @@ export default function Hero() {
         </div>
         <svg
           className="absolute"
-          style={box(785, howY(1165), 111.5, 106)}
-          viewBox="0 0 111.5 106"
+          style={box(ARROW.x, ARROW.y, ARROW.w, ARROW.h)}
+          viewBox={`0 0 ${ARROW.w} ${ARROW.h}`}
           preserveAspectRatio="none"
           fill="none"
           aria-hidden
         >
-          <path d="M111.5 0H33.5L0 106H71.5L111.5 0Z" fill="#EDEDED" />
+          {/* The header plate's own material, like the three bands below it
+              carry the step plates'. It was a hardcoded #EDEDED, which is the
+              one way a fill can drift out of step with the surface it is meant
+              to be continuous with. */}
+          <path d={ARROW.d} fill="var(--color-hl-lavender-pale)" />
         </svg>
       </div>
 
@@ -183,13 +232,19 @@ export default function Hero() {
             the plate against the cue and the two crowd each other. */}
         <div className="relative flex min-h-[100svh] flex-col justify-center px-4 pt-16 pb-28 sm:px-8">
           <div className="bg-hl-blue-deep px-5 pt-7 pb-8 sm:px-9 sm:pt-10 sm:pb-11">
+            {/* The same 60vw, with a ceiling. Uncapped it is right on a phone
+                and wrong by 768, where 60vw is 460 across for a mark sitting
+                above a form — the stacked layout runs to 1180, and 24rem holds
+                it at a wordmark's size rather than a splash screen's. */}
             <Wordmark
               as="h1"
+              art
+              artWidth={`min(${LOGO_STAGE_VW}vw, 24rem)`}
               fontSize="clamp(3.2rem, 15vw, 7.5rem)"
               className="w-full"
             />
             <p
-              className="mt-4 max-w-[34ch] text-hl-paper"
+              className="mt-4 max-w-[34ch] font-tagline text-hl-paper"
               style={{ fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)", lineHeight: 1.25 }}
             >
               {BRAND.tagline}
@@ -200,14 +255,17 @@ export default function Hero() {
             />
           </div>
 
-          <ScrollCue className="absolute bottom-10 left-1/2 w-[clamp(1.1rem,4.6vw,1.6rem)] -translate-x-1/2" />
+          <ScrollCue
+            className="absolute bottom-10 left-1/2 -translate-x-1/2"
+            fontSize="clamp(0.8rem, 3vw, 1rem)"
+          />
         </div>
 
         {/* Out of the viewport block above, so the header is below the fold on
             a phone too. `items-start` is the old `self-start`, and the
             overhang into the band below is unchanged. */}
         <div className="flex flex-col items-start px-4 sm:px-8">
-          <div className="relative -mb-9 mt-14 bg-hl-paper px-5 py-3 sm:px-8 sm:py-4">
+          <div className="relative -mb-9 mt-14 bg-hl-lavender-pale px-5 py-3 sm:px-8 sm:py-4">
             <p
               className="font-display font-bold text-hl-ink"
               style={{
@@ -240,35 +298,59 @@ export default function Hero() {
  * The nudge lives on the glyph, not on the link box, so it cannot fight the
  * box's own centring transform.
  */
+/**
+ * The cue, as its own word rather than a chevron.
+ *
+ * Set in the display face, uppercase, tracked 0.14em — the treatment the image
+ * slots already use for their labels, which is this page's grammar for a small
+ * word that is naming something rather than saying it. The CTA beside it is
+ * lowercase because a button speaks; a cue labels.
+ *
+ * The bob stays and is now load-bearing. A chevron points on its own; a word
+ * does not, so the one thing still saying *down* is the 16% translate the
+ * animation gives it.
+ *
+ * `text-hl-paper` at rest, not the cyan the arrow's classes asked for. Those
+ * classes were dead — both paths carried a hardcoded `stroke="white"`, so no
+ * `color` ever reached the glyph and neither did the hover. Live, cyan would
+ * have been a real problem: the cue sits in the art's fade to ink, and against
+ * the lightest ground it can land on cyan is 3.84:1 where paper is 5.51:1.
+ * Cyan is the interaction state instead, which is the role it already has.
+ */
 function ScrollCue({
   className = "",
   style,
+  fontSize,
 }: {
   className?: string;
   style?: CSSProperties;
+  /** The label's size, as a CSS length. */
+  fontSize?: string;
 }) {
   return (
     <a
       href="#how-it-works"
-      className={`text-hl-cyan transition-colors hover:text-white focus-visible:text-white ${className}`}
-      style={style}
+      // `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and
+      // 12px of vertical padding is what takes the box past the 24px floor.
+      className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan ${className}`}
+      style={{ ...style, fontSize, letterSpacing: "0.14em" }}
     >
-      <span className="sr-only">See how it works</span>
-      <svg
-        viewBox="0 0 24 40"
-        fill="none"
-        aria-hidden
-        className="hl-scroll-cue block w-full"
+      {/* The visible word first and the rest of the sentence after it, so the
+          accessible name reads "scroll to see how it works" — a name that
+          contains the label on screen. An `aria-label` of "See how it works"
+          over the word "scroll" would have been the natural move and would
+          have failed WCAG 2.5.3, which asks the two to agree.
+
+          The negative margin takes back the trailing letter-space that 0.14em
+          adds after the final L, which would otherwise push the word half a
+          space left of the centre it is being centred on. */}
+      <span
+        className="hl-scroll-cue block"
+        style={{ lineHeight: 1, marginRight: "-0.14em" }}
       >
-        <path d="M12 3V32" stroke="white" strokeWidth={2.75} strokeLinecap="square" />
-        <path
-          d="M3 23L12 34L21 23"
-          stroke="white"
-          strokeWidth={2.75}
-          strokeLinecap="square"
-          strokeLinejoin="miter"
-        />
-      </svg>
+        scroll
+        <span className="sr-only"> to see how it works</span>
+      </span>
     </a>
   );
 }

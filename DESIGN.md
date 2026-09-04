@@ -17,13 +17,14 @@ plates are paper, giving the copy the highest-contrast surface on the page.
 
 ## Color
 
-Palette is the Figma "color scheme" frame (node `275:222`) verbatim. No
-additional hues were invented.
+Palette is the Figma "color scheme" frame (node `275:222`) verbatim, plus one
+hue added since: `--color-hl-indigo`, the asides' text colour.
 
 | Token                 | Value     | Role                                                     |
 | --------------------- | --------- | -------------------------------------------------------- |
 | `--color-hl-ink`      | `#31222c` | Page ground, process band, footer, image-slot interiors  |
-| `--color-hl-paper`    | `#ededed` | Step plates, FAQ plates, carousel cards, body text on ink |
+| `--color-hl-paper`    | `#ededed` | FAQ plates, carousel cards, body text on ink, hero header plate |
+| `--color-hl-lavender-pale` | `#E6E5FC` | Step plates and the bands welding them — the section ground's own hue, lifted to a surface |
 | `--color-hl-cyan`     | `#8ed3dc` | Connector bands, primary CTA, focus ring, section accents |
 | `--color-hl-blue`     | `#619cc3` | Disabled CTA                                             |
 | `--color-hl-yellow`   | `#ffdf5e` | Carousel card ground, behind the project photographs      |
@@ -31,6 +32,7 @@ additional hues were invented.
 | `--color-hl-blue-deep`| `#397cbe` | Hero plate                                                |
 | `--color-hl-periwinkle`| `#a39bd6`| FAQ band                                                  |
 | `--color-hl-lavender` | `#c9c7ec` | Aside plates                                              |
+| `--color-hl-indigo`   | `#34316c` | Aside text — title and body                               |
 
 Strategy: **full palette** — named band roles owning whole scroll regions
 rather than appearing as accents. The scroll reads
@@ -48,7 +50,8 @@ Secondary text is never gray. It is tinted from the surface's own foreground:
 Verified contrast: ink on pale yellow 14.45:1 and at 80% 7.66:1, ink on
 yellow 11.44:1, white on ink 15.05:1, a card against the ink behind it
 14.45:1. Ink on cyan 8.98:1, ink on periwinkle 5.92:1, ink on
-lavender 9.22:1, ink on paper 12.3:1, paper on ink 12.3:1. On a light image
+lavender 9.22:1, indigo on lavender 7.14:1, ink on paper 12.3:1, paper on
+ink 12.3:1. On a light image
 slot the worst case is a soft week label over a paper grid rule, at 5.10:1. Text on the deep
 blue hero plate is 3.64:1 and is therefore only ever set at large scale
 (≥ 24px, or ≥ 18.66px bold), which is how the comp sets it.
@@ -63,17 +66,32 @@ blue hero plate is 3.64:1 and is therefore only ever set at large scale
   FAQ questions. Tracking −0.02em to −0.045em at display sizes.
 - **Body** — Open Sans (variable), `--font-body`. Paragraphs, captions, form
   fields, links — the asides' copy and the FAQ's answers among them.
+- **Tagline** — Ubuntu 400, `--font-tagline`. The hero's promise line under the
+  wordmark, in both layouts, and nothing else. Named for the role rather than
+  the face like the three above it, so the utility is `font-tagline`. It is the
+  one static face on the page: Google ships Ubuntu as 300/400/500/700 with no
+  variable axis, so its weight is declared, and only the 400 the line sets is
+  requested. Its latin subset preloads at 13.8 KB.
 
 "how does it work?" was set in the brush face, as the comp had it, and moved to
 the display face with the other headers. The brush now bookends the page at the
 wordmark alone, which is the one place it is doing identity rather than
 carrying a sentence.
 
-Urbanist and Open Sans are self-hosted through `next/font/google`; Masterpiece
-through `next/font/local` from `public/fonts`. It is free per the author's
-read-me, which asks for a charitable donation on commercial use. Only those
-three are loaded — the faces they replaced, Bricolage Grotesque and Archivo,
-are no longer requested.
+Urbanist, Open Sans and Ubuntu are self-hosted through `next/font/google`;
+Masterpiece through `next/font/local` from `public/fonts`. It is free per the
+author's read-me, which asks for a charitable donation on commercial use. Only
+those four are loaded — the faces they replaced, Bricolage Grotesque and
+Archivo, are no longer requested.
+
+Ubuntu is not a drop-in for Open Sans's metrics either, and the numbers are the
+build's own: against the same fallback reference Next scales Open Sans to
+105.15% and Ubuntu to 102.06%, so Ubuntu sets about 3% smaller at the same
+`font-size`. Its declared ink box is 1.0984em against Open Sans's 1.2951em, so
+at the tagline's `line-height: 1.1` — unchanged — less ink sits in the same
+baseline-to-baseline distance and the wrapped stage line reads airier than it
+did. Both were left as the comp set them; the drift is under the threshold
+where compensating would be worth breaking the comp's own 31.788.
 
 Masterpiece is not a drop-in for Bricolage's metrics, and three things follow
 from that:
@@ -107,7 +125,10 @@ Two systems, deliberately:
    process diagram reproduce the comp exactly and scale continuously instead of
    snapping between breakpoints.
 2. **Flow layout** (< 1180px) — the same content stacked, with the connector
-   bands re-drawn as short vertical tapers between plates.
+   bands re-drawn as short vertical tapers between plates, carrying the same
+   1.6× on their horizontal edges. Not through `stage.ts`: those svgs scale
+   with `preserveAspectRatio="none"`, so a perpendicular thickness computed in
+   their viewBox units would not survive the stretch.
 
 The hero is split in two: a fold block that is at least one viewport tall
 (`min-h: 100svh`), and a second block below it carrying "how does it work?".
@@ -154,9 +175,17 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
 
 - **Plate** — flat `#ededed` block, square corners, no border, no shadow. The
   only container in the system. Never nested.
-- **Connector band** — filled SVG quadrilateral whose two ends differ in width
-  (110→132, 121→113, 145→173 comp px), so the band thickens or thins along its
-  run. Path data is the comp's exported vectors verbatim.
+- **Connector band** — filled SVG quadrilateral, built in `stage.ts` from the
+  comp's own centreline and average thickness rather than from its exported
+  path data, so one `BAND_TAPER` governs all four. Every band runs thin where
+  it leaves the plate above to thick where it lands on the one below, at 1.6×,
+  measured perpendicular to the run: 54→87, 71→113, 79→126, 92→148 comp px.
+  The comp's own tapers were 1.07 to 1.20 and pointed in two directions, which
+  read as four drawing errors rather than one decision. Each band's mean is
+  held at the comp's, so the page's weight is unchanged and the line still
+  grows as the programme does — 92 through the first joint, 120 through the
+  last. The ends stay horizontal cuts, which is why no edge is a round number:
+  an end's edge is its wanted thickness divided back out by the axis's slope.
 - **Image slot** (`image-slot.tsx`) — reserved artwork footprint drawn in the
   page's own grammar: ink plate, cyan registration ticks at the corners, a
   measured grid masked to the centre, and a label with the artwork's native
@@ -244,8 +273,13 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
   `--color-hl-paper-soft` at 8.36:1, and the slot reads 3.44:1 against the hero
   plate it sits on.
 
-- **CTA** — square cyan block with the comp's exported check vector. Hover and
-  focus go to white; pending goes to `--color-hl-blue` with a spinner.
+- **CTA** — square cyan block labelled "sign up!" in display bold at 0.85em of
+  the form's own size, sized by padding rather than a fixed width so the button
+  is as wide as its word. The comp's exported check vector is no longer on it:
+  a tick reads as *done* on a control whose job is *start*, and it is already
+  the confirmation's own mark. Hover and focus go to white; pending goes to
+  `--color-hl-blue`, the label hiding behind a spinner in the same grid cell so
+  the row cannot resize mid-submit. Ink on all three: 8.96:1, 15.05:1, 5.05:1.
 - **Hero backdrop** — `public/art/bg.png`, one painted plant-room scene at
   1920x1080, shown whole. It is composed rather than tileable: piping and
   foliage frame its left and right edges, the fox sits in its lower-left

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans, Urbanist } from "next/font/google";
+import { Open_Sans, Ubuntu, Urbanist } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -29,6 +29,21 @@ const urbanist = Urbanist({
 const openSans = Open_Sans({
   subsets: ["latin"],
   variable: "--font-open-sans",
+  display: "swap",
+});
+
+/**
+ * The hero tagline's face, and the only line on the page set in it.
+ *
+ * Unlike the two above, Ubuntu is not a variable font — Google ships it as
+ * static 300/400/500/700 — so `weight` is mandatory here. Only the 400 the
+ * tagline actually sets is requested: each static weight is its own file, and
+ * three unused ones would be three downloads for nothing.
+ */
+const ubuntu = Ubuntu({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-ubuntu",
   display: "swap",
 });
 
@@ -82,7 +97,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${openSans.variable} ${urbanist.variable} ${masterpiece.variable} h-full antialiased`}
+      className={`${openSans.variable} ${urbanist.variable} ${ubuntu.variable} ${masterpiece.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
         <div hidden dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} />

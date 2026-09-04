@@ -12,19 +12,56 @@
   --font-hand: var(--font-masterpiece), var(--font-urbanist), ui-sans-serif,
     system-ui, sans-serif;
   --font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
+  /* The hero tagline alone. Named for its role rather than its face, like the
+     three above it — the utility is `font-tagline`, not `font-ubuntu`. */
+  --font-tagline: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
 
   --color-hl-ink: #31222c;
   --color-hl-paper: #ededed;
   --color-hl-cyan: #8ed3dc;
-  --color-hl-blue: #619cc3;
-  --color-hl-blue-deep: #397cbe;
+  --color-hl-blue: #88BCDF;
+  --color-hl-blue-deep: #397CBE;
+  --color-hl-blue-pale: #EBF7FF;
   --color-hl-periwinkle: #a39bd6;
+  --color-hl-teal: #2E96A3;
+  --color-hl-teal-deep: #11616B;
   /* The carousel's own pair, from the reworked "what can I build" frames
      (301:56). Yellow is the ground the project photographs sit on; pale
      yellow is the card's border and its caption band. */
-  --color-hl-yellow: #ffdf5e;
-  --color-hl-yellow-pale: #fffcd8;
+  --color-hl-yellow: #A2C4DA;
+  --color-hl-yellow-pale: #EBF7FF;
   --color-hl-lavender: #c9c7ec;
+  /* The asides' own text colour. A deep indigo out of the same family as the
+     lavender it sits on, so the two plates read as one material rather than
+     ink borrowed from the page: 7.14:1 on #c9c7ec, still AAA. */
+  --color-hl-indigo: #34316c;
+  /**
+   * The step plates in "how does it work?", and the bands that weld them.
+   *
+   * The section's own #232231 ground, lifted to a surface: OKLCH H 287.3 kept
+   * exactly, lightness taken from 0.26 to 0.93. Same shade, so the plates read
+   * as lit panels cut from the ground rather than a second material laid on it.
+   *
+   * This replaced a complement — H 107, the true opposite of a blue-violet,
+   * which is a yellow-green and looked like it. The lesson is kept here rather
+   * than relearned: the arithmetic was right and the result was acid, because
+   * a complement is a statement about maximum separation and these plates are
+   * the page's reading surface, which wants agreement with its ground.
+   *
+   * C is 0.030 and not higher because sRGB runs out first. At L 0.93 the blue
+   * channel pins at 255 by C 0.035, and past that extra chroma only darkens
+   * red and green — the value stops describing the colour. 0.030 lands at
+   * B 252, just inside, so the violet cast is real: R230 G229 B252.
+   *
+   * Three tokens already share this hue, so it has to be distinct from all of
+   * them: lighter than `hl-lavender` (L 0.843) by a clear perceptual step, and
+   * far above `hl-periwinkle` (0.718) and `hl-indigo` (0.350).
+   *
+   * Plate text lands at 12.16:1 and the soft week labels at 6.69:1, against
+   * paper's 12.85 and 7.07 — so nothing set on a plate needed revisiting.
+   * 12.63:1 against the ground behind it.
+   */
+  --color-hl-lavender-pale: #E6E5FC;
 
   /* text tinted from the surface it sits on — never gray */
   --color-hl-ink-soft: color-mix(in srgb, var(--color-hl-ink) 80%, #ededed);
@@ -250,7 +287,7 @@ body {
      stay CSS pixels and the arcs hold their 140x16 at any section height. */
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='70' height='8' patternTransform='rotate(60)scale(2)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%238ed3dc' stroke-opacity='.12' stroke-width='1.5' d='M-.02 22c8.373 0 11.938-4.695 16.32-9.662C20.785 7.258 25.728 2 35 2s14.215 5.258 18.7 10.338C58.082 17.305 61.647 22 70.02 22M-.02 14.002C8.353 14 11.918 9.306 16.3 4.339 20.785-.742 25.728-6 35-6S49.215-.742 53.7 4.339c4.382 4.967 7.947 9.661 16.32 9.664M70 6.004c-8.373-.001-11.918-4.698-16.3-9.665C49.215-8.742 44.272-14 35-14S20.785-8.742 16.3-3.661C11.918 1.306 8.353 6-.02 6.002'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='70' height='8' patternTransform='rotate(60)scale(2)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23EBF7FF' stroke-opacity='.03' stroke-width='1.5' d='M-.02 22c8.373 0 11.938-4.695 16.32-9.662C20.785 7.258 25.728 2 35 2s14.215 5.258 18.7 10.338C58.082 17.305 61.647 22 70.02 22M-.02 14.002C8.353 14 11.918 9.306 16.3 4.339 20.785-.742 25.728-6 35-6S49.215-.742 53.7 4.339c4.382 4.967 7.947 9.661 16.32 9.664M70 6.004c-8.373-.001-11.918-4.698-16.3-9.665C49.215-8.742 44.272-14 35-14S20.785-8.742 16.3-3.661C11.918 1.306 8.353 6-.02 6.002'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
 }
 
 .hl-ground-hex {
@@ -273,13 +310,42 @@ body {
      tile a rotated lattice and seam it. */
   background-repeat: no-repeat;
   background-size: 100% 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='40' height='59.428' patternTransform='rotate(20)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23ffdf5e' stroke-opacity='.12' stroke-linecap='square' d='M0 70.975V47.881m20-1.692L8.535 52.808v13.239L20 72.667l11.465-6.62V52.808zm0-32.95 11.465-6.62V-6.619L20-13.24 8.535-6.619V6.619L20 13.24m8.535 4.927v13.238L40 38.024l11.465-6.62V18.166L40 11.546zM20 36.333 0 47.88m0 0v23.094m0 0 20 11.548 20-11.548V47.88m0 0L20 36.333m0 0 20 11.549M0 11.547l-11.465 6.619v13.239L0 38.025l11.465-6.62v-13.24L0 11.548v-23.094l20-11.547 20 11.547v23.094M20 36.333V13.24'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='40' height='59.428' patternTransform='rotate(20)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23A2C4DA' stroke-opacity='.12' stroke-linecap='square' d='M0 70.975V47.881m20-1.692L8.535 52.808v13.239L20 72.667l11.465-6.62V52.808zm0-32.95 11.465-6.62V-6.619L20-13.24 8.535-6.619V6.619L20 13.24m8.535 4.927v13.238L40 38.024l11.465-6.62V18.166L40 11.546zM20 36.333 0 47.88m0 0v23.094m0 0 20 11.548 20-11.548V47.88m0 0L20 36.333m0 0 20 11.549M0 11.547l-11.465 6.619v13.239L0 38.025l11.465-6.62v-13.24L0 11.548v-23.094l20-11.547 20 11.547v23.094M20 36.333V13.24'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+}
+
+.hl-ground-mesh {
+  /* The supplied pattern, on the carousel card's own field: a triangulated
+     lattice on a 69.283x40 tile, turned 5 degrees. The same two changes the
+     other two bands needed. Its stroke was #ecc94b, the yellow this page does
+     not have; it is `--color-hl-yellow-pale`, which is already the card's
+     border and its caption band — so the lattice reads as the card's frame
+     material carried across its field rather than a fourth colour. And the
+     pattern's opaque #2b2b31 ground rect is gone, so the card's blue shows
+     through and stays the one place that colour is set.
+
+     Opacity is .18 where the section bands run .12. Those sit on ink and have
+     the full luminance range to be quiet in; this sits on a mid-tone blue,
+     where .12 composites to within 19 of the ground and disappears.
+
+     The supplied `scale(3)` is dropped. Rotation and geometry are the
+     pattern's identity, but scale is a fit to the surface, and this is the one
+     of these that grounds a card rather than a section: at 3 the tile is
+     208x120 against a 346x223 photo field — 1.7 tiles across, which reads as
+     three stray diagonals. At 1 it is five tiles across and reads as the
+     lattice it is.
+
+     The hex is written out because a data URI is a separate document that no
+     custom property reaches into; this copy has to be kept in step with
+     `--color-hl-yellow-pale` by hand. */
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='69.283' height='40' patternTransform='rotate(5)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23fffcd8' stroke-opacity='.08' d='M46.189-20 57.736 0M46.189 20l11.547 20m-46.189 0 11.547 20M11.547 0l11.547 20m40.415 30H40.415M28.868 30H5.774m23.094-40H5.774m57.735 20H40.415m0 20L28.868 50m11.547-60L28.868 10m46.188 0L63.509 30M5.774 10-5.773 30m75.056 10H46.189L34.64 20 46.19 0h23.094q5.77 10 11.546 20zM57.736 60H34.64L23.094 40l11.547-20h23.095l11.547 20zm0-40H34.64L23.094 0l11.547-20h23.095L69.283 0c-3.87 6.7-8.118 14.06-11.547 20zM34.64 60H11.547L0 40l11.547-20h23.094L46.19 40zm0-40H11.547L0 0l11.547-20h23.094L46.19 0zM23.094 40H0l-5.773-10-5.774-10L0 0h23.094l11.547 20z'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
 }
 
 .hl-ground-hatch {
   background-image: repeating-linear-gradient(
     45deg,
-    color-mix(in srgb, var(--color-hl-ink) 10%, transparent) 0 1px,
+    color-mix(in srgb, var(--color-hl-ink) 3%, transparent) 0 1px,
     transparent 1px 18px
   );
 }
@@ -298,14 +364,7 @@ body {
 /* The belt is the only focus stop in its band, and the page's cyan ring falls
    to 1.77:1 on --color-hl-blue. Ink reads at 5.05:1, and an inset ring keeps a
    full-bleed scroller's outline from being clipped at the viewport edge. */
-.rail/* Masterpiece is a single 400 brush weight, already heavy, with strokes that
-   overhang their advances. Synthesised bold smears them into each other, so
-   the browser is not allowed to invent one. */
-.font-hand {
-  font-synthesis-weight: none;
-}
-
-:focus-visible {
+.rail:focus-visible {
   outline-color: var(--color-hl-ink);
   outline-offset: -3px;
 }

@@ -8,6 +8,13 @@
 export const BRAND = {
   name: "Half Life",
   tagline: "become a hardware expert in 10 weeks, get a 3D printer",
+  /**
+   * Under the email field. The one line here that is not the comp's: it was
+   * asked for directly, and it is the two things someone hesitating over the
+   * field wants settled before they type. Lowercase to match the tagline
+   * above it; en dash because 13-18 is a range.
+   */
+  eligibility: "teens 13–18 only. no experience necessary",
 } as const;
 
 export type DesignWeek = { subject: string; week: string };

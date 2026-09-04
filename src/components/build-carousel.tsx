@@ -24,8 +24,10 @@ const START_TAU = 0.34;
  * `COPIES - 1` sets standing to the right of the reader: the viewport has to
  * fit inside them or the far end of the belt runs out of cards. While the
  * blue block was capped at 1360 that could not be in question. Full-bleed it
- * can be, and three sets of five cards cover screens to about 3900px --
- * enough for 4K, short of a 5K display. Four covers past 5800px.
+ * can be, so the sum has to be done: five cards on the closed-up 450 pitch is
+ * a 2250 set, and the three sets this leaves standing carry 6750 — past a 5K
+ * display's 5120, where three copies would carry 4500 and run out. The margin
+ * survived halving the gutter: at the comp's 514 it was 7710.
  */
 const COPIES = 4;
 
@@ -36,7 +38,22 @@ const CARD_BORDER = "clamp(0.55rem, 1.157cqw, 20px)";
 const CARD_RADIUS = "clamp(0.9rem, 1.736cqw, 30px)";
 /** The caption band is 105 of the card's 328 of content height. */
 const BAND_H = "32.012%";
-const GAP = "clamp(1rem, 7.407cqw, 128px)";
+/**
+ * The comp's 128 gutter, halved.
+ *
+ * 128 against a 386 card is a third of a card of air between every pair, which
+ * held the five of them apart as separate plates rather than reading as one
+ * belt passing through. At 64 the pitch goes 514 -> 450 and the run closes up
+ * without the cards touching.
+ *
+ * The floor does not halve with it. On a phone the cards stop shrinking at
+ * their own 13rem — 208px — so the gap has to hold against a card that is no
+ * longer getting smaller, and the halved slope would put 13.9px between two
+ * 208px cards and read as a seam. 1.5rem is 11.5% of that card, near the 12.4%
+ * the full-size pair keeps.
+ */
+const GAP_PX = 64;
+const GAP = `clamp(1.5rem, ${+((GAP_PX / 1728) * 100).toFixed(3)}cqw, ${GAP_PX}px)`;
 const INSET = "clamp(1rem, 4.514cqw, 78px)";
 const LABEL = "clamp(0.95rem, 1.447cqw, 25px)";
 const CREDIT = "clamp(0.7rem, 0.984cqw, 17px)";
@@ -221,7 +238,7 @@ export default function BuildCarousel() {
       // The comp gives this section no ground of its own: it runs between the
       // process band above and the FAQ band below on the page's own ink, and
       // the belt carries no colour either. The cards are the whole event.
-      className="hl-ground-hex relative bg-hl-ink text-hl-paper"
+      className="hl-ground-hex relative bg-hl-paper text-hl-blue"
       style={{
         containerType: "inline-size",
         paddingBottom: "clamp(3rem, 9.028cqw, 156px)",
@@ -236,7 +253,7 @@ export default function BuildCarousel() {
       >
         <h2
           id="build-heading"
-          className="text-center font-display font-bold tracking-[-0.02em] text-white"
+          className="text-center font-display font-bold tracking-[-0.02em] text-hl-blue-deep"
           style={{ fontSize: "clamp(2rem, 3.472cqw, 3.75rem)" }}
         >
           What can I build?
@@ -265,7 +282,7 @@ export default function BuildCarousel() {
             BUILD_CARDS.map((card, index) => (
               <li
                 key={`${copy}-${card.id}`}
-                className="shrink-0 overflow-hidden bg-hl-yellow"
+                className="shrink-0 overflow-hidden bg-hl-blue"
                 style={{
                   width: CARD_W,
                   aspectRatio: CARD_RATIO,
@@ -284,10 +301,15 @@ export default function BuildCarousel() {
               >
                 <div className="flex h-full w-full flex-col">
                   {/* Contained, never cropped: a build is the thing on show,
-                      and the yellow left around it is the card's own ground
+                      and the field left around it is the card's own ground
                       rather than a gap — which is how the comp mounts these,
-                      each photograph a different size on the same field. */}
-                  <div className="relative min-h-0 flex-1">
+                      each photograph a different size on the same field.
+
+                      The lattice is on this box and not the card, so it is
+                      only ever the ground behind a photograph: the caption
+                      band below is opaque and would have covered the lower
+                      third of it anyway. */}
+                  <div className="hl-ground-mesh relative min-h-0 flex-1">
                     {card.photo ? (
                       <Image
                         src={card.photo}
