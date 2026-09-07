@@ -4,16 +4,20 @@ import path from "node:path";
 /**
  * Signup capture.
  *
- * Two sinks, chosen by environment so the same route works locally and in
+ * Three sinks, chosen by environment so the same route works locally and in
  * production without a code change:
  *
+ *   AIRTABLE_API_KEY +   Write straight to the "Half Life signup" base
+ *   AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME
+ *                        (defaults to "Table 1"), which has `email` and `ip`
+ *                        fields. The token needs data.records:read/write
+ *                        scope on that base.
  *   SIGNUP_WEBHOOK_URL   POST { email, source, at } to your list provider,
- *                        form endpoint, Airtable/Sheets relay, or queue.
- *                        Set SIGNUP_WEBHOOK_TOKEN to send a bearer header.
+ *                        form endpoint, Sheets relay, or queue. Set
+ *                        SIGNUP_WEBHOOK_TOKEN to send a bearer header.
  *   (unset)              append JSON Lines to ./data/signups.jsonl — fine for
  *                        local development and any host with a writable disk,
- *                        NOT durable on serverless. Point the webhook at a
- *                        real provider before launch.
+ *                        NOT durable on serverless.
  */
 
 const STORE_DIR = path.join(process.cwd(), "data");
@@ -35,9 +39,61 @@ export function normalizeEmail(raw: unknown): string | null {
 
 export async function recordSignup(
   email: string,
+  ip = "unknown",
   source = "landing",
 ): Promise<SignupResult> {
   const entry = { email, source, at: new Date().toISOString() };
+
+  const airtableToken = process.env.AIRTABLE_API_KEY;
+  const airtableBase = process.env.AIRTABLE_BASE_ID;
+
+  if (airtableToken && airtableBase) {
+    const table = encodeURIComponent(
+      process.env.AIRTABLE_TABLE_NAME ?? "Table 1",
+    );
+    const url = `https://api.airtable.com/v0/${airtableBase}/${table}`;
+    const headers = {
+      "content-type": "application/json",
+      authorization: `Bearer ${airtableToken}`,
+    };
+
+    // Airtable has no unique-field constraint to lean on, so duplicates are
+    // caught with a lookup before the write — same contract the other two
+    // sinks give the caller.
+    const filter = encodeURIComponent(`LOWER({email})="${email}"`);
+    const lookup = await fetch(`${url}?filterByFormula=${filter}&maxRecords=1`, {
+      headers,
+    });
+
+    if (!lookup.ok) {
+      return {
+        ok: false,
+        status: 502,
+        error: "We couldn't reach the signup list. Try again in a moment.",
+      };
+    }
+
+    const found = (await lookup.json()) as { records?: unknown[] };
+    if ((found.records?.length ?? 0) > 0) {
+      return { ok: true, duplicate: true };
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ fields: { email, ip } }),
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: 502,
+        error: "We couldn't reach the signup list. Try again in a moment.",
+      };
+    }
+    return { ok: true, duplicate: false };
+  }
+
   const webhook = process.env.SIGNUP_WEBHOOK_URL;
 
   if (webhook) {
