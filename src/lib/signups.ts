@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -23,6 +22,10 @@ import path from "node:path";
  *   (unset)              append JSON Lines to ./data/signups.jsonl — fine for
  *                        local development and any host with a writable disk,
  *                        NOT durable on serverless.
+ *
+ * referralCode is a running count ("1", "2", "3", ...) of signups in
+ * whichever sink is active, assigned once per email and handed back
+ * unchanged on repeat signups.
  */
 
 const STORE_DIR = path.join(process.cwd(), "data");
@@ -51,13 +54,40 @@ export function normalizeEmail(raw: unknown): string | null {
 }
 
 /**
- * Deterministic, not stored-and-looked-up: the same email always yields the
- * same code, so a returning signup gets their referral link back without a
- * database to remember it in.
+ * Fetches every record's `referral_code` isn't an option at scale, but
+ * counting record *ids* is cheap — pass an empty fields list so each page
+ * carries almost nothing else. The count is a snapshot, not a lock, so two
+ * signups landing in the same instant can in principle claim the same
+ * ordinal; acceptable here given the existing rate limit and the low stakes
+ * of a referral number colliding.
  */
-export function referralCodeFor(email: string): string {
-  return createHash("sha256").update(email).digest("base64url").slice(0, 8);
+async function countAirtableRecords(
+  url: string,
+  headers: Record<string, string>,
+): Promise<number> {
+  let count = 0;
+  let offset: string | undefined;
+  do {
+    const params = new URLSearchParams({ pageSize: "100", "fields[]": "" });
+    if (offset) params.set("offset", offset);
+    const res = await fetch(`${url}?${params.toString()}`, { headers });
+    if (!res.ok) {
+      throw new Error(`${res.status} ${await res.text()}`);
+    }
+    const data = (await res.json()) as { records?: unknown[]; offset?: string };
+    count += data.records?.length ?? 0;
+    offset = data.offset;
+  } while (offset);
+  return count;
 }
+
+/**
+ * In-memory only — resets on cold start and isn't shared across instances,
+ * so it's a rough ordinal rather than a guaranteed-unique one. Unlike
+ * Airtable or the JSONL file, a webhook sink has nothing local to count
+ * signups from.
+ */
+let webhookSequence = 0;
 
 export async function recordSignup(
   email: string,
@@ -72,19 +102,7 @@ export async function recordSignup(
     utmCampaign = null,
   } = meta;
 
-  const referralCode = referralCodeFor(email);
   const at = new Date().toISOString();
-  const entry = {
-    email,
-    ip,
-    source,
-    at,
-    referralCode,
-    ref,
-    utmSource,
-    utmMedium,
-    utmCampaign,
-  };
 
   const airtableToken = process.env.AIRTABLE_API_KEY;
   const airtableBase = process.env.AIRTABLE_BASE_ID;
@@ -118,9 +136,27 @@ export async function recordSignup(
       };
     }
 
-    const found = (await lookup.json()) as { records?: unknown[] };
+    const found = (await lookup.json()) as {
+      records?: Array<{ fields?: { referral_code?: string } }>;
+    };
     if ((found.records?.length ?? 0) > 0) {
-      return { ok: true, duplicate: true, referralCode };
+      return {
+        ok: true,
+        duplicate: true,
+        referralCode: found.records?.[0]?.fields?.referral_code ?? "",
+      };
+    }
+
+    let referralCode: string;
+    try {
+      referralCode = String((await countAirtableRecords(url, headers)) + 1);
+    } catch (err) {
+      console.error(`Airtable count failed: ${err}`);
+      return {
+        ok: false,
+        status: 502,
+        error: "We couldn't reach the signup list. Try again in a moment.",
+      };
     }
 
     const response = await fetch(url, {
@@ -156,6 +192,18 @@ export async function recordSignup(
   const webhook = process.env.SIGNUP_WEBHOOK_URL;
 
   if (webhook) {
+    const referralCode = String(++webhookSequence);
+    const entry = {
+      email,
+      ip,
+      source,
+      at,
+      referralCode,
+      ref,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+    };
     const token = process.env.SIGNUP_WEBHOOK_TOKEN;
     const response = await fetch(webhook, {
       method: "POST",
@@ -179,16 +227,40 @@ export async function recordSignup(
   await mkdir(STORE_DIR, { recursive: true });
 
   let duplicate = false;
+  let referralCode = "";
+  let lineCount = 0;
   try {
-    const existing = await readFile(STORE_FILE, "utf8");
-    duplicate = existing
+    const lines = (await readFile(STORE_FILE, "utf8"))
       .split("\n")
-      .some((line) => line.includes(`"email":"${email}"`));
+      .filter(Boolean);
+    lineCount = lines.length;
+    const match = lines.find((line) => line.includes(`"email":"${email}"`));
+    if (match) {
+      duplicate = true;
+      try {
+        referralCode = (JSON.parse(match) as { referralCode?: string })
+          .referralCode ?? "";
+      } catch {
+        referralCode = "";
+      }
+    }
   } catch {
     // First signup — no file yet.
   }
 
   if (!duplicate) {
+    referralCode = String(lineCount + 1);
+    const entry = {
+      email,
+      ip,
+      source,
+      at,
+      referralCode,
+      ref,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+    };
     await appendFile(STORE_FILE, `${JSON.stringify(entry)}\n`, "utf8");
   }
 
