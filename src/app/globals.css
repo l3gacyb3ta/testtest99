@@ -318,8 +318,16 @@ body {
   background-image: url("/art/tile.png");
   background-repeat: repeat;
   /* Width only; the height follows the file's own proportions, so a
-     replacement of any shape tiles undistorted. */
-  background-size: 500px auto;
+     replacement of any shape tiles undistorted.
+
+     It scales, which a flat `500px` did not. A tile fixed in pixels is a
+     different thing at every screen size: 500px is two across a laptop and
+     more than a whole phone, so on mobile you got one cropped tile that never
+     repeated and read as a stray shape rather than as a ground. `42vw` holds
+     it at roughly two and a half across at any width. The 500px ceiling keeps
+     the desktop tile exactly the size it already was, and the 200px floor
+     stops it dissolving into noise on the narrowest phones. */
+  background-size: clamp(200px, 42vw, 500px) auto;
 
   /* Black and white, and quiet. A pseudo-element is what buys these: `filter`
      and `opacity` apply to an element, never to a `background-image`, so on

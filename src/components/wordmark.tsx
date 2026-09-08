@@ -2,28 +2,28 @@ import type { StaticImageData } from "next/image";
 
 import Image from "next/image";
 
-import logoArt from "../../public/art/logo.svg";
+import logoArt from "../../public/art/logo.png";
 import { BRAND } from "@/lib/content";
 
 const LOGO_SRC: StaticImageData | null = logoArt;
 
 /**
- * The box the artwork is laid into — not the file's own aspect.
+ * The box the artwork is laid into — the file's own aspect, read off the file.
  *
- * `logo.svg` is a 1280 × 1280 square whose visible ink is only 1125 × 787, at
- * (70, 256). It is imagetracer.js output, so the canvas it was traced from
- * carries 256 of transparent air above the wordmark and 237 below. Reserving
- * the file's own 1:1 would have the hero hold an 864-square box for a wordmark
- * 787 tall.
+ * It used to be a hardcoded 1125/787, measured off a logo.svg whose ink sat in
+ * a 1280-square canvas, with `object-cover` trimming the transparent air back
+ * off. That worked exactly as long as the file did not change. The replacement
+ * was a 3000-square png whose ink ran y 381–2225 — sitting high, 381 of padding
+ * above against 774 below — and `cover` centres its crop, so it opened its
+ * window at y 451 and sheared 70px off the top of the wordmark while leaving
+ * 324px of slack unused underneath.
  *
- * So the box takes the ink's own 1125/787 and the image covers it: a 1:1
- * source in a 1.43:1 box scales to the box's width and shows its middle 70%
- * vertically — y 192 to 1088, against ink that runs 256 to 1043. Nothing is
- * cut, with 64 to spare above and 45 below. Horizontally there is no crop at
- * all, so the wordmark keeps the 70 and 85 of air the file gives it, roughly
- * 6% in from each edge of the box.
+ * Two hardcoded numbers are gone instead of being corrected. The file was
+ * trimmed to its own ink, so its dimensions now *are* the artwork, and the box
+ * takes its ratio from the import rather than from anything typed here. A
+ * replacement logo of any shape gets a box of that shape.
  */
-const LOGO_ASPECT = 1125 / 787;
+const LOGO_ASPECT = LOGO_SRC ? LOGO_SRC.width / LOGO_SRC.height : 1;
 
 type Props = {
   /** Renders as the page's h1 in the hero, plain text elsewhere. */
@@ -71,18 +71,24 @@ export default function Wordmark({
           className="relative mx-auto block"
           style={{ width: artWidth, aspectRatio: String(LOGO_ASPECT) }}
         >
-          {/* Cover, not contain: contain would letterbox the square canvas
-              inside the ink-shaped box and shrink the wordmark to fit the
-              transparent air around it. `sizes` is declared for the `fill`
-              contract only — next/image serves a `.svg` src unoptimized
-              automatically, so no srcset is generated from it. */}
+          {/* Contain, not cover. Cover was there to trim transparent air off a
+              file that had some; with the box now cut from the file's own
+              proportions the two agree, so neither fits differently — and
+              contain is the safe one of the pair, because a file that ever
+              disagrees again is letterboxed rather than cut into. */}
           <Image
             src={LOGO_SRC}
             alt=""
             fill
             priority
             sizes="(min-width: 1180px) 35vw, 42vw"
-            className="object-cover"
+            // The old src was an `.svg`, which next/image serves unoptimized —
+            // no srcset, no quality, `sizes` declared for the `fill` contract
+            // and nothing else. A png goes through the optimizer, so both now
+            // matter: 90 to match the rest of the page's artwork, since 75 on
+            // a flat two-colour wordmark is where banding shows first.
+            quality={90}
+            className="object-contain"
           />
         </span>
       </Tag>

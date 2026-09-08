@@ -2,6 +2,12 @@ import type { CSSProperties } from "react";
 
 import Image from "next/image";
 
+import gatoandspirit from "../../public/art/extras/gatoandspirit.png";
+import gatohead from "../../public/art/extras/gatohead.png";
+import gatointube from "../../public/art/extras/gatointube.png";
+import gatoycaja from "../../public/art/extras/gatoycaja.png";
+import hammer from "../../public/art/extras/hammer.png";
+import spiritguy from "../../public/art/extras/spiritguy.png";
 import ImageSlot from "@/components/image-slot";
 import type { Step } from "@/lib/content";
 import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/content";
@@ -166,6 +172,41 @@ function StepArt({
 }
 
 /**
+ * Loose artwork in the air around the programme.
+ *
+ * Every box here is placed against the comp grid the plates are on, in the gaps
+ * they leave: right of step 1, left of step 2, either side of the belt of
+ * asides, and left of step 4. The hammer is the one with a brief — it sits 105
+ * to the right of "then spend 5 weeks building your projects!", overlapping its
+ * lower half by 156, so it reads as belonging to that step rather than floating
+ * between two.
+ *
+ * Nothing here is eyeballed. Each box clears every plate, aside and connector
+ * band by at least 38 comp units, which is why the sizes are not round numbers:
+ * width is chosen for the pocket and height is the artwork's own ratio, so a
+ * picture is never squeezed to fit a gap.
+ *
+ * The files were trimmed to their ink first. They arrived as 3000-squares
+ * filling 33-74% of their canvas, and an untrimmed square would have reserved a
+ * box of transparent air that collided with things the picture never reached.
+ *
+ * Stage only. Below 1180 the layout is a single column of plates with no gaps
+ * to put anything in, and scattering art down its margins would be decoration
+ * competing with the one thing a phone has room for.
+ */
+const EXTRAS = [
+  { src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
+  { src: spiritguy, x: 120, y: 850, w: 190/2, h: 293/2 },
+  { src: gatointube, x: 400, y: 1050, w: 230, h: 272 },
+  { src: gatoycaja, x: 1180, y: 1320, w: 170, h: 172 },
+  { src: hammer, x: 1120, y: 1832, w: 310, h: 271 },
+  { src: gatohead, x: 180, y: 2026, w: 230, h: 198 },
+] as const;
+
+/** The widest of them is 310 comp units, 212px at the 1180 cap. */
+const EXTRA_SIZES = "220px";
+
+/**
  * The five design weeks, for anything that cannot see the picture.
  *
  * `allweeks.png` carries the subjects and their week numbers as drawing, so
@@ -223,6 +264,26 @@ export default function Process() {
         className="stage hidden min-[1180px]:block"
         style={{ maxWidth: STAGE_CAP, aspectRatio: `${COMP_WIDTH} / ${STAGE_H}` }}
       >
+        {/* Decorative, and first in the stage so that if a plate is ever
+            resized past one of them the plate wins the overlap. */}
+        {EXTRAS.map((extra) => (
+          <div
+            key={extra.src.src}
+            aria-hidden
+            className="absolute"
+            style={box(extra.x, extra.y, extra.w, extra.h)}
+          >
+            <Image
+              src={extra.src}
+              alt=""
+              fill
+              sizes={EXTRA_SIZES}
+              quality={90}
+              className="object-contain"
+            />
+          </div>
+        ))}
+
         {/* Step 1 — design weeks, now one piece of artwork.
 
             `allweeks.png` is 1920x1080 and this plate is 975x547, which is
