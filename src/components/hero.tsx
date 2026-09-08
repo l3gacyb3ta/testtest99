@@ -42,6 +42,40 @@ const PLATE_H = PLATE.h * PLATE_SCALE;
 const ART = { w: 1920, h: 1080 } as const;
 
 /**
+ * The painting's dissolve, as a mask on the picture rather than a scrim over
+ * it.
+ *
+ * It used to be a `<div>` of `transparent -> hl-blue-deep` laid on top. That works
+ * only while the thing underneath is flat colour: the ground now carries the
+ * raked-arc pattern, and an opaque scrim would paint the texture out again
+ * exactly where the dissolve is supposed to be revealing it. Masking the
+ * picture instead takes the painting to nothing and lets whatever the room is
+ * standing on come up through it, so the pattern arrives as the painting
+ * leaves — one handoff instead of two.
+ *
+ * The stops are `1 - smoothstep(t)` sampled every eighth over the run, not a
+ * straight line. A linear ramp is the severe one: alpha is continuous but its
+ * slope is not, so the eye finds the kink where the fade starts and the kink
+ * where it stops, and reads them as two edges drawn across the picture.
+ * Smoothstep leaves 1 and arrives at 0 with zero slope, so neither end has a
+ * position to find. The run is the bottom 28% against the old 22% — longer,
+ * but the first quarter of it is still above 94% opacity, so the fox in the
+ * lower-left corner keeps roughly the exposure it had and only the last
+ * sliver, which is what has to be gentle, gives up more than before.
+ */
+const ART_FADE = [
+  "linear-gradient(to bottom",
+  "#000 0 72%",
+  "rgb(0 0 0/.94) 76%",
+  "rgb(0 0 0/.80) 80%",
+  "rgb(0 0 0/.61) 84%",
+  "rgb(0 0 0/.39) 88%",
+  "rgb(0 0 0/.20) 92%",
+  "rgb(0 0 0/.06) 96%",
+  "transparent 100%)",
+].join(",");
+
+/**
  * The plate is centred in the fold, not at a fixed y on the comp grid.
  *
  * Now that the fold is a real viewport rather than a 1092-unit block, a fixed
@@ -147,7 +181,7 @@ export default function Hero() {
   return (
     <section
       id="signup"
-      className="relative z-10 isolate bg-hl-ink"
+      className="relative z-10 isolate"
     >
       <HeroArt />
 
@@ -360,12 +394,25 @@ export default function Hero() {
  * does not, so the one thing still saying *down* is the 16% translate the
  * animation gives it.
  *
- * `text-hl-paper` at rest, not the cyan the arrow's classes asked for. Those
- * classes were dead — both paths carried a hardcoded `stroke="white"`, so no
- * `color` ever reached the glyph and neither did the hover. Live, cyan would
- * have been a real problem: the cue sits in the art's fade to ink, and against
- * the lightest ground it can land on cyan is 3.84:1 where paper is 5.51:1.
- * Cyan is the interaction state instead, which is the role it already has.
+ * `text-hl-paper`, and now in every state rather than only at rest.
+ *
+ * Cyan used to carry the hover and the focus. That was already the second
+ * attempt — the arrow's original classes asked for cyan at rest, and both
+ * paths carried a hardcoded `stroke="white"`, so no `color` ever reached the
+ * glyph and neither did the hover; moving cyan to the interaction state was
+ * the fix. On the steel ground it does not survive there either. Cyan is
+ * 4.60:1 on bare steel, 4.27:1 over one arc of the ground pattern and 3.97:1
+ * where two cross, and this word is 12.8-16px, so it owes 4.5:1 in every
+ * state. Nothing in the palette between cyan and paper clears it: on the
+ * worst ground only paper, lavender-pale, blue-pale and white do.
+ *
+ * So the cyan moved off the text and onto a rule under it. The word holds at
+ * 5.70:1 whatever the arcs are doing, the interaction is still signalled in
+ * the page's own interaction colour, and an underline is non-text — it owes
+ * 3:1 and has 3.97:1. Focus is left to the global `:focus-visible` ring,
+ * which is the same cyan at the same 3:1 and is the treatment every other
+ * control on the page gets; a colour change underneath it was never what was
+ * doing the work.
  */
 function ScrollCue({
   className = "",
@@ -382,7 +429,7 @@ function ScrollCue({
       href="#how-it-works"
       // `py-1.5` is the tap target, not spacing: the word is a 16-22px line, and
       // 12px of vertical padding is what takes the box past the 24px floor.
-      className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper transition-colors hover:text-hl-cyan focus-visible:text-hl-cyan ${className}`}
+      className={`inline-block px-2 py-1.5 font-display font-bold uppercase text-hl-paper decoration-hl-cyan decoration-2 underline-offset-[0.3em] hover:underline ${className}`}
       style={{ ...style, fontSize, letterSpacing: "0.14em" }}
     >
       {/* The visible word first and the rest of the sentence after it, so the
@@ -413,7 +460,10 @@ function ScrollCue({
  * full width, top-aligned, nothing cropped and nothing repeated. The box is cut
  * to 1920/1080, so `object-cover` has nothing to crop and cannot leave a
  * hairline of bare ink the way `object-contain` would under sub-pixel rounding.
- * Below the picture is the ink the page already stands on.
+ * Below the picture, and up through its dissolve, is the steel ground and the
+ * raked-arc pattern that the hero and the process section now share from one
+ * box in `page.tsx` — so the painting resolves into the room it hands off to
+ * rather than into a flat field that the room's texture then switches on in.
  *
  * It spans the screen at every width. Capped at the comp's 1728 it left ink
  * shoulders on anything wider, and the painting is the hero's ground rather
@@ -422,7 +472,7 @@ function ScrollCue({
  * `max-height: 100%` is the guard that buys. Uncapped, a 16:9 box on a wide
  * screen grows taller than the section it sits in -- a 2560 window only 800
  * tall wants 1440 of painting against 1018 of section -- and `overflow-hidden`
- * would take the difference off the bottom as a hard cut, gradient and all.
+ * would take the difference off the bottom as a hard cut, dissolve and all.
  * Clamped to the section instead, the box stops being 16:9 and `object-cover`
  * trims the picture rather than the layer, so the fade still lands on the
  * bottom edge that is actually visible. Below that width nothing is cropped at
@@ -435,19 +485,31 @@ function HeroArt() {
         className="relative w-full"
         style={{ aspectRatio: `${ART.w} / ${ART.h}`, maxHeight: "100%" }}
       >
+        {/* The scene dissolves at its own lower edge rather than at a fixed
+            distance from the bottom of the section, so the fade scales with
+            the picture instead of eating a third of it on a phone.
+
+            Size and repeat are pinned for the same reason the ground patterns
+            pin theirs: a gradient has no intrinsic dimensions, so it is drawn
+            at the size of its box by a rule worth stating rather than leaning
+            on silently. `-webkit-` alongside, for Safari before 15.4. */}
         <Image
           src="/art/bg.png"
           alt=""
           fill
           priority
           sizes="100vw"
+          quality={90}
           className="object-cover"
+          style={{
+            maskImage: ART_FADE,
+            maskSize: "100% 100%",
+            maskRepeat: "no-repeat",
+            WebkitMaskImage: ART_FADE,
+            WebkitMaskSize: "100% 100%",
+            WebkitMaskRepeat: "no-repeat",
+          }}
         />
-        {/* The scene dissolves into the ink at its own lower edge rather than
-            at a fixed distance from the bottom of the section, so the fade
-            scales with the picture instead of eating a third of it on a
-            phone. */}
-        <div className="absolute inset-x-0 bottom-0 h-[22%] bg-linear-to-b from-transparent to-hl-ink" />
       </div>
     </div>
   );

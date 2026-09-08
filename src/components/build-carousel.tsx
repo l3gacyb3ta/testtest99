@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import ImageSlot from "@/components/image-slot";
 import { BUILD_CARDS } from "@/lib/content";
@@ -282,13 +283,23 @@ export default function BuildCarousel() {
             BUILD_CARDS.map((card, index) => (
               <li
                 key={`${copy}-${card.id}`}
-                className="shrink-0 overflow-hidden bg-hl-blue"
-                style={{
-                  width: CARD_W,
-                  aspectRatio: CARD_RATIO,
-                  borderRadius: CARD_RADIUS,
-                  border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
-                }}
+                // `group relative` is what lets the repo link stretch to the
+                // whole card: `relative` gives the overlay its containing
+                // block, `group` lets the mark answer a hover anywhere on it.
+                className="group relative shrink-0 overflow-hidden bg-hl-blue"
+                style={
+                  {
+                    width: CARD_W,
+                    aspectRatio: CARD_RATIO,
+                    borderRadius: CARD_RADIUS,
+                    border: `${CARD_BORDER} solid var(--color-hl-yellow-pale)`,
+                    // An absolutely positioned child is laid out against the
+                    // padding box, so the overlay needs the frame's own width
+                    // to reach back over it. It is a clamp, so it travels as a
+                    // custom property rather than being written out twice.
+                    "--hl-card-frame": CARD_BORDER,
+                  } as CSSProperties
+                }
                 role={copy === 0 ? "group" : undefined}
                 aria-roledescription={copy === 0 ? "slide" : undefined}
                 aria-label={
@@ -297,7 +308,6 @@ export default function BuildCarousel() {
                     : undefined
                 }
                 aria-hidden={copy === 0 ? undefined : true}
-                inert={copy !== 0}
               >
                 <div className="flex h-full w-full flex-col">
                   {/* Contained, never cropped: a build is the thing on show,
@@ -318,7 +328,8 @@ export default function BuildCarousel() {
                         alt=""
                         fill
                         sizes={PHOTO_SIZES}
-                        className="object-contain"
+                        quality={90}
+                        className="object-contain p-2"
                       />
                     ) : (
                       <ImageSlot
@@ -354,10 +365,27 @@ export default function BuildCarousel() {
                           href={card.repo}
                           target="_blank"
                           rel="noopener noreferrer"
-                          // Inverts to ink on hover and focus. The focus ring
-                          // goes ink too: the page's cyan is 1.4:1 on this
-                          // pale yellow and would read as a disabled control.
-                          className="grid h-[1.7em] w-[1.7em] shrink-0 place-items-center rounded-full text-hl-ink transition-colors hover:bg-hl-ink hover:text-hl-yellow-pale focus-visible:bg-hl-ink focus-visible:text-hl-yellow-pale focus-visible:outline-hl-ink"
+                          // Only the live set is on the tab path. The three
+                          // copies behind it stay `aria-hidden`, and a link
+                          // that is not tabbable is allowed inside that; what
+                          // they no longer are is unclickable.
+                          tabIndex={copy === 0 ? undefined : -1}
+                          // The mark is 1.7em of a 0.7-1.06rem credit line, so
+                          // its own box is a 19-29px target -- under the 24px
+                          // floor at most sizes and nowhere near 44. Rather
+                          // than grow the mark until it outweighs the credit
+                          // beside it, `::after` stretches the link over the
+                          // whole card and the frame around it, which is both
+                          // a 208-386px target and the "click the card" the
+                          // mark was always standing for.
+                          //
+                          // Inverts to ink on hover and focus, and now on a
+                          // hover anywhere on the card, so the card says what
+                          // it does before it is clicked. The focus ring stays
+                          // on the mark rather than the overlay: it goes ink
+                          // too, the page's cyan being 1.4:1 on this pale
+                          // yellow, where it would read as a disabled control.
+                          className="grid h-[1.7em] w-[1.7em] shrink-0 place-items-center rounded-full text-hl-ink transition-colors after:absolute after:[inset:calc(-1*var(--hl-card-frame))] group-hover:bg-hl-ink group-hover:text-hl-yellow-pale focus-visible:bg-hl-ink focus-visible:text-hl-yellow-pale focus-visible:outline-hl-ink"
                         >
                           <span className="sr-only">
                             {`${card.label} on GitHub (opens in a new tab)`}

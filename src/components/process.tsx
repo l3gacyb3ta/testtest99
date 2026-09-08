@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 
 import ImageSlot from "@/components/image-slot";
-import type { DesignWeek } from "@/lib/content";
+import type { Step } from "@/lib/content";
 import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/content";
 import { COMP_WIDTH, at, band, box, u } from "@/lib/stage";
 
@@ -29,67 +29,31 @@ const CONNECTORS = [
   },
   {
     id: "two-to-three",
-    from: [960.5, 1172.5],
-    to: [860, 1352.5],
+    from: [960.5, 1252.5],
+    to: [860, 1432.5],
     mean: 102.2,
   },
   {
     id: "three-to-four",
-    from: [750.25, 1842.5],
-    to: [909.5, 2026],
+    from: [750.25, 1981.5],
+    to: [909.5, 2165],
     mean: 120.3,
   },
 ] as const;
 
-const WEEK_MARKS = [
-  { x: 92, labelX: 117, size: 45.736 },
-  { x: 259, labelX: 309, size: 45.736 },
-  { x: 477, labelX: 543, size: 45.736 },
-] as const;
-
 /**
- * Artwork behind each week pairing, in step-1-plate coordinates.
+ * How wide a step's artwork is actually painted.
  *
- * Each box is the measured union of a subject and its own week label, padded
- * 22 across and 18 down. They are deliberately ragged rather than a uniform
- * band: the comp hand-places these five at different heights, and squaring
- * them into a row would flatten that. Gaps between neighbours run 19-28, and
- * the outermost clear the plate by 13.
- *
- * `label` and `ratio` record the artwork each one wants; they are drawn only
- * while a week is still waiting for its picture.
- *
- * The five are declared in week order, so `WEEKS[i]` is the pairing that
- * stands on `WEEK_BACKDROPS[i]` and carries the artwork for it.
+ * These files run 8439 to 11876 across and the widest any is ever drawn is
+ * 503px, so an undeclared `sizes` would pull a candidate ten times the box.
+ * Stage: 736 comp units at the 1180 cap is 502.6px. Stacked: the plate runs
+ * the full `max-w-2xl` column, the same 608px the lead week pairing gets.
  */
-const WEEK_BACKDROPS = [
-  { id: "week-1", label: "PCBs bench shot", x: 341, y: 125, w: 300, h: 191 },
-  { id: "week-2", label: "CAD screen", x: 13, y: 380, w: 139, h: 116 },
-  { id: "week-3", label: "synth build", x: 180, y: 380, w: 197, h: 116 },
-  { id: "week-4", label: "display test", x: 398, y: 380, w: 232, h: 116 },
-  { id: "week-5", label: "breadboard rig", x: 649, y: 363, w: 313, h: 165 },
-] as const;
-
-/** The five pairings, in the order their backdrops are declared above. */
-const WEEKS = [DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest];
-
-/**
- * How wide a backdrop is actually painted, per layout — for `sizes`, not for
- * geometry.
- *
- * The source files are 3000 x 3000 and the widest a backdrop is ever drawn is
- * 214px, on the stage. Left undeclared, `sizes` defaults to 100vw and the
- * browser pulls a candidate an order of magnitude past anything these boxes can
- * show. Both layouts sit in the DOM at once, but the hidden one's images are
- * lazy and never intersect, so only the layout on screen fetches at all.
- */
-const ART_SIZES = {
-  /** Stage: the widest backdrop is 313 comp units, 214px at the 1180 cap. */
-  stage: "220px",
-  /** Stacked: the lead pairing runs the full plate, 608px inside `max-w-2xl`. */
-  lead: "(min-width: 640px) 610px, 100vw",
-  /** Stacked: weeks 2-5 are a two-column grid inside that same plate. */
-  grid: "(min-width: 640px) 310px, 50vw",
+const STEP_ART_SIZES = {
+  stage: "510px",
+  /** Step 1's picture is the whole 975-unit plate, 666px at the 1180 cap. */
+  weeks: "670px",
+  stacked: "(min-width: 640px) 610px, 100vw",
 } as const;
 
 /**
@@ -97,15 +61,15 @@ const ART_SIZES = {
  * that decides this section's height.
  *
  * Everything in the stage is a comp pixel expressed in `cqw`, so every length
- * in here is a share of the stage's own width. That includes the height: 2474
- * comp units is 143.17cqw, which means widening the window made the section
- * taller, 1:1.43. From 1180 to 1728 that added 785px of scroll — a page
+ * in here is a share of the stage's own width. That includes the height: 2601
+ * comp units is 150.52cqw, which means widening the window made the section
+ * taller, 1:1.51. From 1180 to 1728 that added 825px of scroll — a page
  * getting longer as it gets more room, which is backwards.
  *
  * `.stage` caps at 1728, so the section was constant above that and variable
  * below it; the whole problem lived in the one band between the breakpoint and
  * the cap. Capping here at the breakpoint itself removes the band: the stage is
- * 1180 wide at 1180 and 1180 wide at 3840, so the height is a flat 1689px at
+ * 1180 wide at 1180 and 1180 wide at 3840, so the height is a flat 1776px at
  * every width this layout is ever shown at — which it now actually is; see the
  * stage element below for the `cqw` fallback that was defeating this cap.
  *
@@ -118,69 +82,57 @@ const ART_SIZES = {
  *
  * Raising this trades exactness for scale. Any value above 1180 re-opens a
  * band between the two where the height moves again — 1280 gives 16px week
- * labels and 144px of travel, 1400 gives 16.2px and 315px.
+ * labels and 151px of travel, 1400 gives 16.2px and 331px.
  */
 const STAGE_CAP = 1180;
 
 /**
- * The bottom edge of the lowest plate — step 4 at 2004 + 470 — so the stage is
+ * The bottom edge of the lowest plate — step 4 at 2143 + 458 — so the stage is
  * exactly its own content and nothing more.
  */
-const STAGE_H = 2474;
+const STAGE_H = 2601;
 
 /**
- * The artwork behind a week pairing: the picture where there is one, the drawn
- * footprint where there is not.
+ * A step's artwork: the picture where there is one, the drawn footprint where
+ * there is not — the same optional-path-with-slot-fallback the week backdrops
+ * and the carousel cards already use.
  *
- * The picture cannot simply be laid in. These boxes are the measured union of a
- * subject and its own week label, so the type stands directly on them, and that
- * week label is `text-hl-ink-soft` at 13.7px — small text, which needs 4.5:1.
- * On the bare slot ground it has 5.07:1, the tightest margin anywhere in the
- * section, so a photograph darkening that ground by even a tenth takes it under.
+ * Unlike a week backdrop this is a picture on show rather than a ground, so
+ * nothing is screened, blended or thrown away: the comp's boxes were refitted
+ * to the artwork's own proportions instead. `getfunding.png` is 3.133:1 into a
+ * slot the comp drew at 4.748:1, `build.png` is 2.242:1 into one drawn at
+ * 2.736:1, and `prizes.png` is 2.863:1 into that same 2.736:1 — so every box
+ * took its picture's shape and the plates below moved to make room. Step 4 is
+ * the only one that moved *up*: its picture is wider than the slot the comp
+ * drew, so the plate lost 12 units rather than gaining them, and being the
+ * last plate it took the section's height down with it.
  *
- * `mix-blend-mode: screen` is what makes it safe, and safe by construction
- * rather than by measurement: screening can only lift a channel, never lower
- * one, so the composite is at least as light as the lavender beneath it whatever
- * the picture does. The 5.07:1 floor therefore holds for every pixel of every
- * photograph, including ones nobody has taken yet. It is the same reasoning the
- * slot's own grid already runs on, where a paper rule was chosen over an ink one
- * because a light line only ever lifts a label.
- *
- * At 0.55 the composite runs from the slot's own `#c9c7ec` where the picture is
- * black to `#e6e6f6` where it is white — and the step plate is `#E6E5FC`. So
- * the photograph is carried entirely by the two colours this section already
- * owns: it modulates between the patch and the plate rather than punching bright
- * holes in a pale surface.
- *
- * `isolate` is load-bearing. Without a stacking context of its own the blend
- * reaches past this box into the plate and everything else painted below it, and
- * the guarantee above only holds against the lavender.
+ * `cover` rather than `contain` after all that, and only because the refitted
+ * boxes are whole comp units: 736x235 is 3.1319:1 against the file's 3.1333:1.
+ * Cover answers that 0.05% with 0.05% of the picture; contain would answer it
+ * with a hairline of bare plate down one edge, which is the visible one.
  */
-function WeekBackdrop({
-  week,
-  label,
-  ratio,
-  sizes,
-  scale,
+function StepArt({
+  step,
   className = "",
   style,
+  scale,
+  sizes,
 }: {
-  week: DesignWeek;
-  /** What the drawn slot names, while this week is still waiting for a photo. */
-  label: string;
-  ratio: string;
-  sizes: string;
-  scale: number;
+  step: Step;
   className?: string;
   style?: CSSProperties;
+  /** Only reaches the drawn fallback; a photograph has no fittings to scale. */
+  scale?: number;
+  sizes: string;
 }) {
-  if (!week.art) {
+  if (!step.slot) return null;
+
+  if (!step.art) {
     return (
       <ImageSlot
-        label={label}
-        ratio={ratio}
-        tone="light"
-        backdrop
+        label={step.slot.label}
+        ratio={step.slot.ratio}
         className={className}
         style={style}
         scale={scale}
@@ -190,24 +142,44 @@ function WeekBackdrop({
 
   return (
     <div
-      aria-hidden
-      className={`isolate overflow-hidden bg-hl-lavender ${className}`}
-      // `position` lives in `style` for the same reason it does on ImageSlot: a
-      // caller placing this box passes `absolute` here, where it can win.
+      className={`overflow-hidden ${className}`}
+      // `position` lives in `style` for the same reason it does on ImageSlot
+      // and the week backdrops: the stage passes `absolute` here, where it has
+      // to be able to beat the component's own `relative`.
       style={{ position: "relative", ...style }}
     >
-      {/* Cover, not contain. The slot it replaces was a ground, not a picture
-          on show, and these boxes take their shape from the words in front of
-          them — 1.20 to 1.90 across the five — so a contained square would sit
-          in a field of its own ground and read as a pasted-in thumbnail. */}
+      {/* Decorative: each of these sits directly under the heading that says
+          what the step is, and the drawn slot it replaces carried only its own
+          footprint label. If either picture turns out to carry information the
+          heading does not — an order-flow diagram would — it wants real alt
+          text rather than this. */}
       <Image
-        src={week.art}
+        src={step.art}
         alt=""
         fill
         sizes={sizes}
-        className="object-cover opacity-55 mix-blend-screen"
+        quality={90}
+        className="object-cover"
       />
     </div>
+  );
+}
+
+/**
+ * The five design weeks, for anything that cannot see the picture.
+ *
+ * `allweeks.png` carries the subjects and their week numbers as drawing, so
+ * this is where that content still lives as text — for a screen reader, for
+ * find-in-page, and for anything indexing the page. It is the same
+ * `DESIGN_WEEKS` the five pairings were built from, so the two cannot drift.
+ */
+function WeekList() {
+  return (
+    <ul className="sr-only">
+      {[DESIGN_WEEKS.lead, ...DESIGN_WEEKS.rest].map((week) => (
+        <li key={week.subject}>{`${week.week}: ${week.subject}`}</li>
+      ))}
+    </ul>
   );
 }
 
@@ -219,7 +191,7 @@ export default function Process() {
     <section
       id="how-it-works"
       aria-label="How Half Life works"
-      className="hl-ground-wave relative z-0 isolate bg-[#232231] min-[1180px]:pb-[10vh]"
+      className="relative z-0 isolate min-[1180px]:pb-[10vh]"
     >
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* Every child here is absolutely positioned, so the stage has no
@@ -234,12 +206,14 @@ export default function Process() {
           against `.stage` and stopped at its 1180 cap. So the content ended at
           a flat 1689px while the box claimed 143.17vw, and every pixel past the
           cap became dead air under step 4 — 372 at 1440, 1060 at 1920, 1976 at
-          2560, growing without limit.
+          2560, growing without limit. (Those are the numbers as they stood;
+          `STAGE_H` has moved twice since, with the artwork.)
 
           `aspect-ratio` is self-referential by definition and needs no
           container, which is why the hero's below-fold block is already written
-          this way. Height is now 2474/1728 of the used width at every size, so
-          it is the flat 1689px the cap was introduced to deliver.
+          this way. Height is now `STAGE_H`/1728 of the used width at every
+          size, so it is the flat pixel count the cap was introduced to
+          deliver.
 
           The trailing air below it is the section's `pb-[10vh]`. Viewport
           height, not the comp grid: this gap is the beat between two sections
@@ -249,104 +223,40 @@ export default function Process() {
         className="stage hidden min-[1180px]:block"
         style={{ maxWidth: STAGE_CAP, aspectRatio: `${COMP_WIDTH} / ${STAGE_H}` }}
       >
-        {/* Step 1 — design weeks */}
+        {/* Step 1 — design weeks, now one piece of artwork.
+
+            `allweeks.png` is 1920x1080 and this plate is 975x547, which is
+            1.7778 against 1.7824 — a 0.26% match, and the reason the picture
+            is treated as the whole plate rather than as something standing
+            inside it. The five hand-placed pairings, their five screened
+            backdrops and the comp's own week marks are all inside it now.
+
+            The heading and the five weeks stay in the document. A picture that
+            replaces text has to hand that text back or the page has quietly
+            lost it: the `h2` keeps step 1 in the outline alongside the other
+            three, and the list carries the subjects and their week numbers. */}
         <div
-          className="absolute bg-hl-lavender-pale text-hl-ink"
+          className="absolute overflow-hidden bg-hl-lavender-pale text-hl-ink"
           style={box(57, 164, 975, 547)}
         >
-          {WEEK_BACKDROPS.map((slot, index) => (
-            <WeekBackdrop
-              key={slot.id}
-              week={WEEKS[index]}
-              label={slot.label}
-              ratio={`${slot.w} × ${slot.h}`}
-              sizes={ART_SIZES.stage}
-              style={{ ...box(slot.x, slot.y, slot.w, slot.h), position: "absolute" }}
-              scale={0.9}
+          <h2 className="sr-only">{design.title}</h2>
+          {design.art ? (
+            <Image
+              src={design.art}
+              alt=""
+              fill
+              sizes={STEP_ART_SIZES.weeks}
+              quality={90}
+              className="object-cover"
             />
-          ))}
-
-          <h2
-            className="absolute font-display font-bold"
-            style={{
-              ...at(147, 24),
-              width: u(760),
-              fontSize: u(40),
-              lineHeight: 1.1,
-            }}
-          >
-            {design.title}
-          </h2>
-
-          <p
-            className="absolute whitespace-nowrap font-display font-extrabold"
-            style={{
-              ...at(363, 143),
-              fontSize: u(104.167),
-              lineHeight: 1,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            {DESIGN_WEEKS.lead.subject}
-          </p>
-          <p
-            className="absolute whitespace-nowrap font-semibold text-hl-ink-soft"
-            style={{ ...at(437, 272), fontSize: u(26), lineHeight: 1 }}
-          >
-            {DESIGN_WEEKS.lead.week}
-          </p>
-
-          {DESIGN_WEEKS.rest.slice(0, 3).map((week, index) => (
-            <div key={week.subject}>
-              <p
-                className="absolute whitespace-nowrap font-display font-bold"
-                style={{
-                  ...at(WEEK_MARKS[index].x - 57, 398),
-                  fontSize: u(WEEK_MARKS[index].size),
-                  lineHeight: 1,
-                }}
-              >
-                {week.subject}
-              </p>
-              <p
-                className="absolute whitespace-nowrap font-semibold text-hl-ink-soft"
-                style={{
-                  ...at(WEEK_MARKS[index].labelX - 57, 458),
-                  fontSize: u(20),
-                  lineHeight: 1,
-                }}
-              >
-                {week.week}
-              </p>
-            </div>
-          ))}
-
-          {/* week 5 sets on two lines, centred — comp node 275:42 */}
-          <p
-            className="absolute text-center font-display font-bold"
-            style={{
-              ...at(671, 381),
-              width: u(269),
-              fontSize: u(45.736),
-              lineHeight: 1.02,
-            }}
-          >
-            breadboard
-            <br />
-            logic
-          </p>
-          <p
-            className="absolute whitespace-nowrap font-semibold text-hl-ink-soft"
-            style={{ ...at(784, 490), fontSize: u(20), lineHeight: 1 }}
-          >
-            {DESIGN_WEEKS.rest[3].week}
-          </p>
+          ) : null}
+          <WeekList />
         </div>
 
         {/* Step 2 — funding */}
         <div
           className="absolute bg-hl-lavender-pale text-hl-ink"
-          style={box(812, 836, 823, 365)}
+          style={box(812, 836, 823, 445)}
         >
           <h2
             className="absolute font-display font-bold"
@@ -359,17 +269,15 @@ export default function Process() {
           >
             {funding.title}
           </h2>
-          {funding.slot && (
-            <ImageSlot
-              label={funding.slot.label}
-              ratio={funding.slot.ratio}
-              style={{ ...box(53, 109, 736, 155), position: "absolute" }}
-              scale={1.05}
-            />
-          )}
+          <StepArt
+            step={funding}
+            style={{ ...box(53, 109, 736, 235), position: "absolute" }}
+            scale={1.05}
+            sizes={STEP_ART_SIZES.stage}
+          />
           <p
             className="absolute whitespace-nowrap font-semibold"
-            style={{ ...at(323, 273), fontSize: u(20), lineHeight: 1 }}
+            style={{ ...at(323, 353), fontSize: u(20), lineHeight: 1 }}
           >
             {funding.caption}
           </p>
@@ -378,7 +286,7 @@ export default function Process() {
         {/* Step 3 — build */}
         <div
           className="absolute bg-hl-lavender-pale text-hl-ink"
-          style={box(57, 1326, 958, 523)}
+          style={box(57, 1406, 958, 582)}
         >
           <h2
             className="absolute font-display font-bold"
@@ -391,20 +299,18 @@ export default function Process() {
           >
             {build.title}
           </h2>
-          {build.slot && (
-            <ImageSlot
-              label={build.slot.label}
-              ratio={build.slot.ratio}
-              style={{ ...box(111, 158, 736, 269), position: "absolute" }}
-              scale={1.35}
-            />
-          )}
+          <StepArt
+            step={build}
+            style={{ ...box(111, 158, 736, 328), position: "absolute" }}
+            scale={1.35}
+            sizes={STEP_ART_SIZES.stage}
+          />
         </div>
 
         {/* Step 4 — the printer */}
         <div
           className="absolute bg-hl-lavender-pale text-hl-ink"
-          style={box(731, 2004, 943, 470)}
+          style={box(731, 2143, 943, 458)}
         >
           <h2
             className="absolute font-display font-bold"
@@ -417,20 +323,18 @@ export default function Process() {
           >
             {printer.title}
           </h2>
-          {printer.slot && (
-            <ImageSlot
-              label={printer.slot.label}
-              ratio={printer.slot.ratio}
-              style={{ ...box(106, 140, 736, 269), position: "absolute" }}
-              scale={1.35}
-            />
-          )}
+          <StepArt
+            step={printer}
+            style={{ ...box(106, 140, 736, 257), position: "absolute" }}
+            scale={1.35}
+            sizes={STEP_ART_SIZES.stage}
+          />
         </div>
 
         {/* Asides — small plates orbiting the band. Only where they sit
             differs; the plate itself is the same object twice. */}
-        <Aside aside={viral} origin={[1114, 1451]} />
-        <Aside aside={community} origin={[59, 2123]} />
+        <Aside aside={viral} origin={[1114, 1531]} />
+        <Aside aside={community} origin={[59, 2262]} />
 
         {/* Connectors, drawn last so they ride over the plates they join */}
         {CONNECTORS.map((connector) => {
@@ -459,52 +363,20 @@ export default function Process() {
         <ol className="mx-auto flex max-w-2xl flex-col">
           <li>
             <Plate>
-              <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                {design.title}
-              </h2>
-              {/* Same artwork-behind-the-pairing as the stage, in flow: the
-                  backdrop is the group's own box rather than a comp offset. */}
-              <div className="relative isolate mt-6 px-4 py-3">
-                <WeekBackdrop
-                  week={DESIGN_WEEKS.lead}
-                  label="PCBs bench shot"
-                  ratio="300 × 191"
-                  sizes={ART_SIZES.lead}
-                  className="-z-10"
-                  style={{ position: "absolute", inset: 0 }}
-                  scale={0.9}
-                />
-                <p className="font-display text-6xl font-extrabold tracking-[-0.03em] sm:text-7xl">
-                  {DESIGN_WEEKS.lead.subject}
-                </p>
-                <p className="mt-1 font-semibold text-hl-ink-soft">
-                  {DESIGN_WEEKS.lead.week}
-                </p>
-              </div>
-              <ul className="mt-7 grid grid-cols-2 gap-x-4 gap-y-5">
-                {DESIGN_WEEKS.rest.map((week) => (
-                  <li
-                    key={week.subject}
-                    className="relative isolate px-3 py-3"
-                  >
-                    <WeekBackdrop
-                      week={week}
-                      label={`${week.subject} artwork`}
-                      ratio="232 × 116"
-                      sizes={ART_SIZES.grid}
-                      className="-z-10"
-                      style={{ position: "absolute", inset: 0 }}
-                      scale={0.72}
-                    />
-                    <p className="font-display text-xl font-bold sm:text-2xl">
-                      {week.subject}
-                    </p>
-                    <p className="text-sm font-semibold text-hl-ink-soft">
-                      {week.week}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <h2 className="sr-only">{design.title}</h2>
+              {design.art ? (
+                <div className="relative aspect-[1920/1080] w-full overflow-hidden">
+                  <Image
+                    src={design.art}
+                    alt=""
+                    fill
+                    sizes={STEP_ART_SIZES.stacked}
+                    quality={90}
+                    className="object-cover"
+                  />
+                </div>
+              ) : null}
+              <WeekList />
             </Plate>
           </li>
 
@@ -515,13 +387,11 @@ export default function Process() {
               <h2 className="font-display text-2xl font-bold sm:text-3xl">
                 {funding.title}
               </h2>
-              {funding.slot && (
-                <ImageSlot
-                  label={funding.slot.label}
-                  ratio={funding.slot.ratio}
-                  className="mt-6 aspect-[736/155] w-full"
-                />
-              )}
+              <StepArt
+                step={funding}
+                className="mt-6 aspect-[11876/3790] w-full"
+                sizes={STEP_ART_SIZES.stacked}
+              />
               <p className="mt-4 font-semibold">{funding.caption}</p>
             </Plate>
           </li>
@@ -533,14 +403,11 @@ export default function Process() {
               <h2 className="font-display text-2xl font-bold sm:text-3xl">
                 {build.title}
               </h2>
-              {build.slot && (
-                <ImageSlot
-                  label={build.slot.label}
-                  ratio={build.slot.ratio}
-                  className="mt-6 aspect-[736/269] w-full"
-                  scale={1.15}
-                />
-              )}
+              <StepArt
+                step={build}
+                className="mt-6 aspect-[9673/4315] w-full"
+                sizes={STEP_ART_SIZES.stacked}
+              />
             </Plate>
           </li>
 
@@ -555,14 +422,11 @@ export default function Process() {
               <h2 className="font-display text-2xl font-bold sm:text-3xl">
                 {printer.title}
               </h2>
-              {printer.slot && (
-                <ImageSlot
-                  label={printer.slot.label}
-                  ratio={printer.slot.ratio}
-                  className="mt-6 aspect-[736/269] w-full"
-                  scale={1.15}
-                />
-              )}
+              <StepArt
+                step={printer}
+                className="mt-6 aspect-[8439/2948] w-full"
+                sizes={STEP_ART_SIZES.stacked}
+              />
             </Plate>
           </li>
 

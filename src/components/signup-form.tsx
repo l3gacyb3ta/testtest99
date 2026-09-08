@@ -125,7 +125,9 @@ export default function SignupForm({
       }
 
       setStatus("done");
-      setMessage("You're on the list — watch your inbox for week one.");
+      setMessage(
+        "You're signed up! Copy your referral link to get friends building!",
+      );
       if (payload.referralCode) {
         const url = new URL(window.location.href);
         url.search = `?ref=${payload.referralCode}`;
@@ -226,7 +228,7 @@ export default function SignupForm({
                 control rather than to a picture. */}
             <span
               aria-hidden
-              className="hl-field-edge pointer-events-none absolute inset-0 border-2 border-hl-cyan/55"
+              className="hl-field-edge pointer-events-none absolute inset-0"
             />
           </div>
 

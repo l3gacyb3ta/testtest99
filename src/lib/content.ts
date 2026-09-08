@@ -51,6 +51,13 @@ export const DESIGN_WEEKS: { lead: DesignWeek; rest: DesignWeek[] } = {
 export type Step = {
   id: string;
   title: string;
+  /**
+   * The step's artwork, on the same terms as a `DesignWeek`'s `art` and a
+   * `BuildCard`'s `photo`: an optional path, with `slot` drawn as the fallback
+   * while a step is still waiting for its picture. `slot` stays on a step that
+   * has its art — it is the in-source record of the footprint the comp drew.
+   */
+  art?: string;
   /** Slot the user drops a real photo into. */
   slot?: { label: string; ratio: string };
   caption?: string;
@@ -60,21 +67,25 @@ export const STEPS: Step[] = [
   {
     id: "design",
     title: "spend 5 weeks designing 5 projects",
+    art: "/art/weeks/allweeks.png",
   },
   {
     id: "funding",
     title: "get funding and order your parts!",
+    art: "/art/getfunding.png",
     slot: { label: "order flow", ratio: "736 × 155" },
     caption: "up to $100 per project!",
   },
   {
     id: "build",
     title: "then spend 5 weeks building your projects!",
+    art: "/art/build.png",
     slot: { label: "build photo", ratio: "736 × 269" },
   },
   {
     id: "printer",
     title: "get a 3D printer!",
+    art: "/art/prizes.png",
     slot: { label: "prize lineup", ratio: "736 × 269" },
   },
 ];
@@ -89,7 +100,7 @@ export const ASIDES: Aside[] = [
   },
   {
     id: "community",
-    title: "100,000 more of you",
+    title: "there are thousands of us!",
     body: "Hack Club has a community of over 100,000 teenagers from around the globe, who all love building projects and learning how to build projects. Join now at hackclub.com/slack!",
   },
 ];
@@ -122,7 +133,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "hexapod",
     label: "Hexapod robot",
     credit: "by Joshua, 18, from Quebec",
-    photo: "/imgs/hexapod.png",
+    photo: "/projects/hexapod.png",
     repo: "https://github.com/Josh4minee/HEX-B12.V1",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -130,7 +141,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "jukebox",
     label: "Minecraft Jukebox",
     credit: "by Dani, 17, from New York",
-    photo: "/imgs/jukebox.png",
+    photo: "/projects/jukebox.png",
     repo: "https://github.com/danieliscrazy/Jukebox",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -138,7 +149,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "macropad",
     label: "12-key Macropad",
     credit: "by Nirvaan, 14, from New Jersey",
-    photo: "/imgs/macropad.png",
+    photo: "/projects/macropad.png",
     repo: "https://github.com/OakTreeWC/12KEMPV2.1",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -146,7 +157,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "flightcontroller",
     label: "Rocket Flight Controller",
     credit: "by Archit, 15, from Australia",
-    photo: "/imgs/flightcontroller.png",
+    photo: "/projects/flightcontroller.png",
     repo: "https://github.com/codinga593/IRIS",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -154,7 +165,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "icepi",
     label: "Icepi Zero FPGA Devboard",
     credit: "by Cyao, 18, from France",
-    photo: "/imgs/icepi.png",
+    photo: "/projects/icepi.png",
     repo: "https://github.com/cheyao/icepi-zero",
     slot: { label: "project photo", ratio: "329 x 377" },
   },

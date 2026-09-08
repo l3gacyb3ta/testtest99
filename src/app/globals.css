@@ -20,9 +20,26 @@
   --color-hl-paper: #ededed;
   --color-hl-cyan: #8ed3dc;
   --color-hl-blue: #88BCDF;
-  --color-hl-blue-deep: #397CBE;
+  --color-hl-blue-deep: #0D3478;
   --color-hl-blue-pale: #EBF7FF;
   --color-hl-periwinkle: #a39bd6;
+  /**
+   * The page's ground from the hero through "how does it work?".
+   *
+   * A deep steel blue — H 203.5, S 43%, L 31% — and the one colour on the page
+   * that is shared by two sections rather than owned by one. The process band
+   * was recoloured to it, and the hero was brought with it: the painting
+   * dissolves at its own lower edge, and that edge is nowhere near the bottom
+   * of the hero section, so a different colour under the rest of the hero
+   * would draw the art layer's box as a full-width band edge.
+   *
+   * It is set once, on the element in `page.tsx` that wraps both sections,
+   * which is also where the raked-arc pattern is drawn. Neither section paints
+   * a ground of its own any more.
+   *
+   * It is not `hl-ink` renamed. Ink is still the page's ground below the
+   * carousel and behind the footer, and still the interior of an image slot.
+   */
   --color-hl-teal: #2E96A3;
   --color-hl-teal-deep: #11616B;
   /* The carousel's own pair, from the reworked "what can I build" frames
@@ -272,8 +289,14 @@ body {
      The stroke was #ecc94b, a yellow this page does not have and which would
      have read as the carousel's; it is cyan, which is what the process band
      already draws its connector bands and week marks in. And the pattern's
-     own opaque #2b2b31 ground rect is gone, so the section's ink shows
+     own opaque #2b2b31 ground rect is gone, so the steel underneath shows
      through and stays the one place that colour is defined.
+
+     This is no longer the process section's own texture. It is set on the box
+     that carries the hero and the process section together, so the arcs run
+     unbroken from inside the painting's dissolve down through the programme
+     — one lattice with one phase origin, which is the only way it can be
+     continuous. See `page.tsx` for why two boxes could never be.
 
      The hex is written out because a data URI is a separate document: no
      custom property reaches inside it, so `--color-hl-cyan` cannot be read
@@ -284,7 +307,9 @@ body {
      is what makes this work, but leaning on it silently means a browser that
      reached for the 300x150 default would tile a rotated pattern and seam it.
      With no viewBox there is nothing to scale from, so the SVG's user units
-     stay CSS pixels and the arcs hold their 140x16 at any section height. */
+     stay CSS pixels and the arcs hold their 140x16 at any height at all —
+     which is what lets this box grow to span two sections without the texture
+     coarsening. */
   background-repeat: no-repeat;
   background-size: 100% 100%;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='70' height='8' patternTransform='rotate(60)scale(2)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23EBF7FF' stroke-opacity='.03' stroke-width='1.5' d='M-.02 22c8.373 0 11.938-4.695 16.32-9.662C20.785 7.258 25.728 2 35 2s14.215 5.258 18.7 10.338C58.082 17.305 61.647 22 70.02 22M-.02 14.002C8.353 14 11.918 9.306 16.3 4.339 20.785-.742 25.728-6 35-6S49.215-.742 53.7 4.339c4.382 4.967 7.947 9.661 16.32 9.664M70 6.004c-8.373-.001-11.918-4.698-16.3-9.665C49.215-8.742 44.272-14 35-14S20.785-8.742 16.3-3.661C11.918 1.306 8.353 6-.02 6.002'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
