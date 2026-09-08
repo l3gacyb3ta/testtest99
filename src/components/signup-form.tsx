@@ -44,6 +44,8 @@ export default function SignupForm({
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const [leaving, setLeaving] = useState(false);
+  const [referralLink, setReferralLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const holdRef = useRef<number | null>(null);
   const exitRef = useRef<number | null>(null);
@@ -75,6 +77,8 @@ export default function SignupForm({
     // playing an exit nobody is waiting for.
     clearTimers();
     setLeaving(false);
+    setReferralLink(null);
+    setCopied(false);
     const email = inputRef.current?.value.trim() ?? "";
 
     if (!email) {
@@ -87,15 +91,28 @@ export default function SignupForm({
     setStatus("pending");
     setMessage("");
 
+    // Whoever sent this visitor here — a referral link or a campaign URL —
+    // is only present in this page's own address bar, so it's read fresh at
+    // submit time rather than threaded in from anywhere else.
+    const params = new URLSearchParams(window.location.search);
+
     try {
       const response = await fetch("/api/subscribe", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          ref: params.get("ref") || undefined,
+          utmSource: params.get("utm_source") || undefined,
+          utmMedium: params.get("utm_medium") || undefined,
+          utmCampaign: params.get("utm_campaign") || undefined,
+        }),
       });
-      const payload: { ok?: boolean; error?: string } = await response
-        .json()
-        .catch(() => ({}));
+      const payload: {
+        ok?: boolean;
+        error?: string;
+        referralCode?: string;
+      } = await response.json().catch(() => ({}));
 
       if (!response.ok || !payload.ok) {
         setStatus("error");
@@ -109,12 +126,30 @@ export default function SignupForm({
 
       setStatus("done");
       setMessage("You're on the list — watch your inbox for week one.");
+      if (payload.referralCode) {
+        const url = new URL(window.location.href);
+        url.search = `?ref=${payload.referralCode}`;
+        setReferralLink(url.toString());
+      }
       if (inputRef.current) inputRef.current.value = "";
       holdRef.current = window.setTimeout(dismiss, CONFIRM_HOLD_MS);
     } catch {
       setStatus("error");
       setMessage("You look offline. Reconnect and try again.");
       inputRef.current?.focus();
+    }
+  }
+
+  async function copyReferralLink() {
+    if (!referralLink) return;
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard permission denied or unavailable — the link is still
+      // visible and selectable, so this is a silent no-op rather than an
+      // error state.
     }
   }
 
@@ -278,6 +313,25 @@ export default function SignupForm({
       >
         {status === "error" ? message : BRAND.eligibility}
       </p>
+
+      {/* Persists past the confirmation plate's own dismiss timer: unlike
+          the wipe-in message, this is worth keeping on screen so the link is
+          still there to copy after the "you're on the list" plate is gone. */}
+      {referralLink ? (
+        <p
+          className="mt-[0.3em] text-hl-paper"
+          style={{ fontSize: "0.6em" }}
+        >
+          Refer a friend:{" "}
+          <button
+            type="button"
+            onClick={copyReferralLink}
+            className="underline decoration-hl-cyan/60 underline-offset-2 hover:text-hl-cyan"
+          >
+            {copied ? "Link copied!" : "Copy your referral link"}
+          </button>
+        </p>
+      ) : null}
 
       {/* One persistent live region does all the announcing. The confirmation
           plate mounts with its text already in it, and a live region created

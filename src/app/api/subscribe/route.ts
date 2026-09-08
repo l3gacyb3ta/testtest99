@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { normalizeEmail, rateLimited, recordSignup } from "@/lib/signups";
 
+/** Referral codes and UTM values are freeform, untrusted client input — cap
+ * length and drop anything that isn't a string rather than validate a shape. */
+function sanitizeParam(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const value = raw.trim().slice(0, 128);
+  return value.length > 0 ? value : null;
+}
+
 export async function POST(request: Request) {
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -24,11 +32,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const email = normalizeEmail(
-    typeof body === "object" && body !== null
-      ? (body as { email?: unknown }).email
-      : undefined,
-  );
+  const fields = typeof body === "object" && body !== null ? body : {};
+  const email = normalizeEmail((fields as { email?: unknown }).email);
 
   if (!email) {
     return NextResponse.json(
@@ -37,15 +42,31 @@ export async function POST(request: Request) {
     );
   }
 
+  const ref = sanitizeParam((fields as { ref?: unknown }).ref);
+  const utmSource = sanitizeParam((fields as { utmSource?: unknown }).utmSource);
+  const utmMedium = sanitizeParam((fields as { utmMedium?: unknown }).utmMedium);
+  const utmCampaign = sanitizeParam(
+    (fields as { utmCampaign?: unknown }).utmCampaign,
+  );
+
   try {
-    const result = await recordSignup(email, ip);
+    const result = await recordSignup(email, ip, {
+      ref,
+      utmSource,
+      utmMedium,
+      utmCampaign,
+    });
     if (!result.ok) {
       return NextResponse.json(
         { ok: false, error: result.error },
         { status: result.status },
       );
     }
-    return NextResponse.json({ ok: true, duplicate: result.duplicate });
+    return NextResponse.json({
+      ok: true,
+      duplicate: result.duplicate,
+      referralCode: result.referralCode,
+    });
   } catch {
     return NextResponse.json(
       { ok: false, error: "Something broke on our end. Try again shortly." },

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -7,14 +8,18 @@ import path from "node:path";
  * Three sinks, chosen by environment so the same route works locally and in
  * production without a code change:
  *
- *   AIRTABLE_API_KEY +   Write straight to the "Half Life signup" base
+ *   AIRTABLE_API_KEY +   Write straight to the "Half Life" base
  *   AIRTABLE_BASE_ID     (appVGSvooOShD3qtC), table AIRTABLE_TABLE_NAME
- *                        (defaults to "Table 1"), which has `email` and `ip`
+ *                        (defaults to "Table 1"), which has `email`, `ip`,
+ *                        `signed_up_at`, `referral_code`, `referred_by`,
+ *                        `utm_source`, `utm_medium`, and `utm_campaign`
  *                        fields. The token needs data.records:read/write
  *                        scope on that base.
- *   SIGNUP_WEBHOOK_URL   POST { email, source, at } to your list provider,
- *                        form endpoint, Sheets relay, or queue. Set
- *                        SIGNUP_WEBHOOK_TOKEN to send a bearer header.
+ *   SIGNUP_WEBHOOK_URL   POST the full entry (email, ip, source, at,
+ *                        referralCode, ref, utmSource, utmMedium,
+ *                        utmCampaign) to your list provider, form endpoint,
+ *                        Sheets relay, or queue. Set SIGNUP_WEBHOOK_TOKEN to
+ *                        send a bearer header.
  *   (unset)              append JSON Lines to ./data/signups.jsonl — fine for
  *                        local development and any host with a writable disk,
  *                        NOT durable on serverless.
@@ -26,8 +31,16 @@ const STORE_FILE = path.join(STORE_DIR, "signups.jsonl");
 const EMAIL = /^[^\s@,;:<>()[\]\\"]+@[^\s@.,;:<>()[\]\\"]+(\.[^\s@.,;:<>()[\]\\"]+)+$/;
 
 export type SignupResult =
-  | { ok: true; duplicate: boolean }
+  | { ok: true; duplicate: boolean; referralCode: string }
   | { ok: false; error: string; status: number };
+
+export type SignupMeta = {
+  source?: string;
+  ref?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+};
 
 export function normalizeEmail(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
@@ -37,12 +50,41 @@ export function normalizeEmail(raw: unknown): string | null {
   return email;
 }
 
+/**
+ * Deterministic, not stored-and-looked-up: the same email always yields the
+ * same code, so a returning signup gets their referral link back without a
+ * database to remember it in.
+ */
+export function referralCodeFor(email: string): string {
+  return createHash("sha256").update(email).digest("base64url").slice(0, 8);
+}
+
 export async function recordSignup(
   email: string,
   ip = "unknown",
-  source = "landing",
+  meta: SignupMeta = {},
 ): Promise<SignupResult> {
-  const entry = { email, source, at: new Date().toISOString() };
+  const {
+    source = "landing",
+    ref = null,
+    utmSource = null,
+    utmMedium = null,
+    utmCampaign = null,
+  } = meta;
+
+  const referralCode = referralCodeFor(email);
+  const at = new Date().toISOString();
+  const entry = {
+    email,
+    ip,
+    source,
+    at,
+    referralCode,
+    ref,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+  };
 
   const airtableToken = process.env.AIRTABLE_API_KEY;
   const airtableBase = process.env.AIRTABLE_BASE_ID;
@@ -66,6 +108,9 @@ export async function recordSignup(
     });
 
     if (!lookup.ok) {
+      console.error(
+        `Airtable lookup failed: ${lookup.status} ${await lookup.text()}`,
+      );
       return {
         ok: false,
         status: 502,
@@ -75,23 +120,37 @@ export async function recordSignup(
 
     const found = (await lookup.json()) as { records?: unknown[] };
     if ((found.records?.length ?? 0) > 0) {
-      return { ok: true, duplicate: true };
+      return { ok: true, duplicate: true, referralCode };
     }
 
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ fields: { email, ip } }),
+      body: JSON.stringify({
+        fields: {
+          email,
+          ip,
+          signed_up_at: at,
+          referral_code: referralCode,
+          referred_by: ref ?? undefined,
+          utm_source: utmSource ?? undefined,
+          utm_medium: utmMedium ?? undefined,
+          utm_campaign: utmCampaign ?? undefined,
+        },
+      }),
     });
 
     if (!response.ok) {
+      console.error(
+        `Airtable create failed: ${response.status} ${await response.text()}`,
+      );
       return {
         ok: false,
         status: 502,
         error: "We couldn't reach the signup list. Try again in a moment.",
       };
     }
-    return { ok: true, duplicate: false };
+    return { ok: true, duplicate: false, referralCode };
   }
 
   const webhook = process.env.SIGNUP_WEBHOOK_URL;
@@ -114,7 +173,7 @@ export async function recordSignup(
         error: "We couldn't reach the signup list. Try again in a moment.",
       };
     }
-    return { ok: true, duplicate: false };
+    return { ok: true, duplicate: false, referralCode };
   }
 
   await mkdir(STORE_DIR, { recursive: true });
@@ -133,7 +192,7 @@ export async function recordSignup(
     await appendFile(STORE_FILE, `${JSON.stringify(entry)}\n`, "utf8");
   }
 
-  return { ok: true, duplicate };
+  return { ok: true, duplicate, referralCode };
 }
 
 /* ── Coarse per-instance rate limit ──────────────────────────────────────
