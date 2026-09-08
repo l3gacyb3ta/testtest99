@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 
 import Image from "next/image";
+
+import bgArt from "../../public/art/bg.png";
+import flagArt from "../../public/art/hackclub-flag.svg";
 import SignupForm from "@/components/signup-form";
 import Wordmark from "@/components/wordmark";
 import { BRAND } from "@/lib/content";
@@ -184,6 +187,7 @@ export default function Hero() {
       className="relative z-10 isolate"
     >
       <HeroArt />
+      <HackClubFlag />
 
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* The fold: exactly one viewport, which is what makes "below the fold"
@@ -245,20 +249,40 @@ export default function Hero() {
               balance, and an explicit measure narrower than the line would only
               give the text something to overflow. As a centred flex item it
               takes its own content width. */}
-          <p
-            className="font-tagline whitespace-nowrap text-hl-paper"
-            style={{
-              marginTop: onPlateU(27),
-              fontSize: u(32.8),
-              lineHeight: 1.1,
-            }}
-          >
-            {BRAND.tagline}
-          </p>
+          {/* The tagline now travels inside the form's own box, so the two
+              things the hero is actually asking of a visitor — read this, then
+              type here — are one object rather than two stacked ones. The
+              27-unit gap the comp put under the wordmark moves to the box; the
+              49 that used to separate the line from the field is gone, since
+              the point of grouping them is that they no longer need it. */}
+          {/* No width. The comp's 866 was the field's own measure, and once
+              the tagline moved inside the box that width became the box's too
+              — 596 comp px of box for a line that needs 830, so a nowrap
+              sentence hung 269 out of both sides of the teal.
 
+              Sized by its content instead: the plate is a flex column with
+              `items-center`, so with no width the box shrinks to its widest
+              child and is centred by the same rule that centres everything
+              else on the plate. That child is the tagline, which lands the box
+              on 865 against the plate's own 864 — the comp's column, arrived
+              at rather than typed. The field spans the box under it.
+
+              It is also the more robust way round: the box can no longer clip
+              the line, because the line is what sets the box. The 17 units of
+              slack the comp left either side were there to absorb a fallback
+              face missing Ubuntu's advances by up to 3.9%; now a wider face
+              simply takes the box with it. */}
           <SignupForm
-            style={{ marginTop: onPlateU(49), width: onPlateU(866) }}
+            style={{ marginTop: onPlateU(27) }}
             fontSize={onPlateU(30)}
+            intro={
+              <p
+                className="font-tagline whitespace-nowrap text-hl-paper"
+                style={{ fontSize: u(32.8), lineHeight: 1.1 }}
+              >
+                {BRAND.tagline}
+              </p>
+            }
           />
         </div>
 
@@ -327,15 +351,20 @@ export default function Hero() {
               fontSize="clamp(3.2rem, 15vw, 7.5rem)"
               className="w-full"
             />
-            <p
-              className="mt-4 max-w-[34ch] font-tagline text-hl-paper"
-              style={{ fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)", lineHeight: 1.25 }}
-            >
-              {BRAND.tagline}
-            </p>
             <SignupForm
-              className="mt-6"
+              className="mt-4"
               fontSize="clamp(1rem, 4.2vw, 1.375rem)"
+              intro={
+                <p
+                  className="max-w-[34ch] font-tagline text-hl-paper"
+                  style={{
+                    fontSize: "clamp(1.05rem, 4.1vw, 1.5rem)",
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {BRAND.tagline}
+                </p>
+              }
             />
           </div>
 
@@ -446,6 +475,37 @@ function ScrollCue({
 }
 
 /**
+ * The Hack Club flag, hung from the top-left corner.
+ *
+ * Flush to the corner rather than inset: the artwork is drawn as a banner
+ * running off its own left edge, so any gap reads as a mistake rather than as
+ * margin. It scales between 104 and 160px — small enough to stay a mark on the
+ * painting rather than a second piece of art competing with it.
+ *
+ * `absolute`, not `fixed`. The fixed treatment is the more familiar one, but
+ * this page scrolls through four rooms with their own grounds and a flag
+ * riding over the carousel and the FAQ would be an overlay rather than a
+ * corner. It belongs to the hero, so it is positioned in the hero.
+ *
+ * A link, because that is what the flag is — the mark that says who made this,
+ * and it is the only thing on the page that says so above the fold. `alt` does
+ * the naming: the image is the link's whole content, so an empty one would
+ * leave it with no accessible name at all.
+ */
+function HackClubFlag() {
+  return (
+    <a
+      href="https://hackclub.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="absolute top-1 left-1 z-20 w-[clamp(6.5rem,11vw,10rem)]"
+    >
+      <Image src={flagArt} alt="Hack Club" priority className="w-full" />
+    </a>
+  );
+}
+
+/**
  * One painted scene across the top of the hero, shown whole.
  *
  * bg.png is 1920x1080 and it is composed, not tileable: piping and foliage
@@ -494,7 +554,7 @@ function HeroArt() {
             at the size of its box by a rule worth stating rather than leaning
             on silently. `-webkit-` alongside, for Safari before 15.4. */}
         <Image
-          src="/art/bg.png"
+          src={bgArt}
           alt=""
           fill
           priority

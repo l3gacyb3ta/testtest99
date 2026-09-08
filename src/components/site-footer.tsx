@@ -18,8 +18,7 @@ export default function SiteFooter() {
               {"made with <3 by teenagers at Hack Club"}
             </p>
             <p className="mt-4 text-sm leading-relaxed text-hl-paper-soft">
-              Hack Club is a 501(c)(3) nonprofit — EIN 81-2908499. Half Life is
-              free to join for anyone aged 13&ndash;18.
+              Hack Club is a 501(c)(3) nonprofit (EIN 81-2908499) that helps teenagers around the world build technical projects.
             </p>
           </div>
 
@@ -47,12 +46,6 @@ export default function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-16 flex flex-col gap-3 border-t border-hl-paper/15 pt-7 text-sm text-hl-paper-soft min-[640px]:flex-row min-[640px]:items-center min-[640px]:justify-between">
-          <p>&copy; {year} Hack Club</p>
-          <p>
-            Prizes ship worldwide. Customs and import fees are not covered.
-          </p>
-        </div>
       </div>
     </footer>
   );

@@ -30,7 +30,7 @@ export default function Page() {
 
             The sections below keep their own grounds: the carousel and the FAQ
             are different rooms and are supposed to read as such. */}
-        <div className="hl-ground-wave bg-hl-blue-deep">
+        <div className="bg-hl-blue-deep">
           <Hero />
           <Process />
         </div>

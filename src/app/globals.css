@@ -5,11 +5,16 @@
    Palette is the Figma "color scheme" frame (node 275:222), verbatim.
    ───────────────────────────────────────────────────────────── */
 @theme {
-  --font-display: var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
+  /* Ubuntu, the same face the tagline sets. Two role tokens, one family: the
+     roles are still worth naming separately — a heading and a tagline are
+     different jobs and may yet want different treatment — but the page is down
+     to two families and this is one of them. It was Urbanist, which is no
+     longer loaded. */
+  --font-display: var(--font-ubuntu), ui-sans-serif, system-ui, sans-serif;
   /* The comp's brush face. Now the wordmark and the footer's column labels
      only: "how does it work?" moved to the display face with the other
      headers, so the brush is the page's signature rather than its voice. */
-  --font-hand: var(--font-masterpiece), var(--font-urbanist), ui-sans-serif,
+  --font-hand: var(--font-masterpiece), var(--font-ubuntu), ui-sans-serif,
     system-ui, sans-serif;
   --font-body: var(--font-open-sans), ui-sans-serif, system-ui, sans-serif;
   /* The hero tagline alone. Named for its role rather than its face, like the
@@ -20,8 +25,8 @@
   --color-hl-paper: #ededed;
   --color-hl-cyan: #8ed3dc;
   --color-hl-blue: #88BCDF;
-  --color-hl-blue-deep: #0D3478;
-  --color-hl-blue-pale: #EBF7FF;
+  --color-hl-blue-deep: #0E86B9;
+  --color-hl-blue-pale: #9AB5D8;
   --color-hl-periwinkle: #a39bd6;
   /**
    * The page's ground from the hero through "how does it work?".
@@ -283,36 +288,46 @@ body {
    an opacity layer, so each is a background-image on the section
    itself: no extra element, and no stacking context to arrange.
    ───────────────────────────────────────────────────────────── */
-.hl-ground-wave {
-  /* The supplied pattern, in the band's own colour: overlapping arcs on a
-     70x8 tile, turned 60 degrees and doubled. Two changes to what came in.
-     The stroke was #ecc94b, a yellow this page does not have and which would
-     have read as the carousel's; it is cyan, which is what the process band
-     already draws its connector bands and week marks in. And the pattern's
-     own opaque #2b2b31 ground rect is gone, so the steel underneath shows
-     through and stays the one place that colour is defined.
+.hl-ground-tile {
+  /* The how-it-works ground: `public/art/tile.png`, tiled.
 
-     This is no longer the process section's own texture. It is set on the box
-     that carries the hero and the process section together, so the arcs run
-     unbroken from inside the painting's dissolve down through the programme
-     — one lattice with one phase origin, which is the only way it can be
-     continuous. See `page.tsx` for why two boxes could never be.
+     Both of the things asked of the artwork happen here rather than to the
+     file. It used to be the other way round — a script desaturated the source
+     and multiplied its alpha, and the page loaded the result — which meant the
+     served image was a derived file that could fall out of step with the one
+     being edited, and twice did: once when it was deleted alongside its source
+     and the ground vanished, once when a hardcoded aspect squashed a
+     replacement to 73% of its height.
 
-     The hex is written out because a data URI is a separate document: no
-     custom property reaches inside it, so `--color-hl-cyan` cannot be read
-     here and this copy has to be kept in step with it by hand.
+     There is no derived file now. Drop any tile in at that path, in whatever
+     colours it was drawn, and the two declarations below do the rest — so both
+     values are live, tunable in this file, and the picture on disk is the
+     picture the browser fetches. */
+  position: relative;
+}
 
-     Size and repeat are pinned rather than left to the rule that an image
-     with no intrinsic dimensions is drawn at the size of its box. That rule
-     is what makes this work, but leaning on it silently means a browser that
-     reached for the 300x150 default would tile a rotated pattern and seam it.
-     With no viewBox there is nothing to scale from, so the SVG's user units
-     stay CSS pixels and the arcs hold their 140x16 at any height at all —
-     which is what lets this box grow to span two sections without the texture
-     coarsening. */
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='a' width='70' height='8' patternTransform='rotate(60)scale(2)' patternUnits='userSpaceOnUse'%3E%3Cpath fill='none' stroke='%23EBF7FF' stroke-opacity='.03' stroke-width='1.5' d='M-.02 22c8.373 0 11.938-4.695 16.32-9.662C20.785 7.258 25.728 2 35 2s14.215 5.258 18.7 10.338C58.082 17.305 61.647 22 70.02 22M-.02 14.002C8.353 14 11.918 9.306 16.3 4.339 20.785-.742 25.728-6 35-6S49.215-.742 53.7 4.339c4.382 4.967 7.947 9.661 16.32 9.664M70 6.004c-8.373-.001-11.918-4.698-16.3-9.665C49.215-8.742 44.272-14 35-14S20.785-8.742 16.3-3.661C11.918 1.306 8.353 6-.02 6.002'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='800%25' height='800%25' fill='url(%23a)'/%3E%3C/svg%3E");
+.hl-ground-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* Behind the section's own content, in front of its background. `isolate` on
+     the section keeps this contained, so a negative index cannot escape it. */
+  z-index: -1;
+  pointer-events: none;
+
+  background-image: url("/art/tile.png");
+  background-repeat: repeat;
+  /* Width only; the height follows the file's own proportions, so a
+     replacement of any shape tiles undistorted. */
+  background-size: 500px auto;
+
+  /* Black and white, and quiet. A pseudo-element is what buys these: `filter`
+     and `opacity` apply to an element, never to a `background-image`, so on
+     the section itself they would have desaturated and faded its text along
+     with the ground. Nothing else lives in here, so both land on the tile
+     alone. It costs no DOM node and nothing in the accessibility tree. */
+  filter: grayscale(1);
+  opacity: 0.1;
 }
 
 .hl-ground-hex {

@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 
 type Status = "idle" | "pending" | "done" | "error";
@@ -35,10 +36,24 @@ export default function SignupForm({
   className = "",
   fontSize,
   style,
+  intro,
 }: {
   className?: string;
   fontSize?: string;
   style?: CSSProperties;
+  /**
+   * Anything that belongs inside the field's own box — in practice the hero's
+   * tagline.
+   *
+   * It is a slot here rather than a sibling in the hero because of where the
+   * box has to stop. The line under the field is the eligibility note, and it
+   * has to stay outside: it is a footnote about who may sign up, not part of
+   * the offer, and boxing it with the promise would read as fine print on a
+   * coupon. The note lives in this component, so the only way to draw a box
+   * around the caption and the field but not around it is for the box to be
+   * drawn in here too.
+   */
+  intro?: ReactNode;
 }) {
   const id = useId();
   const [status, setStatus] = useState<Status>("idle");
@@ -160,131 +175,151 @@ export default function SignupForm({
 
   return (
     <div className={className} style={{ ...style, fontSize }}>
-      {/* The row is the positioning context for the confirmation plate, so
-          the plate is exactly the field's footprint and nothing below it ever
-          moves. overflow-hidden keeps the wipe's cut edge crisp. */}
-      <div className="relative overflow-hidden">
-        <form onSubmit={onSubmit} noValidate className="flex w-full">
-          <label htmlFor={id} className="sr-only">
-            Email address
-          </label>
-          {/* The field is a slot cut into the hero plate, not a control
-              sitting on it: ink ground, one soft cyan edge, and an input that
-              carries no surface of its own — no background, no border, no ring
-              of its own, because the slot is the control. The cyan caret is
-              the only accent, and it is only there while someone is typing.
+      {/* The box: the promise and the field it is asking you to fill, grouped,
+          with the eligibility note left outside it below.
 
-              It briefly also carried the image slot's registration ticks, its
-              measured grid and an uppercase legend. At 33px tall none of that
-              resolved: the grid ran three cells deep and the ticks were 8px
-              specks, so it read as detail for its own sake rather than as an
-              instrument. One surface, one boundary, one accent does the job
-              the five of them were failing to. */}
-          <div
-            className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${
-              pending ? "opacity-70" : ""
-            }`}
-            style={{ height: "2.1667em" }}
-          >
-            <input
-              ref={inputRef}
-              id={id}
-              name="email"
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              required
-              disabled={pending}
-              placeholder="Email address"
-              // Always described by the line below: the eligibility note when
-              // there is nothing wrong, the error when there is. Pointing at
-              // it only on error meant the note was on screen but not in the
-              // accessibility tree.
-              aria-describedby={`${id}-msg`}
-              aria-invalid={status === "error" || undefined}
-              onFocus={() => {
-                // Reaching the field is the clearest signal the confirmation has
-                // been read; clear the plate ahead of its own timer.
-                if (confirming && !leaving) dismiss();
-              }}
-              onChange={() => {
-                if (confirming && !leaving) dismiss();
-                if (status === "error") {
-                  setStatus("idle");
-                  setMessage("");
-                }
-              }}
-              // Display face, not the body one it inherited. The control is
-              // one object — a slot cut into the plate and the word beside it
-              // — and "sign up!" is set in the display face, so the field's
-              // own type belongs to the same voice. Set on the input rather
-              // than scoped to `::placeholder`, so the address someone types
-              // does not change face out from under them mid-word.
-              className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
-            />
+          `hl-teal-deep`, and the two contrasts that decided it. The tagline is
+          paper and reads 6.09:1 here against the 3.50:1 it had on the hero
+          plate, so the box is the better ground for it. The field is solid
+          ink and reads only 2.11:1 against this — it would have dissolved into
+          the box — which is why the edge below is back.
 
-            {/* Edge at 55% rather than the slot component's 45%: on ink that
-                is 3.71:1 where 45% is 2.96, and this boundary belongs to a
-                control rather than to a picture. */}
-            <span
-              aria-hidden
-              className="hl-field-edge pointer-events-none absolute inset-0"
-            />
-          </div>
+          Radius and padding are `em`, so they are set by the `fontSize` each
+          layout hands this component and the box keeps its proportions from a
+          phone to the comp stage without a second set of numbers. */}
+      <div
+        className={
+          intro ? "rounded-md bg-hl-ink pt-[1rem] pb-[1rem] p-[2rem] mb-[1rem]" : ""
+        }
+      >
+        {intro ? <div className="mb-[0.7em]">{intro}</div> : null}
 
-          {/* The label, not a glyph. A check meant "done" on a control whose
-              job is "start" — the one place on the page where the tick is
-              honest is the confirmation that wipes over the field once the
-              address is in, which is where it still lives.
+        {/* The row is the positioning context for the confirmation plate, so
+            the plate is exactly the field's footprint and nothing below it ever
+            moves. overflow-hidden keeps the wipe's cut edge crisp. */}
+        <div className="relative overflow-hidden">
+          <form onSubmit={onSubmit} noValidate className="flex w-full">
+            <label htmlFor={id} className="sr-only">
+              Email address
+            </label>
+            {/* The field is a slot cut into the hero plate, not a control
+                sitting on it: ink ground, one soft cyan edge, and an input that
+                carries no surface of its own — no background, no border, no ring
+                of its own, because the slot is the control. The cyan caret is
+                the only accent, and it is only there while someone is typing.
 
-              Padding rather than a fixed 2.8em width, so the button is as
-              wide as its word: 5.34em, which the field gives up out of its
-              own flex-1. At the narrowest phone that leaves the field 163px
-              against the 125px its placeholder needs.
-
-              Label and spinner share one grid cell, so the label reserves the
-              button's width even while hidden and a submit cannot resize the
-              row under the pointer. `invisible` and not `opacity-0` because
-              visibility:hidden also takes the label out of the accessibility
-              tree, which lets the pending name be the only one there. */}
-          <button
-            type="submit"
-            disabled={pending}
-            className="grid shrink-0 place-items-center bg-hl-cyan text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue"
-            style={{ height: "2.1667em", paddingInline: "0.9em" }}
-          >
-            <span
-              className={`[grid-area:1/1] whitespace-nowrap font-display font-bold leading-none ${
-                pending ? "invisible" : ""
+                It briefly also carried the image slot's registration ticks, its
+                measured grid and an uppercase legend. At 33px tall none of that
+                resolved: the grid ran three cells deep and the ticks were 8px
+                specks, so it read as detail for its own sake rather than as an
+                instrument. One surface, one boundary, one accent does the job
+                the five of them were failing to. */}
+            <div
+              className={`hl-field relative min-w-0 flex-1 bg-hl-ink ${
+                pending ? "opacity-70" : ""
               }`}
-              style={{ fontSize: "0.85em" }}
+              style={{ height: "2.1667em" }}
             >
-              sign up!
-            </span>
-            {pending ? (
-              <>
-                <Spinner className="h-[0.9em] w-[0.9em] animate-spin [grid-area:1/1]" />
-                <span className="sr-only">Signing you up</span>
-              </>
-            ) : null}
-          </button>
-        </form>
+              <input
+                ref={inputRef}
+                id={id}
+                name="email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                required
+                disabled={pending}
+                placeholder="Email address"
+                // Always described by the line below: the eligibility note when
+                // there is nothing wrong, the error when there is. Pointing at
+                // it only on error meant the note was on screen but not in the
+                // accessibility tree.
+                aria-describedby={`${id}-msg`}
+                aria-invalid={status === "error" || undefined}
+                onFocus={() => {
+                  // Reaching the field is the clearest signal the confirmation has
+                  // been read; clear the plate ahead of its own timer.
+                  if (confirming && !leaving) dismiss();
+                }}
+                onChange={() => {
+                  if (confirming && !leaving) dismiss();
+                  if (status === "error") {
+                    setStatus("idle");
+                    setMessage("");
+                  }
+                }}
+                // Display face, not the body one it inherited. The control is
+                // one object — a slot cut into the plate and the word beside it
+                // — and "sign up!" is set in the display face, so the field's
+                // own type belongs to the same voice. Set on the input rather
+                // than scoped to `::placeholder`, so the address someone types
+                // does not change face out from under them mid-word.
+                className="h-full w-full bg-transparent px-[0.667em] font-display text-hl-paper caret-hl-cyan outline-none placeholder:text-hl-paper-soft"
+              />
 
-        {/* Set at 0.75em so the full sentence holds one line on the comp stage
-            and, where it wraps on a narrow phone, two lines still sit inside
-            the field's own height. */}
-        {confirming ? (
-          <p
-            aria-hidden
-            className={`pointer-events-none absolute inset-0 flex items-center gap-[0.6em] bg-hl-cyan px-[0.8em] font-semibold leading-tight text-hl-ink ${
-              leaving ? "hl-confirm-out" : "hl-confirm-in"
-            }`}
-            style={{ fontSize: "0.75em" }}
-          >
-            <Check draw className="h-[0.95em] w-[0.98em] shrink-0" />
-            <span>{message}</span>
-          </p>
-        ) : null}
+              {/* Edge at 55% rather than the slot component's 45%: on ink that
+                  is 3.71:1 where 45% is 2.96, and this boundary belongs to a
+                  control rather than to a picture. */}
+              <span
+                aria-hidden
+                className="hl-field-edge pointer-events-none absolute inset-0 border-2 border-hl-cyan"
+              />
+            </div>
+
+            {/* The label, not a glyph. A check meant "done" on a control whose
+                job is "start" — the one place on the page where the tick is
+                honest is the confirmation that wipes over the field once the
+                address is in, which is where it still lives.
+
+                Padding rather than a fixed 2.8em width, so the button is as
+                wide as its word: 5.34em, which the field gives up out of its
+                own flex-1. At the narrowest phone that leaves the field 163px
+                against the 125px its placeholder needs.
+
+                Label and spinner share one grid cell, so the label reserves the
+                button's width even while hidden and a submit cannot resize the
+                row under the pointer. `invisible` and not `opacity-0` because
+                visibility:hidden also takes the label out of the accessibility
+                tree, which lets the pending name be the only one there. */}
+            <button
+              type="submit"
+              disabled={pending}
+              className="grid shrink-0 place-items-center bg-hl-cyan text-hl-ink transition-colors hover:bg-white focus-visible:bg-white disabled:cursor-progress disabled:bg-hl-blue"
+              style={{ height: "2.1667em", paddingInline: "0.9em" }}
+            >
+              <span
+                className={`[grid-area:1/1] whitespace-nowrap font-display font-bold leading-none ${
+                  pending ? "invisible" : ""
+                }`}
+                style={{ fontSize: "0.85em" }}
+              >
+                sign up!
+              </span>
+              {pending ? (
+                <>
+                  <Spinner className="h-[0.9em] w-[0.9em] animate-spin [grid-area:1/1]" />
+                  <span className="sr-only">Signing you up</span>
+                </>
+              ) : null}
+            </button>
+          </form>
+
+          {/* Set at 0.75em so the full sentence holds one line on the comp stage
+              and, where it wraps on a narrow phone, two lines still sit inside
+              the field's own height. */}
+          {confirming ? (
+            <p
+              aria-hidden
+              className={`pointer-events-none absolute inset-0 flex items-center gap-[0.6em] bg-hl-cyan px-[0.8em] font-semibold leading-tight text-hl-ink ${
+                leaving ? "hl-confirm-out" : "hl-confirm-in"
+              }`}
+              style={{ fontSize: "0.75em" }}
+            >
+              <Check draw className="h-[0.95em] w-[0.98em] shrink-0" />
+              <span>{message}</span>
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {/* One line under the field, carrying the eligibility note until there

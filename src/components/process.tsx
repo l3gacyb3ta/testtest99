@@ -191,7 +191,7 @@ export default function Process() {
     <section
       id="how-it-works"
       aria-label="How Half Life works"
-      className="relative z-0 isolate min-[1180px]:pb-[10vh]"
+      className="hl-ground-tile relative z-0 isolate min-[1180px]:pb-[10vh]"
     >
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* Every child here is absolutely positioned, so the stage has no
@@ -276,7 +276,7 @@ export default function Process() {
             sizes={STEP_ART_SIZES.stage}
           />
           <p
-            className="absolute whitespace-nowrap font-semibold"
+            className="absolute whitespace-nowrap font-semibold opacity-60"
             style={{ ...at(323, 353), fontSize: u(20), lineHeight: 1 }}
           >
             {funding.caption}

@@ -79,7 +79,7 @@ export default function Faq() {
           {FAQS.map((faq) => (
             <div
               key={faq.q}
-              className="flex flex-col bg-hl-blue-deep text-hl-blue-pale rounded-md"
+              className="flex flex-col bg-hl-ink text-hl-blue rounded-md"
               style={{ padding: FIELD.padding }}
             >
               <dt

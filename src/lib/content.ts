@@ -3,7 +3,28 @@
  * (Figma "landing page (claude)", node 275:8). Nothing here is invented:
  * program claims — dates, prize list, funding cap, community size —
  * are the comp's own.
+ *
+ * Artwork is imported rather than named by path. A string path is a promise
+ * the build cannot check and the cache cannot see through: `/art/build.png`
+ * stays the same URL when the file behind it changes, so Next's optimizer goes
+ * on serving what it cached under that key — four hours by default — and a
+ * replaced picture does not appear. An import is resolved at build time, so a
+ * missing file is a build error rather than a 404 nobody notices, and the URL
+ * carries a hash of the file's own bytes: replace the art and the URL changes
+ * with it, which invalidates every cache between here and the browser without
+ * anyone having to remember to clear one.
  */
+import type { StaticImageData } from "next/image";
+
+import buildArt from "../../public/art/build.png";
+import getFundingArt from "../../public/art/getfunding.png";
+import prizesArt from "../../public/art/prizes.png";
+import allWeeksArt from "../../public/art/weeks/allweeks.png";
+import flightControllerPhoto from "../../public/projects/flightcontroller.png";
+import hexapodPhoto from "../../public/projects/hexapod.png";
+import icepiPhoto from "../../public/projects/icepi.png";
+import jukeboxPhoto from "../../public/projects/jukebox.png";
+import macropadPhoto from "../../public/projects/macropad.png";
 
 export const BRAND = {
   name: "Half Life",
@@ -14,7 +35,7 @@ export const BRAND = {
    * field wants settled before they type. Lowercase to match the tagline
    * above it; en dash because 13-18 is a range.
    */
-  eligibility: "teens 13–18 only. no experience necessary",
+  eligibility: "teens 13-18. no experience necessary. free to participate.",
 } as const;
 
 export type DesignWeek = {
@@ -57,7 +78,7 @@ export type Step = {
    * while a step is still waiting for its picture. `slot` stays on a step that
    * has its art — it is the in-source record of the footprint the comp drew.
    */
-  art?: string;
+  art?: StaticImageData;
   /** Slot the user drops a real photo into. */
   slot?: { label: string; ratio: string };
   caption?: string;
@@ -67,25 +88,25 @@ export const STEPS: Step[] = [
   {
     id: "design",
     title: "spend 5 weeks designing 5 projects",
-    art: "/art/weeks/allweeks.png",
+    art: allWeeksArt,
   },
   {
     id: "funding",
     title: "get funding and order your parts!",
-    art: "/art/getfunding.png",
+    art: getFundingArt,
     slot: { label: "order flow", ratio: "736 × 155" },
     caption: "up to $100 per project!",
   },
   {
     id: "build",
     title: "then spend 5 weeks building your projects!",
-    art: "/art/build.png",
+    art: buildArt,
     slot: { label: "build photo", ratio: "736 × 269" },
   },
   {
     id: "printer",
     title: "get a 3D printer!",
-    art: "/art/prizes.png",
+    art: prizesArt,
     slot: { label: "prize lineup", ratio: "736 × 269" },
   },
 ];
@@ -115,7 +136,7 @@ export type BuildCard = {
    * card without one falls back to the drawn slot, so the belt fills up one
    * project at a time instead of needing the whole set before it renders.
    */
-  photo?: string;
+  photo?: StaticImageData;
   /**
    * ── PUT THE GITHUB LINK HERE ──────────────────────────────────────────
    * Full URL to the project's repo, e.g.
@@ -133,7 +154,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "hexapod",
     label: "Hexapod robot",
     credit: "by Joshua, 18, from Quebec",
-    photo: "/projects/hexapod.png",
+    photo: hexapodPhoto,
     repo: "https://github.com/Josh4minee/HEX-B12.V1",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -141,7 +162,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "jukebox",
     label: "Minecraft Jukebox",
     credit: "by Dani, 17, from New York",
-    photo: "/projects/jukebox.png",
+    photo: jukeboxPhoto,
     repo: "https://github.com/danieliscrazy/Jukebox",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -149,7 +170,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "macropad",
     label: "12-key Macropad",
     credit: "by Nirvaan, 14, from New Jersey",
-    photo: "/projects/macropad.png",
+    photo: macropadPhoto,
     repo: "https://github.com/OakTreeWC/12KEMPV2.1",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -157,7 +178,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "flightcontroller",
     label: "Rocket Flight Controller",
     credit: "by Archit, 15, from Australia",
-    photo: "/projects/flightcontroller.png",
+    photo: flightControllerPhoto,
     repo: "https://github.com/codinga593/IRIS",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -165,7 +186,7 @@ export const BUILD_CARDS: BuildCard[] = [
     id: "icepi",
     label: "Icepi Zero FPGA Devboard",
     credit: "by Cyao, 18, from France",
-    photo: "/projects/icepi.png",
+    photo: icepiPhoto,
     repo: "https://github.com/cheyao/icepi-zero",
     slot: { label: "project photo", ratio: "329 x 377" },
   },
@@ -188,12 +209,12 @@ export const FAQS: Faq[] = [
     a: "Yep! Hack Club programs are free to participate in. We provide funding for hardware projects and all prizes (like 3D printers) are free! We do not cover customs costs.",
   },
   {
-    q: "What's Hack Club?",
-    a: "Hack Club is a 501(c)(3) nonprofit that helps teenagers around the world build technical projects and go on awesome adventures!",
+    q: "When does this start?",
+    a: "Half Life is running for 10 weeks! September 14th to 25th will be warmup weeks (where you can submit any hardware project and get funding from up $50), and then PCB Week will start!",
   },
   {
-    q: "How long does this last?",
-    a: "Half Life is running for 10 weeks! September 14th to 25th will be warmup weeks, and then PCB Week will start!",
+    q: "What's Hack Club?",
+    a: "Hack Club is a 501(c)(3) nonprofit that helps teenagers around the world build technical projects and go on awesome adventures!",
   },
   {
     q: "What do I get?",
@@ -239,7 +260,6 @@ export const FOOTER_COLUMNS = [
     heading: "Community",
     links: [
       { label: "Slack", href: "https://hackclub.com/slack" },
-      { label: "Scrapbook", href: "https://scrapbook.hackclub.com" },
       { label: "GitHub", href: "https://github.com/hackclub" },
       { label: "Conduct", href: "https://hackclub.com/conduct" },
     ],

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Open_Sans, Ubuntu, Urbanist } from "next/font/google";
+import { Open_Sans, Ubuntu } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -20,12 +20,6 @@ const masterpiece = localFont({
   display: "swap",
 });
 
-const urbanist = Urbanist({
-  subsets: ["latin"],
-  variable: "--font-urbanist",
-  display: "swap",
-});
-
 const openSans = Open_Sans({
   subsets: ["latin"],
   variable: "--font-open-sans",
@@ -33,16 +27,24 @@ const openSans = Open_Sans({
 });
 
 /**
- * The hero tagline's face, and the only line on the page set in it.
+ * Every heading and every line of display type on the page, and the tagline
+ * it was originally brought in for.
  *
- * Unlike the two above, Ubuntu is not a variable font — Google ships it as
- * static 300/400/500/700 — so `weight` is mandatory here. Only the 400 the
- * tagline actually sets is requested: each static weight is its own file, and
- * three unused ones would be three downloads for nothing.
+ * It replaced Urbanist, which was the third family here and is now gone: the
+ * page is Ubuntu and Open Sans, with the brush face kept for the one word it
+ * is doing identity on.
+ *
+ * Ubuntu is not a variable font — Google ships it as static 300/400/500/700 —
+ * so `weight` is mandatory and each one is its own download. Two are asked
+ * for, and they are exactly the two the page sets: 400 for the tagline and
+ * the email field, 700 for the sixteen `font-bold` headings. Nothing here
+ * asks for 600 or 800, so nothing is synthesised and nothing is fetched to sit
+ * unused — every `font-semibold` on the page is on a body-face element, and
+ * Open Sans is variable and covers it.
  */
 const ubuntu = Ubuntu({
   subsets: ["latin"],
-  weight: ["400"],
+  weight: ["400", "700"],
   variable: "--font-ubuntu",
   display: "swap",
 });
@@ -75,7 +77,7 @@ every program page ships.
 OWN-WORLD: Palette is the Figma "color scheme" frame verbatim — ink #31222c
 ground, paper #ededed panels, cyan #8ed3dc traces, deep blue #397cbe hero
 block, periwinkle #a39bd6 and lavender #c9c7ec bands. Masterpiece brush on the
-wordmark and footer labels, Urbanist display between, Open Sans body. Square corners, no shadows: flat plates and thick
+wordmark, Ubuntu display and tagline, Open Sans body. Square corners, no shadows: flat plates and thick
 tapering vector bands, like control-panel silkscreen.
 
 STORY: A 13-18 year old sees the offer and the prize in one viewport, drops an
@@ -97,7 +99,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${openSans.variable} ${urbanist.variable} ${ubuntu.variable} ${masterpiece.variable} h-full antialiased`}
+      className={`${openSans.variable} ${ubuntu.variable} ${masterpiece.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-hl-ink text-hl-paper">
         <div hidden dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} />

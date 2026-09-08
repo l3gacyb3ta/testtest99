@@ -257,7 +257,7 @@ export default function BuildCarousel() {
           className="text-center font-display font-bold tracking-[-0.02em] text-hl-blue-deep"
           style={{ fontSize: "clamp(2rem, 3.472cqw, 3.75rem)" }}
         >
-          What can I build?
+          What have others built?
         </h2>
       </div>
 

@@ -1,7 +1,11 @@
+import type { StaticImageData } from "next/image";
+
 import Image from "next/image";
+
+import logoArt from "../../public/art/logo.svg";
 import { BRAND } from "@/lib/content";
 
-const LOGO_SRC: string | null = "/art/logo.svg";
+const LOGO_SRC: StaticImageData | null = logoArt;
 
 /**
  * The box the artwork is laid into — not the file's own aspect.
