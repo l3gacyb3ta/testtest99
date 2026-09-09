@@ -19,6 +19,7 @@ src/app/page.tsx              section composition
 src/app/layout.tsx            fonts, metadata, direction contract
 src/app/globals.css           palette tokens, .stage, reveal states
 src/app/api/subscribe/        email capture endpoint
+src/app/api/slack/            channel auto-invite + #halflife-help ticket bot
 src/lib/content.ts            every word and fact on the page
 src/lib/stage.ts              comp-pixel -> container-unit helpers
 src/lib/signups.ts            signup sinks + rate limit
@@ -73,7 +74,37 @@ The file sink is fine for local development and any host with a writable disk.
 provider before launch. The rate limit is per-instance and coarse; put Vercel
 BotID or a WAF rule in front of the route for real abuse protection.
 
-### 4. Facts to confirm before launch
+### 4. The Slack bot
+
+`src/app/api/slack/events/` and `src/app/api/slack/interactions/` back a bot
+that:
+
+- invites anyone who joins the main Half Life channel into
+  `#halflife-bulletin` and `#halflife-help`
+- posts every new top-level message in `#halflife-help` into a private
+  tickets channel with a **Mark as helped** button, which resolves the
+  ticket and drops a thread reply back in `#halflife-help`
+
+There's no database — the button's own `value` carries the pointer back to
+the original message, and the tickets-channel message it lives on is edited
+in place when clicked.
+
+Create the app from `slack-app-manifest.yml` at the repo root (see the
+comments in that file for the exact steps), then set:
+
+| Env                          | What                                                      |
+| ----------------------------- | ---------------------------------------------------------- |
+| `SLACK_BOT_TOKEN`             | Bot User OAuth Token (`xoxb-…`)                            |
+| `SLACK_SIGNING_SECRET`        | Basic Information → Signing Secret, verifies both routes  |
+| `SLACK_MAIN_CHANNEL_ID`       | channel that triggers the auto-invite                      |
+| `SLACK_BULLETIN_CHANNEL_ID`   | `#halflife-bulletin`'s channel ID                          |
+| `SLACK_HELP_CHANNEL_ID`       | `#halflife-help`'s channel ID                               |
+| `SLACK_TICKETS_CHANNEL_ID`    | private channel new/resolved tickets get posted to         |
+
+The bot needs to be a member of all four channels — invite it manually after
+installing.
+
+### 5. Facts to confirm before launch
 
 - The carousel credits are the comp's placeholder credit ("by Meghana, 17, from
   Ohio") repeated across five cards — replace with the real makers.
