@@ -167,7 +167,6 @@ export async function recordSignup(
         fields: {
           email,
           ip,
-          "Loops - HalfLifeSignUpAt": at,
           referral_code: referralCode,
           referred_by: ref ?? undefined,
           utm_source: utmSource ?? undefined,
