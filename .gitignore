@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but a public repo needs the template committed. The README documents
+# eight required vars; without this a contributor has no list of their names.
+!.env.example
 
 # vercel
 .vercel
@@ -41,4 +44,52 @@ yarn-error.log*
 next-env.d.ts
 
 # signup capture (local dev store)
+# Real signups land here when SIGNUP_WEBHOOK_URL is unset — email addresses,
+# so this must stay ignored whatever else changes.
 /data
+
+# local agent + editor config
+# .claude/settings.local.json was only ever ignored by one machine's global
+# gitignore, which does nothing for anyone else who clones this.
+.claude/settings.local.json
+.claude/settings.local.json.*
+.claude/*.local.json
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# os cruft
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# credentials beyond .env — nothing here today, and nothing should arrive
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa*
+*.jks
+*.keystore
+
+# tool caches
+.turbo/
+.swc/
+.eslintcache
+.cache/
+*.log
+
+# one lockfile, and it is pnpm's. These are guards, not preferences: npm or
+# yarn run in this repo will silently produce a second lockfile that resolves
+# differently from pnpm-lock.yaml.
+package-lock.json
+yarn.lock
+.pnpm-store/
