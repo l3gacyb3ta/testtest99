@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 
 import bgArt from "../../public/art/bg.png";
+// Parked: the corner decals, to be placed later.
+// import CornerDecal from "@/components/corner-decal";
 import flagArt from "../../public/art/hackclub-flag.svg";
 import SignupForm from "@/components/signup-form";
 import Wordmark from "@/components/wordmark";
@@ -50,7 +52,7 @@ const ART = { w: 1920, h: 1080 } as const;
  *
  * It used to be a `<div>` of `transparent -> hl-blue-deep` laid on top. That works
  * only while the thing underneath is flat colour: the ground now carries the
- * raked-arc pattern, and an opaque scrim would paint the texture out again
+ * tiled pattern, and an opaque scrim would paint the texture out again
  * exactly where the dissolve is supposed to be revealing it. Masking the
  * picture instead takes the painting to nothing and lets whatever the room is
  * standing on come up through it, so the pattern arrives as the painting
@@ -300,7 +302,7 @@ export default function Hero() {
       >
         {/* "how does it work?" — still overhangs the band below */}
         <div
-          className="absolute grid place-items-center bg-hl-lavender-pale"
+          className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale"
           style={box(474, howY(970), 918, 201)}
         >
           <p
@@ -316,6 +318,7 @@ export default function Hero() {
           >
             {HOW_LABEL}
           </p>
+          {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
         </div>
         <svg
           className="absolute"
@@ -378,7 +381,7 @@ export default function Hero() {
             a phone too. `items-start` is the old `self-start`, and the
             overhang into the band below is unchanged. */}
         <div className="flex flex-col items-start px-4 sm:px-8">
-          <div className="relative -mb-9 mt-14 bg-hl-lavender-pale px-5 py-3 sm:px-8 sm:py-4">
+          <div className="relative -mb-9 mt-14 rounded-xl bg-hl-lavender-pale px-5 py-3 sm:px-8 sm:py-4">
             <p
               className="font-display font-bold text-hl-ink"
               style={{
@@ -392,6 +395,7 @@ export default function Hero() {
             >
               {HOW_LABEL}
             </p>
+            {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
           </div>
         </div>
       </div>
@@ -521,9 +525,11 @@ function HackClubFlag() {
  * to 1920/1080, so `object-cover` has nothing to crop and cannot leave a
  * hairline of bare ink the way `object-contain` would under sub-pixel rounding.
  * Below the picture, and up through its dissolve, is the steel ground and the
- * raked-arc pattern that the hero and the process section now share from one
- * box in `page.tsx` — so the painting resolves into the room it hands off to
- * rather than into a flat field that the room's texture then switches on in.
+ * tiled pattern that the hero and the process section share from one box in
+ * `page.tsx` — so the painting resolves into the room it hands off to rather
+ * than into a flat field that the room's texture then switches on in further
+ * down. The fade is the only place that ground is ever seen arriving, which is
+ * why it cannot start at the section below.
  *
  * It spans the screen at every width. Capped at the comp's 1728 it left ink
  * shoulders on anything wider, and the painting is the hero's ground rather

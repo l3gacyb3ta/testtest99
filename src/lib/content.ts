@@ -210,7 +210,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "When does this start?",
-    a: "Half Life is running for 10 weeks! September 14th to 25th will be warmup weeks (where you can submit any hardware project and get funding from up $50), and then PCB Week will start!",
+    a: "Half Life is running for 10 weeks! September 14th to 25th will be warmup weeks (where you can submit any hardware project and get funding from up $100), and then PCB Week will start!",
   },
   {
     q: "What's Hack Club?",
@@ -218,7 +218,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "What do I get?",
-    a: "Up to $100 of funding per project, a 3D printer or a laptop for finishing all ten weeks, and extra prizes — plushies, drawing tablets, iPads — if your project posts go viral.",
+    a: "Up to $100 of funding per project, a 3D printer for finishing all ten weeks, and extra prizes (like plushies, drawing tablets, and iPads) if you log more hours.",
   },
 ];
 

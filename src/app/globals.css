@@ -272,24 +272,37 @@ body {
 /* ─────────────────────────────────────────────────────────────
    Section grounds
 
-   One pattern per band, so a reader scrolling knows which room
-   they are in without being told. All three are drafting marks
-   from the same silkscreen vocabulary, at an opacity where they
+   One pattern per room, so a reader scrolling knows which one
+   they are in without being told. They are drafting marks from
+   the same silkscreen vocabulary, at an opacity where they
    register as texture rather than as content:
 
-     wave   the process band — overlapping arcs raked at 60 degrees,
-            the line running on rather than a sheet ruled for it
+     tile   the hero and how-it-works, which are one room —
+            `tile.png` repeated, and the ground the painting's
+            dissolve resolves into
      hex    the carousel — a hexagonal lattice, in the yellow the
             cards standing on it are made of
+     mesh   the carousel card's own photo field — a triangulated
+            lattice, in the pale yellow of the card's frame
      hatch  the FAQ — section hatching, the drawing convention
             for a cut surface
 
-   The colour is diluted into the gradient rather than carried by
-   an opacity layer, so each is a background-image on the section
-   itself: no extra element, and no stacking context to arrange.
+   Three of the four dilute their colour into the pattern itself,
+   so they are a `background-image` on the element and cost no
+   extra node and no stacking context. `tile` is the exception:
+   it is a photograph rather than a drawn lattice, and the two
+   things asked of it — `grayscale` and a low `opacity` — apply
+   to an element and never to a `background-image`, so it needs
+   a pseudo-element to land on and a stacking context to hold
+   that pseudo-element's negative index.
    ───────────────────────────────────────────────────────────── */
 .hl-ground-tile {
-  /* The how-it-works ground: `public/art/tile.png`, tiled.
+  /* The hero and how-it-works ground: `public/art/tile.png`, tiled.
+
+     Applied to the one box in `page.tsx` that spans both sections, not to
+     either section — the painting's dissolve hands off to this, so it has to
+     be under the painting, and a `repeat` restarts its lattice at each box's
+     own top edge, so two of them would seam. `page.tsx` carries the argument.
 
      Both of the things asked of the artwork happen here rather than to the
      file. It used to be the other way round — a script desaturated the source
@@ -310,12 +323,13 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  /* Behind the section's own content, in front of its background. `isolate` on
-     the section keeps this contained, so a negative index cannot escape it. */
+  /* Behind the box's own content, in front of its background. `isolate` on
+     the box keeps this contained, so a negative index cannot escape it — and
+     so the painting, the hero and the process stage all paint over it. */
   z-index: -1;
   pointer-events: none;
 
-  background-image: url("/art/tile.png");
+  background-image: url("/art/tile.png?v=1");
   background-repeat: repeat;
   /* Width only; the height follows the file's own proportions, so a
      replacement of any shape tiles undistorted.
@@ -327,7 +341,7 @@ body {
      it at roughly two and a half across at any width. The 500px ceiling keeps
      the desktop tile exactly the size it already was, and the 200px floor
      stops it dissolving into noise on the narrowest phones. */
-  background-size: clamp(200px, 42vw, 500px) auto;
+  background-size:  1000px auto;
 
   /* Black and white, and quiet. A pseudo-element is what buys these: `filter`
      and `opacity` apply to an element, never to a `background-image`, so on
@@ -419,4 +433,8 @@ body {
 
 .rail::-webkit-scrollbar {
   display: none;
+}
+
+* {
+  corner-shape: bevel;
 }

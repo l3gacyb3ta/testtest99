@@ -8,6 +8,8 @@ import gatointube from "../../public/art/extras/gatointube.png";
 import gatoycaja from "../../public/art/extras/gatoycaja.png";
 import hammer from "../../public/art/extras/hammer.png";
 import spiritguy from "../../public/art/extras/spiritguy.png";
+// Parked: the corner decals, to be placed later.
+// import CornerDecal, { type DecalName } from "@/components/corner-decal";
 import ImageSlot from "@/components/image-slot";
 import type { Step } from "@/lib/content";
 import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/content";
@@ -47,6 +49,52 @@ const CONNECTORS = [
   },
 ] as const;
 
+/**
+ * Which corner each plate's decal goes in — PARKED, not yet applied.
+ *
+ * The placements below are commented out at their sites. This is the analysis
+ * they were derived from, kept so it does not have to be redone: the corner
+ * clearances, the one plate with only a single legal corner, and the reason
+ * the decals have to print under the content rather than over it.
+ *
+ * The rule is that a decal sits on a plate and never on a joint, so the
+ * choice is made against the bands rather than by taste. Measuring each
+ * corner's distance to the nearest band, at the y where that band actually
+ * crosses the plate's edge, rules three of them out: step 2's top-left (72
+ * comp units of clearance) and bottom-left (83), and step 4's top-left (66).
+ * A decal's ink runs 12% of its plate — 99 units on step 2, 113 on step 4 —
+ * so all three would land on the weld. Step 3's top-right is tight too, at
+ * 72, and moot: the set has no top-right decal to put there.
+ *
+ * That leaves step 2 with exactly one corner, bottom-right, and step 4 with
+ * two. Everything else is clear by 130 units or more, and the asides are
+ * clear on all four — no band comes within 200 units of either.
+ *
+ * Given those constraints the order is chosen so no two marks down the
+ * section repeat and no two land on the same corner:
+ *
+ *   header plate   top-left        (in Hero, with the plate)
+ *   step 1         bottom-left     the band leaves the opposite corner
+ *   step 2         bottom-right    forced — both left corners are welds
+ *   step 3         top-left 2
+ *   aside, viral   bottom-right 2
+ *   step 4         bottom-left     its top-left is under the last band
+ *   aside, community  top-left
+ *
+ * Both layouts carry the same seven, so the stacked page is the same drawing
+ * and not a reduction of it. The flow layout's own connectors are separate
+ * list items rather than overlays, so nothing is ruled out down there — the
+ * assignment is the stage's, kept for consistency rather than recomputed.
+ *
+ * The other constraint, and the one that decided the treatment: these plates
+ * are full, so text overprints a decal wherever one is big enough to read.
+ * Measured against the darkest opaque pixel in the set, rgb(63,73,38), AA
+ * holds up to 0.55 opacity for ink on lavender-pale and only 0.30 for the
+ * asides' indigo on lavender — so 0.30 is what `corner-decal.tsx` prints at,
+ * and the decals sit under the content, not over it. Shrinking them instead
+ * does not work: the decal is a share of the plate's width while the flow
+ * layout's padding is a flat 20px, so anything visible crosses it anyway.
+ */
 /**
  * How wide a step's artwork is actually painted.
  *
@@ -232,7 +280,7 @@ export default function Process() {
     <section
       id="how-it-works"
       aria-label="How Half Life works"
-      className="hl-ground-tile relative z-0 isolate min-[1180px]:pb-[10vh]"
+      className="relative z-0 isolate min-[1180px]:pb-[10vh]"
     >
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* Every child here is absolutely positioned, so the stage has no
@@ -297,7 +345,7 @@ export default function Process() {
             lost it: the `h2` keeps step 1 in the outline alongside the other
             three, and the list carries the subjects and their week numbers. */}
         <div
-          className="absolute overflow-hidden bg-hl-lavender-pale text-hl-ink"
+          className="absolute overflow-hidden rounded-xl bg-hl-lavender-pale text-hl-ink"
           style={box(57, 164, 975, 547)}
         >
           <h2 className="sr-only">{design.title}</h2>
@@ -312,11 +360,12 @@ export default function Process() {
             />
           ) : null}
           <WeekList />
+          {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" over /> */}
         </div>
 
         {/* Step 2 — funding */}
         <div
-          className="absolute bg-hl-lavender-pale text-hl-ink"
+          className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
           style={box(812, 836, 823, 445)}
         >
           <h2
@@ -342,11 +391,13 @@ export default function Process() {
           >
             {funding.caption}
           </p>
+          {/* Bottom-right is the only corner free of a band here. */}
+          {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomRight" /> */}
         </div>
 
         {/* Step 3 — build */}
         <div
-          className="absolute bg-hl-lavender-pale text-hl-ink"
+          className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
           style={box(57, 1406, 958, 582)}
         >
           <h2
@@ -366,11 +417,12 @@ export default function Process() {
             scale={1.35}
             sizes={STEP_ART_SIZES.stage}
           />
+          {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft2" /> */}
         </div>
 
         {/* Step 4 — the printer */}
         <div
-          className="absolute bg-hl-lavender-pale text-hl-ink"
+          className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
           style={box(731, 2143, 943, 458)}
         >
           <h2
@@ -390,6 +442,7 @@ export default function Process() {
             scale={1.35}
             sizes={STEP_ART_SIZES.stage}
           />
+          {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" /> */}
         </div>
 
         {/* Asides — small plates orbiting the band. Only where they sit
@@ -502,8 +555,15 @@ export default function Process() {
 
 function Plate({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-hl-lavender-pale px-5 py-7 text-hl-ink sm:px-8 sm:py-9">
+    // Parked, with the decals. Bringing them back needs `relative isolate`
+    // here and a `decal` prop threaded in: the decal is absolutely positioned
+    // at `z-index: -1`, so it needs this plate both as its containing block
+    // and as the stacking context that keeps it from escaping behind it. Step
+    // 1's plate is a full-bleed picture and takes `over` instead. The stage
+    // plates are absolute already, so they are containing blocks already.
+    <div className="rounded-xl bg-hl-lavender-pale px-5 py-7 text-hl-ink sm:px-8 sm:py-9">
       {children}
+      {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
     </div>
   );
 }
@@ -577,20 +637,21 @@ function Aside(props: AsideProps) {
 
   if (props.stacked) {
     return (
-      <div className="bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
+      <div className="rounded-xl bg-hl-lavender px-5 py-7 text-center text-hl-indigo sm:px-7">
         <h3 className="font-display text-xl font-bold sm:text-2xl">
           {aside.title}
         </h3>
         <p className="mt-4 text-[0.975rem] leading-relaxed sm:text-base">
           {aside.body}
         </p>
+        {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
       </div>
     );
   }
 
   return (
     <div
-      className="absolute flex flex-col justify-center bg-hl-lavender text-center text-hl-indigo"
+      className="absolute flex flex-col justify-center rounded-xl bg-hl-lavender text-center text-hl-indigo"
       style={{
         ...at(props.origin[0], props.origin[1]),
         width: u(ASIDE.w),
@@ -613,6 +674,7 @@ function Aside(props: AsideProps) {
       >
         {aside.body}
       </p>
+      {/* Parked: corner decals, to be placed later. <CornerDecal decal={decal} /> */}
     </div>
   );
 }

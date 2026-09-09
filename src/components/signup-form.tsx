@@ -189,7 +189,7 @@ export default function SignupForm({
           phone to the comp stage without a second set of numbers. */}
       <div
         className={
-          intro ? "rounded-md bg-hl-ink pt-[1rem] pb-[1rem] p-[2rem] mb-[1rem]" : ""
+          intro ? "rounded-lg bg-hl-ink pt-[1rem] pb-[1rem] p-[2rem] mb-[1rem]" : ""
         }
       >
         {intro ? <div className="mb-[0.7em]">{intro}</div> : null}
@@ -200,7 +200,7 @@ export default function SignupForm({
         <div className="relative overflow-hidden">
           <form onSubmit={onSubmit} noValidate className="flex w-full">
             <label htmlFor={id} className="sr-only">
-              Email address
+              email address
             </label>
             {/* The field is a slot cut into the hero plate, not a control
                 sitting on it: ink ground, one soft cyan edge, and an input that
@@ -229,7 +229,7 @@ export default function SignupForm({
                 inputMode="email"
                 required
                 disabled={pending}
-                placeholder="Email address"
+                placeholder="email address"
                 // Always described by the line below: the eligibility note when
                 // there is nothing wrong, the error when there is. Pointing at
                 // it only on error meant the note was on screen but not in the
