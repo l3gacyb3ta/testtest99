@@ -19,6 +19,11 @@ display_information:
   description: Adds new members to Half Life channels and tracks #halflife-help tickets.
   background_color: "#1a1a1a"
 
+features:
+  bot_user:
+    display_name: Half Life Little Helper
+    always_online: true
+
 oauth_config:
   scopes:
     bot:
@@ -32,14 +37,14 @@ oauth_config:
 
 settings:
   event_subscriptions:
-    request_url: https://hackclub.slack.com/api/slack/events
+    request_url: https://halflife.hackclub.com/api/slack/events
     bot_events:
       - member_joined_channel
       - message.channels
       - message.groups
   interactivity:
     is_enabled: true
-    request_url: https://hackclub.slack.com/api/slack/interactions
+    request_url: https://halflife.hackclub.com/api/slack/interactions
   org_deploy_enabled: false
   socket_mode_enabled: false
   token_rotation_enabled: false
