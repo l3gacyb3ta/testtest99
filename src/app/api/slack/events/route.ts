@@ -71,6 +71,13 @@ async function handleHelpMessage(event: SlackEvent) {
 
   const selfResolveBlocks: SlackBlock[] = [
     {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: "Flagged for the team — if you're all set, you can mark this resolved yourself.",
+      },
+    },
+    {
       type: "actions",
       block_id: SELF_RESOLVE_ACTIONS_BLOCK_ID,
       elements: [
