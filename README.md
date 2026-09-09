@@ -82,12 +82,17 @@ that:
 - invites anyone who joins the main Half Life channel into
   `#halflife-bulletin` and `#halflife-help`
 - posts every new top-level message in `#halflife-help` into a private
-  tickets channel with a **Mark as helped** button, which resolves the
-  ticket and drops a thread reply back in `#halflife-help`
+  tickets channel with a **Mark as helped** button (anyone with access to
+  that channel can click it), and replies in-thread in `#halflife-help` with
+  an **I'm all set** button that only the ticket's own author can click
 
-There's no database — the button's own `value` carries the pointer back to
-the original message, and the tickets-channel message it lives on is edited
-in place when clicked.
+Either button resolves the ticket: it edits its own message in place, and —
+for the author's button — also updates the tickets-channel message so staff
+can see it's already handled. There's no database; each button's own
+`value` carries the pointer(s) it needs back to the other message(s). One
+known gap: if staff resolve a ticket first, the author's button is left
+active and clicking it afterward will just re-mark things as resolved by
+the author — harmless, but slightly confusing if it happens.
 
 Create the app from `slack-app-manifest.yml` at the repo root (see the
 comments in that file for the exact steps), then set:

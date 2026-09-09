@@ -40,7 +40,7 @@ export async function postMessage(
   text: string,
   opts: { blocks?: SlackBlock[]; threadTs?: string } = {},
 ) {
-  return callSlackApi("chat.postMessage", {
+  return callSlackApi<{ ts?: string; channel?: string }>("chat.postMessage", {
     channel,
     text,
     blocks: opts.blocks,
