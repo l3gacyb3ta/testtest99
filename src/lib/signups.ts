@@ -55,11 +55,12 @@ export function normalizeEmail(raw: unknown): string | null {
 
 /**
  * Fetches every record's `referral_code` isn't an option at scale, but
- * counting record *ids* is cheap — pass an empty fields list so each page
- * carries almost nothing else. The count is a snapshot, not a lock, so two
- * signups landing in the same instant can in principle claim the same
- * ordinal; acceptable here given the existing rate limit and the low stakes
- * of a referral number colliding.
+ * counting record ids is cheap — request just the `email` field (Airtable
+ * rejects an empty field name outright) so each page carries almost nothing
+ * else. The count is a snapshot, not a lock, so two signups landing in the
+ * same instant can in principle claim the same ordinal; acceptable here
+ * given the existing rate limit and the low stakes of a referral number
+ * colliding.
  */
 async function countAirtableRecords(
   url: string,
@@ -68,7 +69,7 @@ async function countAirtableRecords(
   let count = 0;
   let offset: string | undefined;
   do {
-    const params = new URLSearchParams({ pageSize: "100", "fields[]": "" });
+    const params = new URLSearchParams({ pageSize: "100", "fields[]": "email" });
     if (offset) params.set("offset", offset);
     const res = await fetch(`${url}?${params.toString()}`, { headers });
     if (!res.ok) {
