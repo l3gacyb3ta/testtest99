@@ -50,11 +50,11 @@ const ubuntu = Ubuntu({
 });
 
 export const metadata: Metadata = {
-  title: "Half Life: become a hardware expert in 10 weeks",
+  title: "Half Life by Hack Club",
   description:
-    "Ten weeks. Five projects designed, five projects built. Hack Club funds your parts and ships you a 3D printer or a laptop at the end. Ages 13–18, no experience needed.",
+    "Ten weeks. Five projects designed, five projects built. Hack Club funds your parts and ships you a 3D printer at the end. Ages 13-18, no experience needed.",
   openGraph: {
-    title: "Half Life: become a hardware expert in 10 weeks",
+    title: "Half Life by Hack Club",
     description:
       "Design five hardware projects, then build all five. Hack Club funds the parts and ships the prizes.",
     type: "website",
