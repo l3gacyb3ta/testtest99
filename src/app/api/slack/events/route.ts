@@ -117,6 +117,13 @@ async function handleMainChannelJoin(event: SlackEvent) {
     process.env.SLACK_HELP_CHANNEL_ID,
   ].filter((id): id is string => Boolean(id));
 
+  if (targets.length === 0) {
+    console.error(
+      "member_joined_channel fired but neither SLACK_BULLETIN_CHANNEL_ID nor SLACK_HELP_CHANNEL_ID is set",
+    );
+    return;
+  }
+
   await Promise.all(targets.map((channel) => inviteToChannel(channel, event.user!)));
 }
 

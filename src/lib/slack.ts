@@ -58,13 +58,17 @@ export async function updateMessage(
 }
 
 /** `already_in_channel` is treated as success — the caller just wants the
- * user in the channel, not a report of how they got there. */
+ * user in the channel, not a report of how they got there. Logs either way:
+ * this runs inside a webhook with no UI to surface failures to, so the
+ * deployment logs are the only way to tell it fired at all. */
 export async function inviteToChannel(channel: string, user: string) {
   const result = await callSlackApi("conversations.invite", {
     channel,
     users: user,
   });
-  if (!result.ok && result.error !== "already_in_channel") {
+  if (result.ok || result.error === "already_in_channel") {
+    console.log(`Invited ${user} to ${channel}`);
+  } else {
     console.error(`Failed to invite ${user} to ${channel}: ${result.error}`);
   }
 }
