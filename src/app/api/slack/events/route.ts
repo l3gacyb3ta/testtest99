@@ -74,9 +74,33 @@ async function handleHelpMessage(event: SlackEvent) {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "Flagged for the team — if you're all set, you can mark this resolved yourself.",
+        text: "Flagged to the helpers! If the problem is solved, you can mark it too.",
       },
     },
+    {
+			"type": "card",
+			"icon": {
+				"type": "image",
+				"image_url": "https://user-cdn.hackclub-assets.com/01a087a6-3340-75f4-bed9-26f40c4fffe7/gato_schematic.png",
+				"alt_text": "Gato"
+			},
+			"title": {
+				"type": "mrkdwn",
+				"text": "Check out the FAQ!",
+				"verbatim": false
+			},
+			"actions": [
+				{
+					"type": "button",
+					"text": {
+						"type": "plain_text",
+						"text": "Open FAQ"
+					},
+					"url": "https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C0Q6UEPCH",
+					"action_id": "faq_link_click"
+				}
+			]
+		},
     {
       type: "actions",
       block_id: SELF_RESOLVE_ACTIONS_BLOCK_ID,
@@ -97,7 +121,7 @@ async function handleHelpMessage(event: SlackEvent) {
 
   await postMessage(
     ref.helpChannel,
-    "Flagged for the team — if you're all set, you can mark this resolved yourself.",
+    "Flagged to the helpers! If the problem is solved, you can mark it too.",
     { threadTs: ref.helpTs, blocks: selfResolveBlocks },
   );
 }

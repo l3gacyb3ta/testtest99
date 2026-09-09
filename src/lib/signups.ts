@@ -103,8 +103,6 @@ export async function recordSignup(
     utmCampaign = null,
   } = meta;
 
-  const at = new Date().toISOString();
-
   const airtableToken = process.env.AIRTABLE_API_KEY;
   const airtableBase = process.env.AIRTABLE_BASE_ID;
 
