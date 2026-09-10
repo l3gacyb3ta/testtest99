@@ -9,9 +9,7 @@ import flagArt from "../../public/art/hackclub-flag.svg";
 import SignupForm from "@/components/signup-form";
 import Wordmark from "@/components/wordmark";
 import { BRAND } from "@/lib/content";
-import { COMP_WIDTH, band, box, u } from "@/lib/stage";
-
-const HOW_LABEL = "how does it work?";
+import { u } from "@/lib/stage";
 
 /**
  * The hero plate, taken to half the grid.
@@ -153,41 +151,25 @@ function onPlateU(px: number) {
 }
 
 /**
- * "how does it work?", now below the fold.
+ * "how does it work?" is not in here any more.
  *
- * The comp put it at y 970 in a 1092-tall hero, so it broke the fold by
- * sitting half in view — an invitation you could miss by not scrolling. It
- * gets its own block after a hero that is at least one viewport tall, so it is
- * reliably out of sight on load and is the first thing the scroll reveals.
+ * It was a `.stage` block of its own at the bottom of this section, and the
+ * band that drops out of it into the programme had to cross from this section's
+ * grid into the process section's. The two cap at different widths, so one comp
+ * unit was a different number of pixels in each and the band landed further
+ * down its own grid than the plate it was aiming at had moved to — through the
+ * step's heading, from about 1333px of viewport up. The header plate, its band
+ * and both layouts' copies of it are in `process.tsx` now, on one grid with the
+ * four plates they introduce.
  *
- * The block keeps the comp's own numbers: `howY` re-bases them from the comp's
- * 970 onto a short lead-in, and the block is exactly as tall as the comp's gap
- * from the plate's top to the end of the hero section — so the plate still
- * overhangs the band below by 79 and the connector still drops 179 into it,
- * unchanged.
+ * The hero is the fold, and only the fold. The painting's own box is unchanged
+ * — it takes bg.png's ratio and clamps to the section — so losing the 218 units
+ * of block below it only closes the bare ground that used to sit between the
+ * dissolve and the header.
  */
-const HOW_LEAD = 96;
-const HOW_BLOCK_H = HOW_LEAD + (1092 - 970);
-const howY = (y: number) => HOW_LEAD + (y - 970);
-
-/**
- * The band that drops out of the plate into the process section — comp node
- * 275:181, and the first of the page's four connectors. It shares the other
- * three's centreline-and-mean construction so it shares their taper: it is the
- * page's opening move, and an opening that flattens while the three joints
- * below it gather would read as a different drawing.
- *
- * The comp's own axis and 70.6 mean, so it keeps its weight and its 6 units of
- * overlap into the plate above; only the distribution changes.
- */
-const ARROW = band([857.5, howY(1165)], [820.75, howY(1165) + 106], 70.6);
-
 export default function Hero() {
   return (
-    <section
-      id="signup"
-      className="relative z-10 isolate"
-    >
+    <section id="signup" className="relative z-10 isolate">
       <HeroArt />
       <HackClubFlag />
 
@@ -295,47 +277,6 @@ export default function Hero() {
         />
       </div>
 
-      {/* ── Below the fold ─────────────────────────────────────────────── */}
-      <div
-        className="stage hidden min-[1180px]:block"
-        style={{ aspectRatio: `${COMP_WIDTH} / ${HOW_BLOCK_H}` }}
-      >
-        {/* "how does it work?" — still overhangs the band below */}
-        <div
-          className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale"
-          style={box(474, howY(970), 918, 201)}
-        >
-          <p
-            className="whitespace-nowrap font-display font-bold text-hl-ink"
-            style={{
-              // The comp's own 100, restored. The 84 it had been stepped down
-              // to was compensation for Masterpiece, which set this line 4%
-              // past its 918 plate; Urbanist has room to spare at 100.
-              fontSize: u(100),
-              lineHeight: 1,
-              letterSpacing: "-0.03em",
-            }}
-          >
-            {HOW_LABEL}
-          </p>
-          {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
-        </div>
-        <svg
-          className="absolute"
-          style={box(ARROW.x, ARROW.y, ARROW.w, ARROW.h)}
-          viewBox={`0 0 ${ARROW.w} ${ARROW.h}`}
-          preserveAspectRatio="none"
-          fill="none"
-          aria-hidden
-        >
-          {/* The header plate's own material, like the three bands below it
-              carry the step plates'. It was a hardcoded #EDEDED, which is the
-              one way a fill can drift out of step with the surface it is meant
-              to be continuous with. */}
-          <path d={ARROW.d} fill="var(--color-hl-lavender-pale)" />
-        </svg>
-      </div>
-
       {/* ── Stacked layout, below 1180px ───────────────────────────────── */}
       <div className="min-[1180px]:hidden">
         {/* pb leaves the cue its own room; without it `justify-center` centres
@@ -376,28 +317,6 @@ export default function Hero() {
             fontSize="clamp(0.8rem, 3vw, 1rem)"
           />
         </div>
-
-        {/* Out of the viewport block above, so the header is below the fold on
-            a phone too. `items-start` is the old `self-start`, and the
-            overhang into the band below is unchanged. */}
-        <div className="flex flex-col items-start px-4 sm:px-8">
-          <div className="relative -mb-9 mt-14 rounded-xl bg-hl-lavender-pale px-5 py-3 sm:px-8 sm:py-4">
-            <p
-              className="font-display font-bold text-hl-ink"
-              style={{
-                // The floor was held down by Masterpiece, which set this line
-                // wide enough to push past a 320px viewport; Urbanist sets it
-                // narrower, so the plate can carry the comp's weight again.
-                fontSize: "clamp(1.75rem, 8vw, 3.25rem)",
-                letterSpacing: "-0.03em",
-                lineHeight: 1.05,
-              }}
-            >
-              {HOW_LABEL}
-            </p>
-            {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -407,8 +326,8 @@ export default function Hero() {
  * The scroll cue.
  *
  * Drawn in the page's icon grammar — square-cap strokes at the same 2.75
- * weight as every other icon here — rather than as one of the connector
- * bands, which are diagram parts and mean something specific. It is a real
+ * weight as every other icon here — rather than as one of the welds, which
+ * are diagram parts and mean something specific. It is a real
  * link to the section it points at, because a downward arrow above the fold is
  * something people click, and that also puts it on the keyboard path.
  *
@@ -473,7 +392,7 @@ function ScrollCue({
 
           The negative margin takes back the trailing letter-space that 0.14em
           adds after the final L, which would otherwise push the word half a
-          space left of the centre it is being centred on. */}  
+          space left of the centre it is being centred on. */}
     </a>
   );
 }

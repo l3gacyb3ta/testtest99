@@ -13,43 +13,155 @@ import spiritguy from "../../public/art/extras/spiritguy.png";
 import ImageSlot from "@/components/image-slot";
 import type { Step } from "@/lib/content";
 import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/content";
-import { COMP_WIDTH, at, band, box, u } from "@/lib/stage";
+import {
+  COMP_WIDTH,
+  STACK_VIEW,
+  at,
+  box,
+  plate,
+  plateBox,
+  stackWeld,
+  u,
+  weld,
+} from "@/lib/stage";
 
 /**
- * The connector bands, as centrelines rather than exported vectors.
+ * The header plate — "how does it work?".
  *
- * Each is the comp's own axis — the midpoints of its two ends — and the comp's
- * own average thickness. `band` turns those into the quad and its box, so the
- * taper is `BAND_TAPER` in one place and not four sets of path data that have
- * to be kept in agreement by hand.
+ * It used to live in the hero, in a `.stage` of its own that inherited the
+ * default 1728 cap while this one caps at `STAGE_CAP`. Both are `cqw`, so one
+ * comp unit was a different number of pixels in each, and the band that drops
+ * out of the header had to cross between them: it reached 179 of its own units
+ * below the hero's block while its landing plate had moved to 112px below the
+ * top of this one. Under about 1333px of viewport the arithmetic happened to
+ * clear. Above it the band ran through "spend 5 weeks designing 5 projects",
+ * in the plates' own colour, over the top of it — one drawing in two grids.
  *
- *   275:181  hero arrow, drops out of "how does it work?"   (lives in Hero)
+ * The header is a part of this drawing, so it is a plate in this stage now, on
+ * one grid at one cap with the four plates it introduces. Its `918` is the
+ * comp's own, which is also the proportion the comp drew: narrower than step
+ * 1's 975, where uncapped it had grown to 1.38x the plate it introduces.
+ *
+ * It also puts the section's own heading inside the section the skip link
+ * targets, which it was not before.
+ */
+const HEADER_LEAD = 96;
+const HEADER = plate(474, HEADER_LEAD, 918, 201);
+
+/**
+ * The header's weld — comp node 275:181, and the first of the page's four.
+ *
+ * Its run and its two overlaps are named here rather than inside `WELDS`
+ * because `SHIFT` is derived from them: the room the header needs above step 1
+ * is the header's own height plus this band's run, less the ends it buries in
+ * each. Change the run and the programme moves to suit it.
+ */
+const LEAD_WELD = { run: 106, rise: 6, drop: 15, mean: 70.6 } as const;
+
+/**
+ * How much step 1 grew when its heading came back, and therefore how far
+ * everything under it moved.
+ *
+ * `allweeks.png` had been given the whole plate, which left nowhere for the
+ * step's own title to sit: its ink reaches all four edges, and the only band
+ * of bare canvas in the file — the top-left corner, 239 x 223 comp units once
+ * the picture is drawn at 975 — is a third of what a 40-unit line needs. The
+ * choice was to shrink the picture into the leftover or to lengthen the plate,
+ * and shrinking loses more than it saves: the week marks are drawn small, so
+ * at the 743 units a title would leave them the "WEEK n" caps land at 8px.
+ *
+ * So the plate grew instead, which is what the steps below it already did when
+ * their pictures did not fit the comp's slots. Growing upward was not
+ * available: the header's weld lands 15 units inside the plate's top edge, so
+ * that edge is pinned. Everything below moves down by this instead — steps
+ * 2-4, both asides, and the five extras that sit beside them — and the three
+ * welds between them now follow the plates rather than being re-counted.
+ */
+const STEP_ONE_GROWTH = 105;
+
+/**
+ * How far the programme moved down when the header joined it.
+ *
+ * Step 1 used to start at 164 with the header in someone else's grid. It now
+ * starts wherever the header's weld lands, so this is derived rather than
+ * counted — nothing below can fall out of step with the header's height. It
+ * comes to 218, and every plate, aside and extra below carries it, so every
+ * clearance measured in here is still the number it was.
+ */
+const SHIFT =
+  HEADER.y +
+  HEADER.h -
+  LEAD_WELD.rise +
+  LEAD_WELD.run -
+  LEAD_WELD.drop -
+  (59 + STEP_ONE_GROWTH);
+
+/**
+ * The plates, and the only place their geometry is written.
+ *
+ * Every number is the comp's own, and the two offsets that have moved the
+ * programme are added here rather than folded into the literals: `STEP_ONE_GROWTH`
+ * for the 105 units step 1 grew to hold its heading, which its own height
+ * takes and the three below it take as a shift, and `SHIFT` for the room the
+ * header and its weld now need above all four. Both were counted into these
+ * numbers by hand before, which is why the record of them lived in prose.
+ */
+const PLATES = {
+  header: HEADER,
+  design: plate(57, 59 + STEP_ONE_GROWTH + SHIFT, 975, 547 + STEP_ONE_GROWTH),
+  funding: plate(812, 836 + STEP_ONE_GROWTH + SHIFT, 823, 445),
+  build: plate(57, 1406 + STEP_ONE_GROWTH + SHIFT, 958, 582),
+  printer: plate(731, 2143 + STEP_ONE_GROWTH + SHIFT, 943, 458),
+} as const;
+
+/**
+ * The welds, derived from the plates they join.
+ *
+ * These were four sets of absolute centreline midpoints, which is to say four
+ * hand-kept copies of where the plates are. A plate could move — step 1 has,
+ * twice, for its heading and for its artwork — and its bands would not, so the
+ * page's joints were only ever as correct as the last time someone re-added
+ * the offset to all of them. `weld` takes the plates instead: `at` is how far
+ * across that plate's own edge the end sits, and `rise`/`drop` are how deep it
+ * reaches inside. Every number is still the comp's, written as the offset it
+ * measures over the width it measures across.
+ *
+ *   275:181  header      ->  step 1 top-right
  *   275:132  step 1 bottom-right  ->  step 2 top-left
  *   275:133  step 2 bottom-left   ->  step 3 top-right
  *   275:148  step 3 bottom-right  ->  step 4 top-left
- *
- * Every y below is the comp's own plus `STEP_ONE_GROWTH`. Step 1 got its
- * heading back and grew 105 units to hold it (see the plate), and the three
- * joints hang off plate edges: the first band's ends keep their 16.5 units of
- * overlap into step 1 and 12.5 into step 2 only because both moved with it.
  */
-const CONNECTORS = [
+const WELDS = [
+  {
+    id: "how-to-one",
+    exit: {
+      plate: PLATES.header,
+      at: 383.5 / PLATES.header.w,
+      rise: LEAD_WELD.rise,
+    },
+    entry: {
+      plate: PLATES.design,
+      at: 763.75 / PLATES.design.w,
+      drop: LEAD_WELD.drop,
+    },
+    mean: LEAD_WELD.mean,
+  },
   {
     id: "one-to-two",
-    from: [835.25, 799.5],
-    to: [967.25, 953.5],
+    exit: { plate: PLATES.design, at: 778.25 / PLATES.design.w, rise: 16.5 },
+    entry: { plate: PLATES.funding, at: 155.25 / PLATES.funding.w, drop: 12.5 },
     mean: 92.2,
   },
   {
     id: "two-to-three",
-    from: [960.5, 1357.5],
-    to: [860, 1537.5],
+    exit: { plate: PLATES.funding, at: 148.5 / PLATES.funding.w, rise: 28.5 },
+    entry: { plate: PLATES.build, at: 803 / PLATES.build.w, drop: 26.5 },
     mean: 102.2,
   },
   {
     id: "three-to-four",
-    from: [750.25, 2086.5],
-    to: [909.5, 2270],
+    exit: { plate: PLATES.build, at: 693.25 / PLATES.build.w, rise: 6.5 },
+    entry: { plate: PLATES.printer, at: 178.5 / PLATES.printer.w, drop: 22 },
     mean: 120.3,
   },
 ] as const;
@@ -87,9 +199,9 @@ const CONNECTORS = [
  *   aside, community  top-left
  *
  * Both layouts carry the same seven, so the stacked page is the same drawing
- * and not a reduction of it. The flow layout's own connectors are separate
- * list items rather than overlays, so nothing is ruled out down there — the
- * assignment is the stage's, kept for consistency rather than recomputed.
+ * and not a reduction of it. The flow layout's own welds are siblings rather
+ * than overlays, so nothing is ruled out down there — the assignment is the
+ * stage's, kept for consistency rather than recomputed.
  *
  * The other constraint, and the one that decided the treatment: these plates
  * are full, so text overprints a decal wherever one is big enough to read.
@@ -108,6 +220,8 @@ const CONNECTORS = [
  * Stage: 736 comp units at the 1180 cap is 502.6px. Stacked: the plate runs
  * the full `max-w-2xl` column, the same 608px the lead week pairing gets.
  */
+const HOW_LABEL = "how does it work?";
+
 const STEP_ART_SIZES = {
   stage: "510px",
   /** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
@@ -146,32 +260,11 @@ const STEP_ART_SIZES = {
 const STAGE_CAP = 1180;
 
 /**
- * How much step 1 grew when its heading came back, and therefore how far
- * everything under it moved.
- *
- * `allweeks.png` had been given the whole plate, which left nowhere for the
- * step's own title to sit: its ink reaches all four edges, and the only band
- * of bare canvas in the file — the top-left corner, 239 x 223 comp units once
- * the picture is drawn at 975 — is a third of what a 40-unit line needs. The
- * choice was to shrink the picture into the leftover or to lengthen the plate,
- * and shrinking loses more than it saves: the week marks are drawn small, so
- * at the 743 units a title would leave them the "WEEK n" caps land at 8px.
- *
- * So the plate grew instead, which is what the steps below it already did when
- * their pictures did not fit the comp's slots. Growing upward was not
- * available — the hero's arrow ends 179 into this stage and overlaps the
- * plate's top edge by 15, so the plate's top is pinned. Everything below moves
- * down by this instead: the three connectors, steps 2-4, both asides, and the
- * five extras that sit beside them.
+ * The bottom edge of the lowest plate, so the stage is exactly its own content
+ * and nothing more. Read off `PLATES` rather than restated: it was a literal
+ * that had already been re-counted twice by hand as the artwork moved things.
  */
-const STEP_ONE_GROWTH = 105;
-
-/**
- * The bottom edge of the lowest plate — step 4 at 2248 + 458 — so the stage is
- * exactly its own content and nothing more. 2248 is the comp's 2143 plus
- * `STEP_ONE_GROWTH`.
- */
-const STAGE_H = 2706;
+const STAGE_H = PLATES.printer.y + PLATES.printer.h;
 
 /**
  * A step's artwork: the picture where there is one, the drawn footprint where
@@ -256,8 +349,8 @@ function StepArt({
  * lower half by 156, so it reads as belonging to that step rather than floating
  * between two.
  *
- * Nothing here is eyeballed. Each box clears every plate, aside and connector
- * band by at least 38 comp units, which is why the sizes are not round numbers:
+ * Nothing here is eyeballed. Each box clears every plate, aside and weld by
+ * at least 38 comp units, which is why the sizes are not round numbers:
  * width is chosen for the pocket and height is the artwork's own ratio, so a
  * picture is never squeezed to fit a gap.
  *
@@ -269,6 +362,9 @@ function StepArt({
  * to put anything in, and scattering art down its margins would be decoration
  * competing with the one thing a phone has room for.
  *
+ * Their y is the comp's own; `SHIFT` is added where they are drawn, with
+ * everything else that sits below the header.
+ *
  * The five below step 1 carry `STEP_ONE_GROWTH` on their y, which is what
  * keeps those clearances the numbers they were: the hammer still sits 105 to
  * the right of step 3 and overlaps its lower half by 156, and the tightest of
@@ -278,7 +374,7 @@ function StepArt({
  */
 const EXTRAS = [
   { src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
-  { src: spiritguy, x: 120, y: 955, w: 190/2, h: 293/2 },
+  { src: spiritguy, x: 120, y: 955, w: 190 / 2, h: 293 / 2 },
   { src: gatointube, x: 400, y: 1155, w: 230, h: 272 },
   { src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
   { src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
@@ -333,8 +429,8 @@ export default function Process() {
           `STAGE_H` has moved twice since, with the artwork.)
 
           `aspect-ratio` is self-referential by definition and needs no
-          container, which is why the hero's below-fold block is already written
-          this way. Height is now `STAGE_H`/1728 of the used width at every
+          container, which is why this is written as a ratio and not a length.
+          Height is now `STAGE_H`/1728 of the used width at every
           size, so it is the flat pixel count the cap was introduced to
           deliver.
 
@@ -344,16 +440,47 @@ export default function Process() {
           look at, not how wide the window is. */}
       <div
         className="stage hidden min-[1180px]:block"
-        style={{ maxWidth: STAGE_CAP, aspectRatio: `${COMP_WIDTH} / ${STAGE_H}` }}
+        style={{
+          maxWidth: STAGE_CAP,
+          aspectRatio: `${COMP_WIDTH} / ${STAGE_H}`,
+        }}
       >
-        {/* Decorative, and first in the stage so that if a plate is ever
+        {/* The section's own heading, and the plate the first weld leaves.
+            First in the stage because it reads first; nothing else is drawn
+            in the 297 units it occupies, so it has no paint order to lose.
+
+            `grid place-items-center` rather than the comp's own offset: the
+            line is a label for the plate, so it is centred by the box and
+            stays centred if the copy changes. */}
+        <h2
+          className="absolute grid place-items-center rounded-xl bg-hl-lavender-pale"
+          style={plateBox(PLATES.header)}
+        >
+          <span
+            className="whitespace-nowrap font-display font-bold text-hl-ink"
+            style={{
+              // The comp's own 100, which is now 68px at every width this
+              // layout runs at — the same trade `STAGE_CAP` already makes for
+              // the four step titles below, and the size a 1180 screen has
+              // always shown this line at.
+              fontSize: u(100),
+              lineHeight: 1,
+              letterSpacing: "-0.03em",
+            }}
+          >
+            {HOW_LABEL}
+          </span>
+          {/* Parked: corner decals, to be placed later. <CornerDecal decal="topLeft" /> */}
+        </h2>
+
+        {/* Decorative, and drawn before the plates so that if a plate is ever
             resized past one of them the plate wins the overlap. */}
         {EXTRAS.map((extra) => (
           <div
             key={extra.src.src}
             aria-hidden
             className="absolute"
-            style={box(extra.x, extra.y, extra.w, extra.h)}
+            style={box(extra.x, extra.y + SHIFT, extra.w, extra.h)}
           >
             <Image
               src={extra.src}
@@ -399,9 +526,9 @@ export default function Process() {
             lost it, and `WeekList` carries the subjects and their numbers. */}
         <div
           className="absolute overflow-hidden rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(57, 164, 975, 652)}
+          style={plateBox(PLATES.design)}
         >
-          <h2
+          <h3
             className="absolute text-center font-display font-bold text-balance"
             style={{
               ...at(68, 38),
@@ -411,7 +538,7 @@ export default function Process() {
             }}
           >
             {design.title}
-          </h2>
+          </h3>
           {design.art ? (
             <div className="absolute" style={box(0, 92, 975, 548)}>
               <Image
@@ -431,9 +558,9 @@ export default function Process() {
         {/* Step 2 — funding */}
         <div
           className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(812, 941, 823, 445)}
+          style={plateBox(PLATES.funding)}
         >
-          <h2
+          <h3
             className="absolute font-display font-bold"
             style={{
               ...at(94, 38),
@@ -443,7 +570,7 @@ export default function Process() {
             }}
           >
             {funding.title}
-          </h2>
+          </h3>
           <StepArt
             step={funding}
             style={{ ...box(53, 109, 736, 235), position: "absolute" }}
@@ -463,9 +590,9 @@ export default function Process() {
         {/* Step 3 — build */}
         <div
           className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(57, 1511, 958, 582)}
+          style={plateBox(PLATES.build)}
         >
-          <h2
+          <h3
             className="absolute font-display font-bold"
             style={{
               ...at(68, 42),
@@ -475,7 +602,7 @@ export default function Process() {
             }}
           >
             {build.title}
-          </h2>
+          </h3>
           <StepArt
             step={build}
             style={{ ...box(111, 158, 736, 328), position: "absolute" }}
@@ -488,9 +615,9 @@ export default function Process() {
         {/* Step 4 — the printer */}
         <div
           className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(731, 2248, 943, 458)}
+          style={plateBox(PLATES.printer)}
         >
-          <h2
+          <h3
             className="absolute font-display font-bold"
             style={{
               ...at(69, 52),
@@ -500,7 +627,7 @@ export default function Process() {
             }}
           >
             {printer.title}
-          </h2>
+          </h3>
           <StepArt
             step={printer}
             style={{ ...box(106, 140, 736, 257), position: "absolute" }}
@@ -512,15 +639,15 @@ export default function Process() {
 
         {/* Asides — small plates orbiting the band. Only where they sit
             differs; the plate itself is the same object twice. */}
-        <Aside aside={viral} origin={[1114, 1636]} />
-        <Aside aside={community} origin={[59, 2367]} />
+        <Aside aside={viral} origin={[1114, 1636 + SHIFT]} />
+        <Aside aside={community} origin={[59, 2367 + SHIFT]} />
 
-        {/* Connectors, drawn last so they ride over the plates they join */}
-        {CONNECTORS.map((connector) => {
-          const b = band(connector.from, connector.to, connector.mean);
+        {/* The welds, drawn last so they ride over the plates they join */}
+        {WELDS.map((w) => {
+          const b = weld(w.exit, w.entry, w.mean);
           return (
             <svg
-              key={connector.id}
+              key={w.id}
               className="absolute"
               style={box(b.x, b.y, b.w, b.h)}
               viewBox={`0 0 ${b.w} ${b.h}`}
@@ -539,88 +666,141 @@ export default function Process() {
 
       {/* ── Stacked layout, below 1180px ───────────────────────────────── */}
       <div className="px-4 pt-20 pb-24 sm:px-8 min-[1180px]:hidden">
-        <ol className="mx-auto flex max-w-2xl flex-col">
-          <li>
-            <Plate>
-              {/* Centred here for the same reason as on the stage: the
+        <div className="mx-auto flex max-w-2xl flex-col">
+          {/* The header, and the weld that leaves it — the same two objects
+              the stage opens with, and for the same reason: this is where the
+              drawing starts, so this is where the line starts.
+
+              `w-fit` is load-bearing. The plate is as wide as its own line
+              rather than the column, so the weld below it is offset by a share
+              of *the plate* — `StackWeld`'s `anchor` — and cannot wander off the
+              edge of it as the copy or the type size changes. The plate keeps
+              its left rank; the four below it are full-width, which is what
+              makes this one read as their heading rather than as a fifth
+              step. */}
+          <div className="flex w-fit flex-col">
+            <h2
+              className="rounded-xl bg-hl-lavender-pale px-5 py-3 font-display font-bold text-balance text-hl-ink sm:px-8 sm:py-4"
+              style={{
+                // Both ends of this clamp are measured, not chosen. The line is
+                // 7.71em wide in Urbanist bold — the comp's own 100 ran it to
+                // 84% of a 918 plate — so its size and the width it needs are
+                // the same number, and the plate is that plus its padding.
+                //
+                // The floor was 1.75rem, held down by Masterpiece, which set
+                // this line wide enough to push past a 320px viewport. That
+                // left the section's heading at 28px over 24px step titles —
+                // 1.17x, where the stage runs 2.50x, so the thing introducing
+                // the programme read as another item in it. At 2.25rem it is
+                // 1.50x and still one line from 360px up; at 320 it takes two,
+                // which a heading plate can carry and `text-balance` splits.
+                //
+                // The ceiling was 3.25rem, which capped this at 52px right up
+                // to 1179px — and then the stage took over at 68.3px, a 31%
+                // jump at a breakpoint that is supposed to be a change of
+                // layout, not of scale. 4.25rem is 68px, so the two layouts now
+                // hand the line over at the same size, and the widest plate it
+                // makes is 556px inside a 672px column.
+                fontSize: "clamp(2.25rem, 9vw, 4.25rem)",
+                letterSpacing: "-0.03em",
+                lineHeight: 1.05,
+              }}
+            >
+              {HOW_LABEL}
+            </h2>
+            <StackWeld lean="right" anchor />
+          </div>
+
+          <ol className="flex flex-col">
+            <li>
+              <Plate>
+                {/* Centred here for the same reason as on the stage: the
                   picture below runs the plate's full width and places its five
                   pairings across all of it, so the title belongs over the
                   middle of it rather than ranged against an edge the drawing
                   does not have. Steps 2-4 keep their left rank — their
                   pictures are single objects sitting inside the plate. */}
-              <h2 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">
-                {design.title}
-              </h2>
-              {design.art ? (
-                <div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
-                  <Image
-                    src={design.art}
-                    alt=""
-                    fill
-                    sizes={STEP_ART_SIZES.stacked}
-                    quality={90}
-                    className="object-cover"
-                  />
-                </div>
-              ) : null}
-              <WeekList />
-            </Plate>
-          </li>
+                <h3 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">
+                  {design.title}
+                </h3>
+                {design.art ? (
+                  <div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
+                    <Image
+                      src={design.art}
+                      alt=""
+                      fill
+                      sizes={STEP_ART_SIZES.stacked}
+                      quality={90}
+                      className="object-cover"
+                    />
+                  </div>
+                ) : null}
+                <WeekList />
+              </Plate>
+            </li>
 
-          <StackConnector lean="right" />
+            <StackWeld lean="left" />
 
-          <li>
-            <Plate>
-              <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                {funding.title}
-              </h2>
-              <StepArt
-                step={funding}
-                className="mt-6 aspect-[11876/3790] w-full"
-                sizes={STEP_ART_SIZES.stacked}
-              />
-              <p className="mt-4 font-semibold">{funding.caption}</p>
-            </Plate>
-          </li>
+            <li>
+              <Plate>
+                <h3 className="font-display text-2xl font-bold sm:text-3xl">
+                  {funding.title}
+                </h3>
+                <StepArt
+                  step={funding}
+                  className="mt-6 aspect-[11876/3790] w-full"
+                  sizes={STEP_ART_SIZES.stacked}
+                />
+                <p className="mt-4 font-semibold">{funding.caption}</p>
+              </Plate>
+            </li>
 
-          <StackConnector lean="left" />
+            <StackWeld lean="right" />
 
-          <li>
-            <Plate>
-              <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                {build.title}
-              </h2>
-              <StepArt
-                step={build}
-                className="mt-6 aspect-[9673/4315] w-full"
-                sizes={STEP_ART_SIZES.stacked}
-              />
-            </Plate>
-          </li>
+            <li>
+              <Plate>
+                <h3 className="font-display text-2xl font-bold sm:text-3xl">
+                  {build.title}
+                </h3>
+                <StepArt
+                  step={build}
+                  className="mt-6 aspect-[9673/4315] w-full"
+                  sizes={STEP_ART_SIZES.stacked}
+                />
+              </Plate>
+            </li>
 
-          <li className="pt-10">
+            <StackWeld lean="left" />
+
+            <li>
+              <Plate>
+                <h3 className="font-display text-2xl font-bold sm:text-3xl">
+                  {printer.title}
+                </h3>
+                <StepArt
+                  step={printer}
+                  className="mt-6 aspect-[8439/2948] w-full"
+                  sizes={STEP_ART_SIZES.stacked}
+                />
+              </Plate>
+            </li>
+          </ol>
+
+          {/* The asides, after the line rather than inside it.
+
+              `viral` used to sit between steps 3 and 4, which left the third
+              weld running from *it* into step 4 — the one place either layout
+              said an aside was part of the programme. On the stage they orbit
+              the line and no weld touches them; down here they follow it. */}
+          {/* `gap-8` against the plates' own `py-7`: two plates of the same
+              colour separated by less than their own padding read as one
+              object with a seam. 32 outside, 28 inside. The `pt-10` above the
+              pair is the generous break that takes them off the line. */}
+          <div className="flex flex-col gap-8 pt-10">
             <Aside aside={viral} stacked />
-          </li>
-
-          <StackConnector lean="right" />
-
-          <li>
-            <Plate>
-              <h2 className="font-display text-2xl font-bold sm:text-3xl">
-                {printer.title}
-              </h2>
-              <StepArt
-                step={printer}
-                className="mt-6 aspect-[8439/2948] w-full"
-                sizes={STEP_ART_SIZES.stacked}
-              />
-            </Plate>
-          </li>
-
-          <li className="pt-10">
             <Aside aside={community} stacked />
-          </li>
-        </ol>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -641,29 +821,70 @@ function Plate({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StackConnector({ lean }: { lean: "left" | "right" }) {
-  // The stage bands' taper, carried to the stacked layout so the two layouts
-  // read as the same drawing. Applied to the horizontal edges directly, not
-  // through `band`: this svg scales with `preserveAspectRatio="none"`, so its
-  // viewBox units are stretched unequally and a perpendicular thickness
-  // computed in them would not survive the scale. Mean edge 85, so 65.38 into
-  // 104.62 — the same 1.6 either way, and both leans get the one pair so the
-  // mirrored halves match.
-  const d =
-    lean === "right"
-      ? "M37.31 0H102.69L187.31 120H82.69Z"
-      : "M97.31 0H162.69L114.81 120H10.19Z";
+/**
+ * The stacked layout's weld.
+ *
+ * Both paths were hardcoded — the one thing in either layout that really was
+ * a drawn shape rather than a derived one — and the left-leaning one missed
+ * its own anchor pair by 5 units, so the zigzag jogged sideways at every
+ * second plate. `stackWeld` builds both from the stage's `BAND_TAPER` and one
+ * anchor pair, taken in whichever order the band leans, so one weld's exit is
+ * the last one's entry and the line down the column is continuous.
+ *
+ * The fill was `--color-hl-cyan`, left over from before the stage's bands
+ * became the plates' own material. A weld in a second metal is exactly what
+ * DESIGN.md rules out, and it is the same drift as the `#EDEDED` the hero's
+ * band used to carry: `lavender-pale` is what the plates either side of it
+ * are, so the band reads as the material running on between them.
+ *
+ * The box is wider than it is tall by the same ratio at both sizes, which puts
+ * the run at 51-53° — inside the 49-71° the stage's four bands sit at, and the
+ * reason the ends are near the middle of the column rather than at its edges:
+ * a 672px column joined edge to edge across a 64px gap would lie almost flat
+ * and read as a shelf rather than as a joint.
+ */
+function StackWeld({
+  lean,
+  anchor = false,
+}: {
+  lean: "left" | "right";
+  /**
+   * Leave the *parent's* own width at the stage's own 383.5/918 instead of
+   * centring in the column — for the header plate, which is only as wide as
+   * its line. Also renders a `div` rather than an `li`, since that weld sits
+   * above the list rather than inside it.
+   */
+  anchor?: boolean;
+}) {
+  const Tag = anchor ? "div" : "li";
   return (
-    <li role="presentation" aria-hidden className="flex justify-center">
+    <Tag
+      role="presentation"
+      aria-hidden
+      className={anchor ? "flex" : "flex justify-center"}
+    >
       <svg
-        viewBox="0 0 200 120"
+        viewBox={`0 0 ${STACK_VIEW.w} ${STACK_VIEW.h}`}
         preserveAspectRatio="none"
         fill="none"
-        className="h-16 w-40 sm:h-24 sm:w-56"
+        className={`h-16 w-40 sm:h-24 sm:w-56${
+          // 41.78% is the fraction of its plate the stage's own header weld
+          // leaves at, so the margin puts this box's left edge there and the
+          // translate walks it back by the 35% of its own width that the run's
+          // exit sits at — landing the exit itself on 41.78%.
+          //
+          // The translate is what makes this one pair of values rather than one
+          // per breakpoint: it is a share of whatever width the box currently
+          // has, so `w-40` and `sm:w-56` both come out anchored with nothing to
+          // keep in step. The `calc()` this replaces needed the box's width
+          // spelled out, and Tailwind generated the base rule but not the `sm:`
+          // one, so the weld would have jumped off the plate at 640px.
+          anchor ? " ml-[41.78%] -translate-x-[35%]" : ""
+        }`}
       >
-        <path d={d} fill="var(--color-hl-cyan)" />
+        <path d={stackWeld(lean)} fill="var(--color-hl-lavender-pale)" />
       </svg>
-    </li>
+    </Tag>
   );
 }
 
@@ -751,4 +972,3 @@ function Aside(props: AsideProps) {
     </div>
   );
 }
-
