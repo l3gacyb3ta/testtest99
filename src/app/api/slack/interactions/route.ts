@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  getPermalink,
   postMessage,
   updateMessage,
   verifySlackRequest,
@@ -86,7 +85,7 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
     if (payload.response_url) {
       await respondEphemeral(
         payload.response_url,
-        "Only the person who opened this ticket can mark it resolved themselves.",
+        "Only the person who asked can close it themselves — helpers can use \"Mark as helped\" right here in the thread.",
       );
     }
     return;
@@ -101,14 +100,51 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 
   if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel && ref.text !== undefined) {
     try {
-      const permalink = await getPermalink(ref.helpChannel, ref.helpTs!);
       await updateMessage(
         ref.ticketsChannel,
         ref.ticketsTs,
         `Ticket resolved by <@${payload.user.id}>`,
         [
-          ticketSection(ref as TicketRef, permalink),
+          ticketSection(ref as TicketRef),
           ...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
+        ],
+      );
+    } catch (err) {
+      console.error(`Failed to sync tickets-channel message: ${err}`);
+    }
+  }
+}
+
+/** A helper clicking "Mark as helped" in the help-channel thread — the ask
+ * from the helpers, so nobody has to jump over to the tickets channel to
+ * close a ticket. Resolves both the thread ack and the tickets-channel
+ * message, mirroring what the staff-side button does. */
+async function handleThreadMarkHelped(payload: InteractionPayload, action: BlockAction) {
+  if (!payload.channel?.id || !payload.message?.ts) return;
+
+  let ref: Partial<TicketRef & { ticketsChannel: string; ticketsTs: string }> = {};
+  try {
+    ref = action.value ? JSON.parse(action.value) : {};
+  } catch {
+    return;
+  }
+
+  await updateMessage(
+    payload.channel.id,
+    payload.message.ts,
+    `You're all set — <@${payload.user.id}> marked this as helped.`,
+    resolveBlocks(payload.message.blocks, payload.user.id),
+  );
+
+  if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel && ref.text !== undefined) {
+    try {
+      await updateMessage(
+        ref.ticketsChannel,
+        ref.ticketsTs,
+        `Ticket resolved by <@${payload.user.id}>`,
+        [
+          ticketSection(ref as TicketRef),
+          ...resolveBlocks(undefined, payload.user.id),
         ],
       );
     } catch (err) {
@@ -147,6 +183,8 @@ export async function POST(request: Request) {
       await handleMarkHelped(payload, action);
     } else if (action?.action_id === "mark_resolved_by_author") {
       await handleSelfResolve(payload, action);
+    } else if (action?.action_id === "mark_helped_from_thread") {
+      await handleThreadMarkHelped(payload, action);
     }
   }
 
