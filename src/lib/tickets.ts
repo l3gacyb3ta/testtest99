@@ -16,12 +16,16 @@ export type TicketRef = {
 export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions";
 export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions";
 
-export function ticketSection(ref: TicketRef): SlackBlock {
+/** `permalink` forwards the real message (Slack unfurls it into the
+ * original's content, sender, and formatting) — falls back to a plain-text
+ * quote if the permalink lookup failed or hasn't been done. */
+export function ticketSection(ref: TicketRef, permalink?: string | null): SlackBlock {
+  const body = permalink ?? `>${ref.text}`;
   return {
     type: "section",
     text: {
       type: "mrkdwn",
-      text: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>\n>${ref.text}`,
+      text: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>\n${body}`,
     },
   };
 }
