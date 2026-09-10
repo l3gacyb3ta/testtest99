@@ -27,24 +27,29 @@ import { COMP_WIDTH, at, band, box, u } from "@/lib/stage";
  *   275:132  step 1 bottom-right  ->  step 2 top-left
  *   275:133  step 2 bottom-left   ->  step 3 top-right
  *   275:148  step 3 bottom-right  ->  step 4 top-left
+ *
+ * Every y below is the comp's own plus `STEP_ONE_GROWTH`. Step 1 got its
+ * heading back and grew 105 units to hold it (see the plate), and the three
+ * joints hang off plate edges: the first band's ends keep their 16.5 units of
+ * overlap into step 1 and 12.5 into step 2 only because both moved with it.
  */
 const CONNECTORS = [
   {
     id: "one-to-two",
-    from: [835.25, 694.5],
-    to: [967.25, 848.5],
+    from: [835.25, 799.5],
+    to: [967.25, 953.5],
     mean: 92.2,
   },
   {
     id: "two-to-three",
-    from: [960.5, 1252.5],
-    to: [860, 1432.5],
+    from: [960.5, 1357.5],
+    to: [860, 1537.5],
     mean: 102.2,
   },
   {
     id: "three-to-four",
-    from: [750.25, 1981.5],
-    to: [909.5, 2165],
+    from: [750.25, 2086.5],
+    to: [909.5, 2270],
     mean: 120.3,
   },
 ] as const;
@@ -105,7 +110,7 @@ const CONNECTORS = [
  */
 const STEP_ART_SIZES = {
   stage: "510px",
-  /** Step 1's picture is the whole 975-unit plate, 666px at the 1180 cap. */
+  /** Step 1's picture runs its plate's full 975 units, 666px at the 1180 cap. */
   weeks: "670px",
   stacked: "(min-width: 640px) 610px, 100vw",
 } as const;
@@ -115,15 +120,15 @@ const STEP_ART_SIZES = {
  * that decides this section's height.
  *
  * Everything in the stage is a comp pixel expressed in `cqw`, so every length
- * in here is a share of the stage's own width. That includes the height: 2601
- * comp units is 150.52cqw, which means widening the window made the section
- * taller, 1:1.51. From 1180 to 1728 that added 825px of scroll — a page
+ * in here is a share of the stage's own width. That includes the height: 2706
+ * comp units is 156.60cqw, which means widening the window made the section
+ * taller, 1:1.57. From 1180 to 1728 that added 858px of scroll — a page
  * getting longer as it gets more room, which is backwards.
  *
  * `.stage` caps at 1728, so the section was constant above that and variable
  * below it; the whole problem lived in the one band between the breakpoint and
  * the cap. Capping here at the breakpoint itself removes the band: the stage is
- * 1180 wide at 1180 and 1180 wide at 3840, so the height is a flat 1776px at
+ * 1180 wide at 1180 and 1180 wide at 3840, so the height is a flat 1848px at
  * every width this layout is ever shown at — which it now actually is; see the
  * stage element below for the `cqw` fallback that was defeating this cap.
  *
@@ -141,10 +146,32 @@ const STEP_ART_SIZES = {
 const STAGE_CAP = 1180;
 
 /**
- * The bottom edge of the lowest plate — step 4 at 2143 + 458 — so the stage is
- * exactly its own content and nothing more.
+ * How much step 1 grew when its heading came back, and therefore how far
+ * everything under it moved.
+ *
+ * `allweeks.png` had been given the whole plate, which left nowhere for the
+ * step's own title to sit: its ink reaches all four edges, and the only band
+ * of bare canvas in the file — the top-left corner, 239 x 223 comp units once
+ * the picture is drawn at 975 — is a third of what a 40-unit line needs. The
+ * choice was to shrink the picture into the leftover or to lengthen the plate,
+ * and shrinking loses more than it saves: the week marks are drawn small, so
+ * at the 743 units a title would leave them the "WEEK n" caps land at 8px.
+ *
+ * So the plate grew instead, which is what the steps below it already did when
+ * their pictures did not fit the comp's slots. Growing upward was not
+ * available — the hero's arrow ends 179 into this stage and overlaps the
+ * plate's top edge by 15, so the plate's top is pinned. Everything below moves
+ * down by this instead: the three connectors, steps 2-4, both asides, and the
+ * five extras that sit beside them.
  */
-const STAGE_H = 2601;
+const STEP_ONE_GROWTH = 105;
+
+/**
+ * The bottom edge of the lowest plate — step 4 at 2248 + 458 — so the stage is
+ * exactly its own content and nothing more. 2248 is the comp's 2143 plus
+ * `STEP_ONE_GROWTH`.
+ */
+const STAGE_H = 2706;
 
 /**
  * A step's artwork: the picture where there is one, the drawn footprint where
@@ -241,14 +268,21 @@ function StepArt({
  * Stage only. Below 1180 the layout is a single column of plates with no gaps
  * to put anything in, and scattering art down its margins would be decoration
  * competing with the one thing a phone has room for.
+ *
+ * The five below step 1 carry `STEP_ONE_GROWTH` on their y, which is what
+ * keeps those clearances the numbers they were: the hammer still sits 105 to
+ * the right of step 3 and overlaps its lower half by 156, and the tightest of
+ * the six is still gatohead's 38 under step 3. Only gatoandspirit stays put —
+ * it is beside step 1 rather than below it, clear of the taller plate by 258
+ * across, and the plate grew downward.
  */
 const EXTRAS = [
   { src: gatoandspirit, x: 1290, y: 300, w: 300, h: 255 },
-  { src: spiritguy, x: 120, y: 850, w: 190/2, h: 293/2 },
-  { src: gatointube, x: 400, y: 1050, w: 230, h: 272 },
-  { src: gatoycaja, x: 1180, y: 1320, w: 170, h: 172 },
-  { src: hammer, x: 1120, y: 1832, w: 310, h: 271 },
-  { src: gatohead, x: 180, y: 2026, w: 230, h: 198 },
+  { src: spiritguy, x: 120, y: 955, w: 190/2, h: 293/2 },
+  { src: gatointube, x: 400, y: 1155, w: 230, h: 272 },
+  { src: gatoycaja, x: 1180, y: 1425, w: 170, h: 172 },
+  { src: hammer, x: 1120, y: 1937, w: 310, h: 271 },
+  { src: gatohead, x: 180, y: 2131, w: 230, h: 198 },
 ] as const;
 
 /** The widest of them is 310 comp units, 212px at the 1180 cap. */
@@ -332,32 +366,63 @@ export default function Process() {
           </div>
         ))}
 
-        {/* Step 1 — design weeks, now one piece of artwork.
+        {/* Step 1 — design weeks: a title over one piece of artwork.
 
-            `allweeks.png` is 1920x1080 and this plate is 975x547, which is
-            1.7778 against 1.7824 — a 0.26% match, and the reason the picture
-            is treated as the whole plate rather than as something standing
-            inside it. The five hand-placed pairings, their five screened
-            backdrops and the comp's own week marks are all inside it now.
+            `allweeks.png` is 1920x1080 and gets 975x548 here, 1.7778 against
+            1.7792 — a 0.08% match, which is why it is still `cover`. The five
+            hand-placed pairings, their five screened backdrops and the comp's
+            own week marks are all inside it.
 
-            The heading and the five weeks stay in the document. A picture that
+            The picture had the whole plate for a while and the title was
+            sr-only, and that is the one thing that made this step read as a
+            different object from the three below it: they say what you do and
+            then show it, and this one only showed. The plate is
+            `STEP_ONE_GROWTH` taller so the title can sit where theirs do — top
+            of the plate, 40 units, on the plate's own ground — and the picture
+            keeps every unit of width it had.
+
+            The title is centred where the other three are ranged left, and
+            that is the picture's doing rather than a whim: the five pairings
+            are hand-placed across the full 975 with no left edge to range
+            against, so a left-ranged line would hang off a composition that
+            has no margin. The box is still the family's 68 gutter, taken on
+            both sides — 68 + 839/2 lands on 487.5, the plate's own centre — so
+            the line is centred by the box rather than by an offset that has to
+            be re-derived if the copy changes. 38 from the top is step 2's.
+
+            The picture starts at 92 instead of the family's ~109 because it
+            brings 30 units of its own transparent margin with it, so first ink
+            lands 40 below the title either way.
+
+            The five weeks stay in the document under it. A picture that
             replaces text has to hand that text back or the page has quietly
-            lost it: the `h2` keeps step 1 in the outline alongside the other
-            three, and the list carries the subjects and their week numbers. */}
+            lost it, and `WeekList` carries the subjects and their numbers. */}
         <div
           className="absolute overflow-hidden rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(57, 164, 975, 547)}
+          style={box(57, 164, 975, 652)}
         >
-          <h2 className="sr-only">{design.title}</h2>
+          <h2
+            className="absolute text-center font-display font-bold text-balance"
+            style={{
+              ...at(68, 38),
+              width: u(839),
+              fontSize: u(40),
+              lineHeight: 1.1,
+            }}
+          >
+            {design.title}
+          </h2>
           {design.art ? (
-            <Image
-              src={design.art}
-              alt=""
-              fill
-              sizes={STEP_ART_SIZES.weeks}
-              quality={90}
-              className="object-cover"
-            />
+            <div className="absolute" style={box(0, 92, 975, 548)}>
+              <Image
+                src={design.art}
+                alt=""
+                fill
+                sizes={STEP_ART_SIZES.weeks}
+                quality={90}
+                className="object-cover"
+              />
+            </div>
           ) : null}
           <WeekList />
           {/* Parked: corner decals, to be placed later. <CornerDecal decal="bottomLeft" over /> */}
@@ -366,7 +431,7 @@ export default function Process() {
         {/* Step 2 — funding */}
         <div
           className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(812, 836, 823, 445)}
+          style={box(812, 941, 823, 445)}
         >
           <h2
             className="absolute font-display font-bold"
@@ -398,7 +463,7 @@ export default function Process() {
         {/* Step 3 — build */}
         <div
           className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(57, 1406, 958, 582)}
+          style={box(57, 1511, 958, 582)}
         >
           <h2
             className="absolute font-display font-bold"
@@ -423,7 +488,7 @@ export default function Process() {
         {/* Step 4 — the printer */}
         <div
           className="absolute rounded-xl bg-hl-lavender-pale text-hl-ink"
-          style={box(731, 2143, 943, 458)}
+          style={box(731, 2248, 943, 458)}
         >
           <h2
             className="absolute font-display font-bold"
@@ -447,8 +512,8 @@ export default function Process() {
 
         {/* Asides — small plates orbiting the band. Only where they sit
             differs; the plate itself is the same object twice. */}
-        <Aside aside={viral} origin={[1114, 1531]} />
-        <Aside aside={community} origin={[59, 2262]} />
+        <Aside aside={viral} origin={[1114, 1636]} />
+        <Aside aside={community} origin={[59, 2367]} />
 
         {/* Connectors, drawn last so they ride over the plates they join */}
         {CONNECTORS.map((connector) => {
@@ -477,9 +542,17 @@ export default function Process() {
         <ol className="mx-auto flex max-w-2xl flex-col">
           <li>
             <Plate>
-              <h2 className="sr-only">{design.title}</h2>
+              {/* Centred here for the same reason as on the stage: the
+                  picture below runs the plate's full width and places its five
+                  pairings across all of it, so the title belongs over the
+                  middle of it rather than ranged against an edge the drawing
+                  does not have. Steps 2-4 keep their left rank — their
+                  pictures are single objects sitting inside the plate. */}
+              <h2 className="text-center font-display text-2xl font-bold text-balance sm:text-3xl">
+                {design.title}
+              </h2>
               {design.art ? (
-                <div className="relative aspect-[1920/1080] w-full overflow-hidden">
+                <div className="relative mt-6 aspect-[1920/1080] w-full overflow-hidden">
                   <Image
                     src={design.art}
                     alt=""
