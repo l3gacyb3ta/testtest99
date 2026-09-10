@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   getBotUserId,
+  getPermalink,
   inviteToChannel,
   postMessage,
   verifySlackRequest,
@@ -45,8 +46,10 @@ async function handleHelpMessage(event: SlackEvent) {
     text: event.text ?? "",
   };
 
+  const permalink = await getPermalink(ref.helpChannel, ref.helpTs);
+
   const ticketBlocks: SlackBlock[] = [
-    ticketSection(ref),
+    ticketSection(ref, permalink),
     {
       type: "actions",
       block_id: TICKET_ACTIONS_BLOCK_ID,

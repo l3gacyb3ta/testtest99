@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { postMessage, updateMessage, verifySlackRequest, type SlackBlock } from "@/lib/slack";
+import {
+  getPermalink,
+  postMessage,
+  updateMessage,
+  verifySlackRequest,
+  type SlackBlock,
+} from "@/lib/slack";
 import { resolveBlocks, ticketSection, type TicketRef } from "@/lib/tickets";
 
 export const runtime = "nodejs";
@@ -95,12 +101,13 @@ async function handleSelfResolve(payload: InteractionPayload, action: BlockActio
 
   if (ref.ticketsChannel && ref.ticketsTs && ref.helpChannel && ref.text !== undefined) {
     try {
+      const permalink = await getPermalink(ref.helpChannel, ref.helpTs!);
       await updateMessage(
         ref.ticketsChannel,
         ref.ticketsTs,
         `Ticket resolved by <@${payload.user.id}>`,
         [
-          ticketSection(ref as TicketRef),
+          ticketSection(ref as TicketRef, permalink),
           ...resolveBlocks(undefined, payload.user.id, "marked it themselves"),
         ],
       );

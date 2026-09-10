@@ -73,6 +73,21 @@ export async function inviteToChannel(channel: string, user: string) {
   }
 }
 
+/** A Slack permalink, dropped into a message's text, auto-unfurls into a
+ * rich preview of the original message (sender, avatar, timestamp, files,
+ * formatting) — the closest the Bot API gets to the client's "Forward
+ * message" action, which isn't itself exposed over the API. */
+export async function getPermalink(
+  channel: string,
+  messageTs: string,
+): Promise<string | null> {
+  const result = await callSlackApi<{ permalink?: string }>(
+    "chat.getPermalink",
+    { channel, message_ts: messageTs },
+  );
+  return result.ok ? (result.permalink ?? null) : null;
+}
+
 let botUserId: string | null = null;
 
 /** Cached for the life of the instance — this never changes for a given
