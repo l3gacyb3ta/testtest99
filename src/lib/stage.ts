@@ -165,3 +165,64 @@ export function stackWeld(lean: "left" | "right"): string {
 export function plateBox(p: Plate) {
   return box(p.x, p.y, p.w, p.h);
 }
+
+/**
+ * The swash behind the hero's tagline and email field, and the inset the two
+ * keep from its edge.
+ *
+ * It lives here rather than in `signup-form.tsx` because both ends of it are
+ * needed on both sides of the client boundary: the form draws the padding, and
+ * the hero has to size the box from the same number. The form is a client
+ * component, so a plain function exported from it cannot be called while the
+ * hero renders on the server.
+ *
+ * `brushstroke.png` is 2000x400 and its interior is one flat `#103070` — RGB
+ * standard deviation under 1.4 across 578k opaque pixels, 52 distinct colours
+ * in the whole of it — so there is no bristle texture to distort and it can be
+ * stretched to the box outright. Everything the file is carrying lives in its
+ * alpha: a soft rim, and two tapered ends running 12% of the width on the left
+ * and 28% on the right.
+ *
+ * Which is what these numbers are for. Laid on the box at its own size the
+ * tagline would run 2%-98% of it and put its own ends in those tapers, over
+ * the painting, so the box's padding is what holds the type in the stroke's
+ * solid part instead of the flat 2rem it used to need against ink.
+ *
+ * The horizontal inset is a share of the box, so it holds at every width; the
+ * vertical one is `em` of the size the caller sets, because a percentage padding
+ * resolves against the width on both axes and would be meaningless here. Their
+ * two jobs are different: X clears the ends, Y clears the rim.
+ *
+ * Measured, at the worst pixel under the type rather than on average. At a
+ * 12.5% inset the type occupies the middle 75% of the stroke's width, and
+ * 1.8em holds it inside the middle 54-60% of its height at every size either
+ * layout sets — a band whose lowest alpha is 0.667. The lightest thing that
+ * can be behind it is bg.png's own brightest pixel across the plate's
+ * footprint, `#1698a9` once the art layer's 0.66 is applied, which is 2.94:1 to
+ * paper bare and 6.95:1 through the stroke. So the tagline clears 4.5:1 at any
+ * size, not just at the 3:1 its 32.8 comp px would owe.
+ *
+ * The rounded corner went with the ink. The stroke's own alpha is 0.000 at all
+ * four corners of the box, so the radius had nothing left to round.
+ */
+export const SWASH_INSET_X = 0.125;
+export const SWASH_INSET_Y = "1.8em";
+
+/**
+ * How wide the box has to be for a line of `n` to sit inside that inset.
+ *
+ * The stage's tagline is one `whitespace-nowrap` line of a known measure, and
+ * the box used to be sized by it: as the widest child of a centred flex
+ * column it shrank to the line and landed on 865 against the plate's own 864.
+ * A percentage padding cannot do that — it is treated as zero while the box is
+ * working out its own max-content, so the box would still stop at the line and
+ * then take the inset out of it, clipping 25% of the sentence.
+ *
+ * So in the stage the box is given its width instead of finding it, and this
+ * is the arithmetic: the line is the middle 75%, so the box is the line over
+ * 0.75. The stacked layout needs none of this — its tagline wraps inside a
+ * column that is already explicit.
+ */
+export function swashBoxWidth(lineRun: number) {
+  return lineRun / (1 - 2 * SWASH_INSET_X);
+}

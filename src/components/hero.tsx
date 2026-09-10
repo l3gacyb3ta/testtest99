@@ -9,7 +9,7 @@ import flagArt from "../../public/art/hackclub-flag.svg";
 import SignupForm from "@/components/signup-form";
 import Wordmark from "@/components/wordmark";
 import { BRAND } from "@/lib/content";
-import { u } from "@/lib/stage";
+import { swashBoxWidth, u } from "@/lib/stage";
 
 /**
  * The hero plate, taken to half the grid.
@@ -114,6 +114,31 @@ const ART_FADE = [
  * fits outright and `min-h` grows the block rather than clipping it.
  */
 const LOGO_STAGE_W = u(604.8);
+
+/**
+ * How far the tagline runs, in comp units, set in Ubuntu 400 at `u(32.8)`.
+ *
+ * The sentence is 25.301em wide in that face, so its size and its measure are
+ * the same number — 32.8 of them is 830. It was a figure in the prose below
+ * and is now the value the box is built from: `swashBoxWidth` takes the line
+ * as the middle 75% of the box, which is the inset the swash behind it needs.
+ *
+ * The line is `whitespace-nowrap`, so a face whose advances run wider than
+ * this does not wrap — it eats into the inset. That is the right failure: the
+ * metric-adjusted fallback can miss Ubuntu by 3.9%, which takes the line to
+ * 77.9% of the box and the inset from 12.5% to 11.0%, where the worst pixel
+ * under the type is still alpha 0.686 and 7.14:1 against the lightest thing
+ * the painting can put there. The inset is a contrast buffer before it is a
+ * margin, and it has that much to give.
+ *
+ * At 1107 the box is wider than the 864 plate it sits on and overhangs it by
+ * 122 either side. Nothing clips — the plate is a centred content column with
+ * no ground — and the overhang is inside the composition: bg.png's open middle
+ * runs 274 to 1503 on this grid, measured as its calmest contiguous span of
+ * column edge energy, so the swash stops 190 short of the left pipe column and
+ * 86 short of the right.
+ */
+const TAGLINE_RUN = 830;
 
 /**
  * The stacked layout's own width, also taken down 30% — 60 to 42, and the
@@ -257,7 +282,10 @@ export default function Hero() {
               face missing Ubuntu's advances by up to 3.9%; now a wider face
               simply takes the box with it. */}
           <SignupForm
-            style={{ marginTop: onPlateU(27) }}
+            style={{
+              marginTop: onPlateU(27),
+              width: u(swashBoxWidth(TAGLINE_RUN)),
+            }}
             fontSize={onPlateU(30)}
             intro={
               <p

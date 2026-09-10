@@ -1,6 +1,10 @@
 "use client";
 
+import Image from "next/image";
+
+import brushstroke from "../../public/art/brushstroke.png";
 import { BRAND } from "@/lib/content";
+import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/stage";
 import {
   useCallback,
   useEffect,
@@ -178,21 +182,62 @@ export default function SignupForm({
       {/* The box: the promise and the field it is asking you to fill, grouped,
           with the eligibility note left outside it below.
 
-          `hl-teal-deep`, and the two contrasts that decided it. The tagline is
-          paper and reads 6.09:1 here against the 3.50:1 it had on the hero
-          plate, so the box is the better ground for it. The field is solid
-          ink and reads only 2.11:1 against this — it would have dissolved into
-          the box — which is why the edge below is back.
+          Its ground is the painted swash rather than flat ink. The tagline is
+          paper and reads 6.95:1 on it at the worst pixel the painting can put
+          behind it, against the 3.50:1 it had bare on the hero plate, so the
+          box is still the better ground for the line — and the field's own
+          cyan edge reads 7.45:1 here where on ink it had 3.71:1, so the one
+          boundary that had to be argued for is now the easy part.
 
-          Radius and padding are `em`, so they are set by the `fontSize` each
-          layout hands this component and the box keeps its proportions from a
-          phone to the comp stage without a second set of numbers. */}
+          The padding was `pt-[1rem] pb-[1rem] p-[2rem]`, three utilities for one
+          box, and the `p` lost: Tailwind emits it ahead of the two axis rules,
+          so 2rem was only ever the horizontal value and the vertical 1rem was
+          doing the work. It is one declaration now, and both numbers are
+          derived — see `SWASH_INSET_X`.
+
+          `isolate` keeps the swash's negative index inside this box instead of
+          letting it escape to the nearest stacking context and paint behind
+          the hero plate, which is to say behind nothing. */}
       <div
-        className={
-          intro ? "rounded-lg bg-hl-ink pt-[1rem] pb-[1rem] p-[2rem] mb-[1rem]" : ""
+        className={intro ? "relative isolate mb-[1rem]" : ""}
+        style={
+          intro
+            ? {
+                paddingInline: `${SWASH_INSET_X * 100}%`,
+                paddingBlock: SWASH_INSET_Y,
+              }
+            : undefined
         }
       >
-        {intro ? <div className="mb-[0.7em]">{intro}</div> : null}
+        {intro ? (
+          <>
+            {/* Decorative: the promise is the sentence over it, and a brush
+                mark carries nothing a reader needs. Through `next/image` rather
+                than as a CSS `background-image` so the 487 KB PNG is served
+                resized and re-encoded on the hero, where it would otherwise
+                land whole in the middle of the largest paint on the page.
+
+                `object-fill` is the deliberate one: `cover` would crop the ends
+                that are the only thing distinguishing this from a rectangle,
+                `contain` would letterbox them, and the interior is flat colour,
+                so stretching it to a box that runs 6.8:1 in the stage and 3:1
+                on a phone costs nothing but the angle of the two tapers. */}
+            <Image
+              src={brushstroke}
+              alt=""
+              aria-hidden
+              fill
+              sizes="(min-width: 1180px) 1110px, 100vw"
+              quality={90}
+              className="-z-10 object-fill"
+            />
+            {/* The 0.7em that separates the promise from the field. It was
+                `mb-[0.7em]` and generated no rule at all, so the two were flush:
+                the sentence sat directly on the slot it is asking you to
+                fill. */}
+            <div style={{ marginBottom: "0.7em" }}>{intro}</div>
+          </>
+        ) : null}
 
         {/* The row is the positioning context for the confirmation plate, so
             the plate is exactly the field's footprint and nothing below it ever
@@ -342,9 +387,7 @@ export default function SignupForm({
       <p
         id={`${id}-msg`}
         className={`mt-[0.45em] ${
-          status === "error"
-            ? "font-semibold text-hl-cyan"
-            : "text-hl-paper"
+          status === "error" ? "font-semibold text-hl-cyan" : "text-hl-paper"
         }`}
         style={{ fontSize: "0.6em", minHeight: "1.4em" }}
       >
@@ -355,10 +398,7 @@ export default function SignupForm({
           the wipe-in message, this is worth keeping on screen so the link is
           still there to copy after the "you're on the list" plate is gone. */}
       {referralLink ? (
-        <p
-          className="mt-[0.3em] text-hl-paper"
-          style={{ fontSize: "0.6em" }}
-        >
+        <p className="mt-[0.3em] text-hl-paper" style={{ fontSize: "0.6em" }}>
           Refer a friend:{" "}
           <button
             type="button"

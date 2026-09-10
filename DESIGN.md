@@ -44,6 +44,11 @@ patterns' stroke on the process band. Not the welds: those are the plates' own
 material, and the stacked layout's pair were still cyan long after the stage's
 four stopped being.
 
+One colour on the page is deliberately not in that table: the `#103070` of
+`brushstroke.png`, the swash under the hero's tagline and field. It arrives as
+picture content rather than as a surface value — see **Tagline swash** — and
+nothing else is drawn in it.
+
 Secondary text is never gray. It is tinted from the surface's own foreground:
 
 - `--color-hl-ink-soft` = ink 80% over paper — 5.14:1 on `#ededed`
@@ -329,10 +334,60 @@ though it no longer breaks the fold -- it now sits wholly beneath one.
   that a device borrowed from elsewhere in a system still has to survive the
   size it is borrowed into.
 
-  The edge sits at 55%, which is 3.71:1 on ink, where a control's boundary has
-  to clear 3. Value text is paper on ink at 12.85:1, the placeholder
-  `--color-hl-paper-soft` at 8.36:1, and the slot reads 3.44:1 against the hero
-  plate it sits on.
+  The edge sits at 55%, where a control's boundary has to clear 3. It had
+  3.71:1 against the flat ink the box used to be and has 7.45:1 against the
+  swash that replaced it — the one boundary on this control that had to be
+  argued for is now the easy part, because the field is dark and its ground is
+  no longer the same dark. Value text is paper on ink at 12.85:1 and the
+  placeholder `--color-hl-paper-soft` at 8.36:1, both unchanged: the slot
+  brings its own opaque ground and does not read through to the swash.
+
+- **Tagline swash** — `public/art/brushstroke.png`, the ground the tagline and
+  the email field share, in place of the flat ink box they sat in.
+
+  The file is 2000x400 and its interior is one flat `#103070`: RGB standard
+  deviation under 1.4 across 578k opaque pixels, 52 distinct colours in the
+  whole of it. So there is no bristle texture in it to distort, and everything
+  it is carrying lives in its alpha — a soft rim, and two tapered ends running
+  12% of the width on the left and 28% on the right. That is why it is drawn
+  `object-fill`: `cover` would crop the ends that are the only thing
+  distinguishing it from a rectangle, `contain` would letterbox them, and
+  stretching flat colour to a box that runs 6.5:1 in the stage and 2.2:1 on a
+  phone costs nothing but the angle of the two tapers.
+
+  `#103070` is the one colour on the page that is not a token, and it is not
+  one on purpose: it arrives as picture content, the way bg.png's palette does,
+  and a token would invite it to be reused as a surface it was never mixed for.
+  Nothing else is drawn in it.
+
+  What the tapers cost is an inset. Laid on the box at its own size the tagline
+  would run 2%-98% of it and put its own ends in the feathering, over the
+  painting — so `SWASH_INSET_X` holds the type in the middle 75% of the
+  stroke's width and `SWASH_INSET_Y`'s 1.8em holds it in the middle 54-60% of
+  its height at every size either layout sets. The two insets have different
+  jobs and different units: X clears the ends and is a share of the box, so it
+  holds at every width; Y clears the rim and is `em`, because a percentage
+  padding resolves against the width on both axes and would say nothing here.
+
+  Measured at the worst pixel under the type rather than on average. That band
+  bottoms out at alpha 0.667, and the lightest thing that can be behind it is
+  bg.png's own brightest pixel across the plate's footprint — `#1698a9` once the
+  art layer's 0.66 is applied, 2.94:1 to paper bare. Through the stroke that is
+  7.18:1 in the stage and 7.53:1 on the stacked layout's blue-deep, so the
+  tagline clears 4.5:1 at any size rather than the 3:1 its 32.8 comp px would
+  owe. The corners needed no radius: the stroke's alpha is 0.000 at all four,
+  so `rounded-lg` had nothing left to round and went with the ink.
+
+  In the stage the box is given its width rather than finding it. It used to be
+  the widest child of a centred flex column and shrank to the nowrap tagline,
+  landing on 865 against the plate's own 864; a percentage padding cannot do
+  that, being treated as zero while the box works out its own max-content, so
+  the box would have stopped at the line and then taken the inset out of it.
+  `swashBoxWidth` sets it to the line over 0.75 instead — 1107, which overhangs
+  the 864 plate by 122 either side. Nothing clips, the plate being a content
+  column with no ground, and the overhang stays inside the composition:
+  bg.png's open middle runs 274 to 1503 on this grid, so the swash stops 190
+  short of the left pipe column and 86 short of the right.
 
 - **CTA** — square cyan block labelled "sign up!" in display bold at 0.85em of
   the form's own size, sized by padding rather than a fixed width so the button
