@@ -38,13 +38,16 @@ async function callSlackApi<T extends Record<string, unknown>>(
 export async function postMessage(
   channel: string,
   text: string,
-  opts: { blocks?: SlackBlock[]; threadTs?: string } = {},
+  opts: { blocks?: SlackBlock[]; threadTs?: string; unfurlLinks?: boolean } = {},
 ) {
   return callSlackApi<{ ts?: string; channel?: string }>("chat.postMessage", {
     channel,
     text,
     blocks: opts.blocks,
     thread_ts: opts.threadTs,
+    // `undefined` drops out of JSON.stringify, so callers that don't care
+    // get Slack's default; the ticket post passes true explicitly.
+    unfurl_links: opts.unfurlLinks,
   });
 }
 

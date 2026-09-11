@@ -16,16 +16,17 @@ export type TicketRef = {
 export const TICKET_ACTIONS_BLOCK_ID = "ticket_actions";
 export const SELF_RESOLVE_ACTIONS_BLOCK_ID = "self_resolve_actions";
 
-/** `permalink` forwards the real message (Slack unfurls it into the
- * original's content, sender, and formatting) — falls back to a plain-text
- * quote if the permalink lookup failed or hasn't been done. */
-export function ticketSection(ref: TicketRef, permalink?: string | null): SlackBlock {
-  const body = permalink ?? `>${ref.text}`;
+/** Always quotes the original text: Slack only unfurls links in a message's
+ * top-level `text`, never inside blocks, so the forward-style preview comes
+ * from the permalink the caller puts in the message text — this block is the
+ * guaranteed-readable copy when the unfurl doesn't render (or the permalink
+ * lookup failed and there is nothing to unfurl). */
+export function ticketSection(ref: TicketRef): SlackBlock {
   return {
     type: "section",
     text: {
       type: "mrkdwn",
-      text: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>\n${body}`,
+      text: `*Ticket* from <@${ref.authorId}> in <#${ref.helpChannel}>\n>${ref.text}`,
     },
   };
 }

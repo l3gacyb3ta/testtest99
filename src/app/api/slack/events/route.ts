@@ -49,7 +49,7 @@ async function handleHelpMessage(event: SlackEvent) {
   const permalink = await getPermalink(ref.helpChannel, ref.helpTs);
 
   const ticketBlocks: SlackBlock[] = [
-    ticketSection(ref, permalink),
+    ticketSection(ref),
     {
       type: "actions",
       block_id: TICKET_ACTIONS_BLOCK_ID,
@@ -65,12 +65,26 @@ async function handleHelpMessage(event: SlackEvent) {
     },
   ];
 
+  // Slack unfurls text-based links only in the top-level message text, not
+  // inside blocks — a permalink in the section block renders as a raw URL,
+  // which is why tickets looked "quoted, not forwarded". The permalink rides
+  // in the text so it unfurls into the original message's preview.
   const ticketMessage = await postMessage(
     ticketsChannel,
-    `New ticket from <@${ref.authorId}>`,
-    { blocks: ticketBlocks },
+    permalink
+      ? `New ticket from <@${ref.authorId}>: ${permalink}`
+      : `New ticket from <@${ref.authorId}>`,
+    { blocks: ticketBlocks, unfurlLinks: true },
   );
   if (!ticketMessage.ok || !ticketMessage.ts) return;
+
+  // Carried by both buttons: the author's self-resolve and the helpers'
+  // in-thread "Mark as helped" both need the tickets-channel target to sync.
+  const resolveValue = JSON.stringify({
+    ...ref,
+    ticketsChannel,
+    ticketsTs: ticketMessage.ts,
+  });
 
   const selfResolveBlocks: SlackBlock[] = [
     {
@@ -112,11 +126,14 @@ async function handleHelpMessage(event: SlackEvent) {
           type: "button",
           text: { type: "plain_text", text: "I'm all set", emoji: true },
           action_id: "mark_resolved_by_author",
-          value: JSON.stringify({
-            ...ref,
-            ticketsChannel,
-            ticketsTs: ticketMessage.ts,
-          }),
+          value: resolveValue,
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "Mark as helped", emoji: true },
+          style: "primary",
+          action_id: "mark_helped_from_thread",
+          value: resolveValue,
         },
       ],
     },
