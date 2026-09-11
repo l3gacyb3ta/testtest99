@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 
 import bgArt from "../../public/art/bg.png";
+import AnnouncementBanner from "@/components/announcement-banner";
 // Parked: the corner decals, to be placed later.
 // import CornerDecal from "@/components/corner-decal";
 import flagArt from "../../public/art/hackclub-flag.svg";
@@ -197,6 +198,14 @@ export default function Hero() {
     <section id="signup" className="relative z-10 isolate">
       <HeroArt />
       <HackClubFlag />
+      {/* On the painting, not above it — so `bg.png` still starts at the top
+          of the screen, which is where it was composed to start. It is
+          positioned in the hero for the reason the flag is: it belongs to
+          this section, and the two of them share one problem — a mark laid on
+          the picture's top edge, near a corner that is already taken — which
+          is solved by comparing their geometry rather than each guessing at
+          the other's. */}
+      <AnnouncementBanner />
 
       {/* ── Comp reproduction, 1180px and up ───────────────────────────── */}
       {/* The fold: exactly one viewport, which is what makes "below the fold"
@@ -205,11 +214,28 @@ export default function Hero() {
           is never shorter than the fold, so the header below is never dragged
           up into view.
 
+          A plain viewport again, and the dateline is why it can be. Standing
+          above this block in flow it pushed the fold down by its own height
+          and took the scroll cue off the screen with it, so the number here
+          had to subtract it back; laid on the painting it costs the fold
+          nothing and this is the comp's own arithmetic once more.
+
           Three rows, 1fr / auto / 1fr, rather than a centred plate with the
           cue absolutely positioned: equal outer rows still centre the plate,
           but the cue is in flow, so on a short wide window the two cannot land
-          on top of each other. */}
-      <div className="stage hidden min-h-[100svh] grid-rows-[1fr_auto_1fr] justify-items-center min-[1180px]:grid">
+          on top of each other.
+
+          The first row carries a floor, which is the same argument run
+          upwards. Centring is a share of the free height, so on a short
+          enough window the plate rises to meet the dateline laid on the
+          painting — at this stage's cap that starts below about 730px of
+          viewport, which is a half-height window rather than a screen, but it
+          is reachable. 4.125rem is the plate's bottom edge at `md` and up
+          (12px of `top-3` plus its own 42) with 12px of clearance. Above that
+          height `1fr` wins in both rows and the centring is untouched; below
+          it the plate stops descending on the dateline and the squeeze goes
+          to the cue's row, which is the row that was already growing. */}
+      <div className="stage hidden min-h-[100svh] grid-rows-[minmax(4.125rem,1fr)_auto_1fr] justify-items-center min-[1180px]:grid">
         {/* The hero plate. Its three pieces were hand-placed absolute boxes
             on the comp grid; centred, that arithmetic was fighting itself, so
             the plate is a flex column instead and centring is structural. The

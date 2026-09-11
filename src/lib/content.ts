@@ -38,6 +38,29 @@ export const BRAND = {
   eligibility: "teens 13-18. no experience necessary. free to participate.",
 } as const;
 
+/**
+ * The dateline strip across the top of the page.
+ *
+ * The one dated claim on the site, and the only place a calendar date is
+ * written down, so it is the one thing here that goes stale on its own. Change
+ * `date` when the start moves; nothing else reads it.
+ *
+ * It is split rather than stored as one sentence because the date is the fact
+ * the strip exists to carry and is the only thing set in the page's accent
+ * colour — see `announcement-banner.tsx`. Splitting it in the data keeps the
+ * component free of string surgery on copy it does not own.
+ *
+ * "Warm Up Week 1" is the programme's own pre-season phase and is not the
+ * `week 1` of `DESIGN_WEEKS`, which is PCBs. Capitals are the phase's name,
+ * not a departure from the page's lowercase headings: this is running prose,
+ * which is sentence case everywhere else here too.
+ */
+export const ANNOUNCEMENT = {
+  lead: "Warm Up Week 1 starts on",
+  date: "September 14th",
+  tail: "!",
+} as const;
+
 export type DesignWeek = {
   subject: string;
   week: string;
