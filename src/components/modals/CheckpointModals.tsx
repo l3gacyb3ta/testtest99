@@ -158,7 +158,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <p className="hand min-w-0 flex-1 text-[0.76rem] leading-snug text-navy-soft">
               {toFloor > 0
                 ? `${fmtH(toFloor)} more before you can wrap up the week.`
-                : "You can wrap up whenever — or keep logging."}
+                : "Submit your project when it's done!"}
             </p>
           </div>
 
@@ -166,12 +166,12 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <>
               {nextEntry && (
                 <Button variant="outline" onClick={() => setOpenCheckpoint(nextEntry.id)}>
-                  Log another <IconPlus className="text-base" />
+                  Keep working <IconPlus className="text-base" />
                 </Button>
               )}
               {canWrapUp && wrapUp ? (
                 <Button variant="teal" onClick={() => setOpenCheckpoint(wrapUp.id)}>
-                  {owedReel ? "Post your reel" : "Wrap up"}{" "}
+                  {owedReel ? "Post your reel" : "Submit project"}{" "}
                   <IconArrowRight className="text-base" />
                 </Button>
               ) : (
@@ -220,7 +220,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             {fmt(saved)} logged.{" "}
             {toFloor > 0
               ? `${fmtH(toFloor)} more and you can wrap the week up whenever you like.`
-              : "You are past your tier's hours — wrap up, or keep banking."}
+              : "You are past your tier's hours — submit your project or keep working!."}
           </p>
         </div>
       )}
@@ -254,7 +254,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
               </>
             ) : (
               <>
-                Wrap up whenever you like. Every hour past{" "}
+                 Submit your project whenever you're done. Every hour past{" "}
                 <span className="font-bold text-navy">{fmtH(week.bankedFrom)}</span> is already
                 banking 5 coins — {fmtH(week.targetHours)} a week is the pace your goal wants.
               </>
