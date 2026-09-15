@@ -1,0 +1,143 @@
+export type Phase = "design" | "build";
+
+export type CheckpointKind =
+  | "onboarding" // the yellow first-run checkpoint
+  | "project" // project creation / tier selection
+  | "journal" // journal + timelapse until the hour target
+  | "reel" // idea / progress / next reel
+  | "submit" // the week gate
+  | "demo"; // build-week working-project video
+
+export interface Checkpoint {
+  id: string;
+  weekId: number;
+  kind: CheckpointKind;
+  /** Short marker-style label rendered under the puck. */
+  title: string;
+  /** One line of plain guidance shown in the start bubble. */
+  blurb: string;
+  /** Journal checkpoints that gate on tracked time carry an hour target. */
+  hourTarget?: number;
+  /** Journal checkpoints that gate on the habit instead carry an entry count. */
+  entryTarget?: number;
+  /** A milestone opens on the week's clock, not on the node before it. */
+  atHours?: number;
+  /** Reel checkpoints carry the brief for what to film. */
+  reelBrief?: string;
+}
+
+/** One saved journal session: the entry, and the time its timelapses carried. */
+export interface SessionLog {
+  id: string;
+  minutes: number;
+  body: string;
+}
+
+/** Everything about a week that does not depend on the maker's tier. */
+export interface WeekMeta {
+  id: number;
+  phase: Phase;
+  /** "PCB", "CAD"… used for the banner eyebrow and the shop/docs cross-links. */
+  theme: string;
+  /** The banner headline, e.g. DESIGN YOUR PCB. */
+  headline: string;
+  /** Long-form name, e.g. Printed Circuit Board Week. */
+  fullName: string;
+  /** Sentence shown on the week card and in the reveal modal. */
+  summary: string;
+  /** Beginner explainer used by the onboarding reveal step. */
+  primer: string;
+  /** Example projects shown to experienced makers instead of the primer. */
+  examples: string[];
+  accent: string;
+  accentDeep: string;
+}
+
+export interface Week extends WeekMeta {
+  /** The tier of this week's project — it decides how many chapters there are. */
+  tier: 1 | 2 | 3;
+  /** Hours that fund the project. Reaching it unlocks the closing reel. */
+  fundingHours: number;
+  /** Funded hours plus the hours your goal asks you to bank. */
+  targetHours: number;
+  /** Hours that pay for the project rather than banking. Build weeks: none. */
+  bankedFrom: number;
+  checkpoints: Checkpoint[];
+}
+
+export interface Tier {
+  id: 1 | 2 | 3;
+  funding: number;
+  hours: string;
+  toBank: string;
+  prize: string;
+  detail: string;
+  /** Hours that fund the project — the floor that opens the closing reel. */
+  fundingHours: number;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  weekId: number;
+  tier: 1 | 2 | 3;
+  starter: boolean;
+}
+
+export type Experience = "first" | "little" | "some" | "lots";
+
+export interface JournalEntry {
+  id: string;
+  author: string;
+  avatar: string;
+  project: string;
+  flames: number;
+  body: string;
+  minutes: number;
+  when: string;
+  group: "Today" | "Yesterday" | "Earlier this week";
+  media?: { kind: "board" | "cad" | "scope" | "bench"; caption: string };
+}
+
+export interface Reel {
+  id: string;
+  author: string;
+  handle: string;
+  fromHQ?: boolean;
+  caption: string;
+  week: string;
+  likes: number;
+  comments: number;
+  views: number;
+  scene: "pcb" | "cad" | "synth" | "display" | "bread" | "hq";
+}
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  blurb: string;
+  price: number;
+  category: "Grants" | "Parts" | "Tools" | "Swag";
+  art: "grant" | "printer" | "iron" | "scope" | "kit" | "shirt" | "sticker" | "meter";
+  stock: "in" | "low" | "out";
+}
+
+export interface DocArticle {
+  slug: string;
+  title: string;
+  section: string;
+  minutes: number;
+  summary: string;
+  body: { heading: string; paragraphs: string[]; list?: string[] }[];
+}
+
+export interface LeaderRow {
+  rank: number;
+  name: string;
+  handle: string;
+  hours: number;
+  ships: number;
+  streak: number;
+  you?: boolean;
+}
