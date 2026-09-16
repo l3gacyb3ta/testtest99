@@ -19,6 +19,14 @@ export enum Permission {
   FULFILL_ORDERS = "FULFILL_ORDERS",
   MANAGE_PROGRAM = "MANAGE_PROGRAM",
   VIEW_AUDIT_LOG = "VIEW_AUDIT_LOG",
+  /**
+   * Post announcements to the feed, and hide reels or comments.
+   *
+   * Deliberately not given to REVIEWER, the volume role: moderating what a
+   * 13-18 audience sees is a different kind of trust from deciding whether a
+   * PCB was designed well, and the roles below are sized for the second.
+   */
+  MANAGE_FEED = "MANAGE_FEED",
 }
 
 /**

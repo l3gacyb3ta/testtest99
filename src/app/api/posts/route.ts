@@ -1,0 +1,44 @@
+import { ok, parseBody, withRoute } from "@/lib/api"
+import { requireSession } from "@/lib/guards"
+import { createPostSchema } from "@/lib/schemas/feed"
+import { createPost } from "@/lib/feed"
+import { getUserRoles, hasPermission, Permission } from "@/lib/permissions"
+import { AuditAction, logAudit } from "@/lib/audit"
+
+export const dynamic = "force-dynamic"
+
+export const POST = withRoute(async (req: Request) => {
+  const gate = await requireSession()
+  if (gate.error) return gate.error
+
+  const parsed = await parseBody(req, createPostSchema)
+  if (parsed.error) return parsed.error
+
+  const roles = await getUserRoles(gate.user.id)
+
+  const post = await createPost({
+    userId: gate.user.id,
+    kind: parsed.data.kind,
+    caption: parsed.data.caption,
+    objectKey: parsed.data.objectKey,
+    thumbnailKey: parsed.data.thumbnailKey ?? null,
+    themeProjectId: parsed.data.themeProjectId ?? null,
+    contentType: parsed.data.contentType ?? null,
+    byteSize: parsed.data.byteSize ?? null,
+    durationSeconds: parsed.data.durationSeconds ?? null,
+    width: parsed.data.width ?? null,
+    height: parsed.data.height ?? null,
+    canManageFeed: hasPermission(roles, Permission.MANAGE_FEED),
+  })
+
+  await logAudit({
+    action: AuditAction.USER_CREATE_POST,
+    actorId: gate.user.id,
+    actorEmail: gate.user.email,
+    targetType: "Post",
+    targetId: post.id,
+    metadata: { kind: post.kind, themeProjectId: post.project?.id ?? null },
+  })
+
+  return ok({ post }, { status: 201 })
+})

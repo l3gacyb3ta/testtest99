@@ -136,6 +136,24 @@ enum HardwareExperience {
   ITS_LIFE
 }
 
+/// What a reel is FOR.
+///
+/// The design file's checkpoint note makes reels part of the week's required
+/// sequence rather than a social extra — "idea reel", "progress reel", "final
+/// submission reel" each appear as steps a participant has to clear. Storing
+/// the kind is what lets a checkpoint ask "has this project posted its idea
+/// reel yet" without guessing from timestamps.
+///
+/// ANNOUNCEMENT is ours, not a participant's: the note says the doomscroll's
+/// "first reel should be our updates from HQ".
+enum PostKind {
+  IDEA
+  PROGRESS
+  SUBMISSION
+  FREEFORM
+  ANNOUNCEMENT
+}
+
 enum PostStatus {
   /// Uploaded to R2, not yet playable (thumbnail/duration still unknown).
   PROCESSING
@@ -182,6 +200,8 @@ enum AuditAction {
   USER_PLACE_ORDER
   USER_CREATE_POST
   USER_DELETE_POST
+  USER_COMMENT_POST
+  USER_DELETE_COMMENT
   USER_ADVANCE_ONBOARDING
   USER_COMPLETE_ONBOARDING
 
@@ -212,6 +232,8 @@ enum AuditAction {
   ADMIN_UPDATE_PROGRAM_SETTINGS
   ADMIN_HIDE_POST
   ADMIN_RESTORE_POST
+  ADMIN_HIDE_COMMENT
+  ADMIN_PIN_POST
 
   // Printer
   PRINTER_QUALIFIED
@@ -311,6 +333,8 @@ model User {
   themeProjects  ThemeProject[]
   posts          Post[]
   postViews      PostView[]
+  postLikes      PostLike[]
+  postComments   PostComment[]
   ledgerEntries  LedgerEntry[]
   shopOrders     ShopOrder[]
   shopOrderNotes ShopOrderNote[]    @relation("ShopOrderNoteAuthor")
@@ -759,7 +783,8 @@ model Post {
   themeProjectId String?
   themeProject   ThemeProject? @relation(fields: [themeProjectId], references: [id], onDelete: SetNull)
 
-  caption String @db.Text
+  kind    PostKind @default(FREEFORM)
+  caption String   @db.Text
 
   /// R2 keys, namespaced by user id so abuse is traceable and orphans are
   /// findable.
@@ -775,9 +800,20 @@ model Post {
   status      PostStatus @default(PROCESSING)
   publishedAt DateTime?
 
-  /// Denormalised count of PostView rows. The rows stay as the audit trail;
-  /// this is what the feed renders.
-  viewCount Int @default(0)
+  /// Denormalised counts. The rows stay as the audit trail; these are what the
+  /// feed renders, because a feed page that aggregated three child tables per
+  /// card would do it once per card.
+  ///
+  /// Every writer updates the row and the count in one transaction, so they
+  /// cannot drift apart without a bug — and if one ever does, the rows are
+  /// still the truth and these can be rebuilt from them.
+  viewCount    Int @default(0)
+  likeCount    Int @default(0)
+  commentCount Int @default(0)
+
+  /// Non-null pins this to the top of the feed. Only ANNOUNCEMENT posts get
+  /// this, and only staff can create those.
+  pinnedAt DateTime?
 
   /// Moderation. Set together, and never by anything but an admin action.
   hiddenAt     DateTime?
@@ -791,13 +827,63 @@ model Post {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  views PostView[]
+  views    PostView[]
+  likes    PostLike[]
+  comments PostComment[]
 
   /// The feed's hot path: published posts, newest first.
   @@index([status, publishedAt(sort: Desc)])
+  /// "Has this project posted its idea reel yet" — the checkpoint lookup.
+  @@index([themeProjectId, kind])
   @@index([userId, createdAt])
   @@index([themeProjectId])
   @@map("post")
+}
+
+/// One row per liker per post.
+///
+/// Like PostView, the unique key is the mechanism rather than a nicety: a
+/// second like is a failed insert, so a like count cannot be inflated by
+/// clicking twice or by a retried request.
+model PostLike {
+  id     String @id @default(cuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("post_like")
+}
+
+/// A comment on a reel.
+///
+/// Soft-deleted and separately hideable: the audience is 13-18, so a moderator
+/// needs to be able to take something out of the feed without destroying the
+/// record of what was said.
+model PostComment {
+  id     String @id @default(cuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  body String @db.Text
+
+  hiddenAt     DateTime?
+  hiddenById   String?
+  hiddenReason String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([postId, createdAt])
+  @@index([userId])
+  @@map("post_comment")
 }
 
 /// One row per viewer per post.

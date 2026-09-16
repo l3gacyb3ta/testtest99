@@ -12,7 +12,7 @@ import {
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses"])
+const ALLOWED_FOLDERS = new Set(["sessions", "covers", "timelapses", "posts"])
 
 export const POST = withRoute(async (req: Request) => {
   const gate = await requireSession()

@@ -1,8 +1,21 @@
 import "server-only"
 import { randomUUID } from "node:crypto"
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
 
-export const MAX_UPLOAD_BYTES = Number(process.env.UPLOAD_MAX_BYTES ?? 104_857_600)
+const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
+
+/**
+ * An unparseable UPLOAD_MAX_BYTES used to yield NaN, and every `size > NaN`
+ * comparison is false — which silently removed the cap instead of failing
+ * loudly. Fall back to the default rather than trusting the environment.
+ */
+function parseMaxBytes(raw: string | undefined): number {
+  if (raw === undefined) return DEFAULT_MAX_UPLOAD_BYTES
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_UPLOAD_BYTES
+}
+
+export const MAX_UPLOAD_BYTES = parseMaxBytes(process.env.UPLOAD_MAX_BYTES)
 
 const EXTENSION_MIME: Record<string, string[]> = {
   jpg: ["image/jpeg"],
@@ -73,6 +86,20 @@ export async function putObject(
       Body: body,
       ContentType: contentType,
     }),
+  )
+}
+
+/**
+ * Remove an object.
+ *
+ * Deleting a post row does not delete its bytes — a soft-deleted reel can be
+ * restored by a moderator, and its video has to still be there when it is. So
+ * this is for the orphan sweep and for the smoke test, not for the delete
+ * path.
+ */
+export async function deleteObject(key: string): Promise<void> {
+  await client().send(
+    new DeleteObjectCommand({ Bucket: process.env.S3_BUCKET_NAME, Key: key }),
   )
 }
 
