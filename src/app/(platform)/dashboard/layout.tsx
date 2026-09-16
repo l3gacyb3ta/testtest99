@@ -7,6 +7,7 @@ import { CREDIT_NAME_PLURAL } from "@/lib/config/program"
 import { SidebarNav, type NavLink } from "@/app/components/ui/SidebarNav"
 import { LogOutButton } from "@/app/components/forms/LogOutButton"
 import { DoomscrollerRail } from "@/app/components/forms/DoomscrollerRail"
+import { WobbleBorder } from "@/app/components/ui/Wobble"
 
 export const dynamic = "force-dynamic"
 
@@ -51,12 +52,14 @@ export default async function DashboardLayout({
           <Image src="/brand/wordmark.svg" alt="" width={56} height={50} priority />
         </Link>
 
-        <nav className="hl-card hl-nav-card" aria-label="Main">
+        <nav className="hl-card hl-nav-card hl-wobbly" aria-label="Main">
+          <WobbleBorder seed={1} />
           <span className="hl-nav-tab" aria-hidden="true" />
           <SidebarNav links={links} />
         </nav>
 
-        <section className="hl-card hl-stack hl-stack--tight" aria-label="Printer progress">
+        <section className="hl-card hl-stack hl-stack--tight hl-wobbly" aria-label="Printer progress">
+          <WobbleBorder seed={2} />
           <Link href="/shop" className="hl-label">
             View more
           </Link>
@@ -80,7 +83,8 @@ export default async function DashboardLayout({
           </span>
         </section>
 
-        <section className="hl-card hl-row" aria-label="Account">
+        <section className="hl-card hl-row hl-wobbly" aria-label="Account">
+          <WobbleBorder seed={3} />
           {shell.user.image ? (
             // Not next/image: the avatar host is Slack's or R2's and is only
             // known at runtime, and an unlisted host renders blank.

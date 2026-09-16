@@ -439,6 +439,188 @@ a {
     color: var(--color-ink-muted);
   }
 
+  /* ── Hand-drawn edges ──────────────────────────────────────────────────── */
+  /*
+   * `.hl-wobbly` drops the CSS border and makes room for a <WobbleBorder/>,
+   * which draws the same outline as a displaced SVG stroke. See Wobble.tsx for
+   * why it is generated rather than exported.
+   */
+  .hl-wobbly {
+    position: relative;
+    border-color: transparent !important;
+  }
+  .hl-wobble-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  /*
+   * Geometry is set HERE rather than as SVG attributes: `width="calc(100% -
+   * 4px)"` is not valid on an SVG <rect> and silently collapses the shape,
+   * which shows up as gaps in the border. The CSS geometry properties take
+   * calc() and do what the attribute could not.
+   */
+  .hl-wobble-svg rect {
+    x: 2px;
+    y: 2px;
+    width: calc(100% - 4px);
+    height: calc(100% - 4px);
+  }
+  .hl-wobble-rule {
+    display: block;
+    width: 100%;
+    height: 10px;
+    overflow: visible;
+  }
+  /* The rules are drawn, so the list items must not draw their own. */
+  .hl-nav-list--wobbly .hl-nav-item {
+    border-bottom: 0;
+  }
+
+  /* ── The week banner ───────────────────────────────────────────────────── */
+  /*
+   * The comp's banner is painted art with a torn edge, exported from the file
+   * rather than reconstructed. Its surround is exactly the page ground
+   * (#fcf7f7), so it needs no mask — the tear blends into the page on its own.
+   *
+   * Stretched to the container width: the edge is organic enough to take it,
+   * and a fixed-width band would letterbox on every screen that is not 676px.
+   */
+  .hl-banner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 115px;
+    padding: 1.4rem 2rem;
+    background-image: url("/brand/week-banner.png");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    color: var(--color-ink-strong);
+  }
+  .hl-banner-week {
+    font-family: var(--font-accent);
+    font-size: 1.1rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .hl-banner-title {
+    font-size: clamp(1.6rem, 3.2vw, 3.125rem);
+    font-weight: 800;
+    margin: 0.1rem 0 0;
+    line-height: 1;
+  }
+
+  /* ── The checkpoint path ───────────────────────────────────────────────── */
+  /*
+   * A winding lane of pressable nodes. Node offsets come from the comp and are
+   * applied per item; the connecting line is the list's own left edge, drawn
+   * behind the nodes.
+   */
+  .hl-path {
+    list-style: none;
+    margin: 2.5rem auto 1rem;
+    padding: 0;
+    max-width: 560px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.25rem;
+  }
+  .hl-node {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+  .hl-node-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--color-ink);
+    max-width: 15rem;
+    text-align: center;
+  }
+  .hl-node-link[aria-disabled="true"] {
+    cursor: default;
+  }
+  /* The comp's node is two stacked ellipses; the solid drop shadow is the
+     lower one, which is what makes it read as a physical button. */
+  .hl-node-disc {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 119px;
+    height: 104px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--color-border);
+    color: var(--color-surface-raised);
+    box-shadow: 0 6px 0 rgb(16 15 48 / 0.18);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .hl-node--done .hl-node-disc {
+    background: var(--color-teal);
+    box-shadow: 0 6px 0 #04836f;
+  }
+  .hl-node--current .hl-node-disc {
+    background: var(--color-accent);
+    box-shadow: 0 6px 0 var(--color-ink-strong);
+  }
+  .hl-node--locked .hl-node-disc {
+    background: var(--color-surface-sunken);
+    color: var(--color-ink-muted);
+    box-shadow: 0 6px 0 var(--color-border);
+  }
+  a.hl-node-link:hover .hl-node-disc {
+    transform: translateY(2px);
+    box-shadow: 0 4px 0 rgb(16 15 48 / 0.18);
+  }
+  a.hl-node-link:focus-visible .hl-node-disc {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+  .hl-node-glyph {
+    position: relative;
+    z-index: 1;
+    width: 40px;
+    height: 40px;
+  }
+  /* The hours node fills from the bottom as the hours come in. */
+  .hl-node-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--color-mint);
+    opacity: 0.35;
+  }
+  .hl-node-label {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .hl-node--locked .hl-node-label {
+    color: var(--color-ink-muted);
+  }
+  .hl-node-hint {
+    font-size: 0.85rem;
+    color: var(--color-ink-muted);
+  }
+
+  @media (max-width: 900px) {
+    /* The lane's swing costs more than it gives on a phone. */
+    .hl-node {
+      margin-inline-start: 0 !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hl-node-disc { transition: none; }
+  }
+
   /* ── Staff top bar ─────────────────────────────────────────────────────── */
   /*
    * Review and admin keep a plain strip rather than the participant sidebar.

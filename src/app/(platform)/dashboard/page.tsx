@@ -2,9 +2,11 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { requireSessionPage } from "@/lib/page-guards"
 import { getDashboard } from "@/lib/queries/dashboard"
+import { getCheckpointTrack } from "@/lib/checkpoints"
 import { needsOnboarding } from "@/lib/onboarding"
 import { CREDIT_NAME_PLURAL, TOTAL_WEEKS } from "@/lib/config/program"
 import { Badge, Callout, Panel, PageHeader, Stat, statusLabel, statusTone } from "@/app/components/ui"
+import { CheckpointPath } from "@/app/components/ui/CheckpointPath"
 
 export const dynamic = "force-dynamic"
 
@@ -16,20 +18,41 @@ export default async function DashboardPage() {
   // layout, and a redirect there would loop.
   if (await needsOnboarding(user.id)) redirect("/onboarding")
 
-  const data = await getDashboard(user.id)
+  const [data, track] = await Promise.all([
+    getDashboard(user.id),
+    getCheckpointTrack(user.id),
+  ])
 
   return (
     <div className="hl-stack">
-      <PageHeader
-        title={`Week ${data.currentWeek || "—"} of ${TOTAL_WEEKS}`}
-        subtitle={
-          data.focus
-            ? `This week: ${data.focus.themeLabel} — ${data.focus.phase.toLowerCase()}`
-            : data.currentWeek === 0
+      {/*
+        The week banner and its path are the dashboard, as the comp has it —
+        the stat row and project list sit underneath as reference. Outside the
+        ten scheduled weeks there is no track, so the page falls back to the
+        plain header.
+      */}
+      {track ? (
+        <>
+          <div className="hl-banner">
+            <div>
+              <p className="hl-banner-week">
+                Week {track.week}/{TOTAL_WEEKS}:
+              </p>
+              <p className="hl-banner-title">{track.headline}</p>
+            </div>
+          </div>
+          <CheckpointPath checkpoints={track.checkpoints} />
+        </>
+      ) : (
+        <PageHeader
+          title={`Week ${data.currentWeek || "—"} of ${TOTAL_WEEKS}`}
+          subtitle={
+            data.currentWeek === 0
               ? "The program has not started yet."
               : "Outside the scheduled weeks. You can still work on anything."
-        }
-      />
+          }
+        />
+      )}
 
       <div className="hl-row">
         <Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={data.balances.spendable} />

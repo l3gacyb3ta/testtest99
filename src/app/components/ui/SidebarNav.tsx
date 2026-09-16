@@ -1,6 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { WobbleRule } from "@/app/components/ui/Wobble"
 
 export interface NavLink {
   href: string
@@ -18,8 +19,8 @@ export function SidebarNav({ links }: Readonly<{ links: readonly NavLink[] }>) {
   const pathname = usePathname()
 
   return (
-    <ul className="hl-nav-list">
-      {links.map((link) => {
+    <ul className="hl-nav-list hl-nav-list--wobbly">
+      {links.map((link, index) => {
         const current =
           pathname === link.href || pathname.startsWith(`${link.href}/`)
         return (
@@ -31,6 +32,8 @@ export function SidebarNav({ links }: Readonly<{ links: readonly NavLink[] }>) {
             >
               {link.label}
             </Link>
+            {/* Drawn rule rather than a CSS border, to match the comp. */}
+            {index < links.length - 1 ? <WobbleRule /> : null}
           </li>
         )
       })}
