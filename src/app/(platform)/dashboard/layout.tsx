@@ -26,6 +26,7 @@ export default async function DashboardLayout({
       <nav className="hl-nav">
         <strong>Half-Life</strong>
         <Link href="/dashboard">Dashboard</Link>
+        <Link href="/feed">Doomscroller</Link>
         <Link href="/shop">Shop</Link>
         {canReview ? <Link href="/review">Review</Link> : null}
         {canAdmin ? <Link href="/admin">Admin</Link> : null}

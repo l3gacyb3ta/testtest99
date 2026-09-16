@@ -197,4 +197,82 @@ a {
     font-size: 0.8rem;
     color: var(--color-ink-muted);
   }
+
+  /* ── Doomscroller ──────────────────────────────────────────────────────── */
+
+  /* Scroll-snap is the whole interaction: one reel fills the column and the
+     next one clicks into place, rather than two half-reels sharing the view. */
+  .hl-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 80vh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior: contain;
+  }
+  .hl-reel {
+    scroll-snap-align: start;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    overflow: hidden;
+    background: var(--color-surface-sunken);
+    flex: 0 0 auto;
+  }
+  /* Portrait by default — these are phone videos. The cap keeps a tall one
+     from pushing its own controls off the bottom of the column. */
+  .hl-reel-video {
+    display: block;
+    width: 100%;
+    max-height: 60vh;
+    aspect-ratio: 9 / 16;
+    object-fit: contain;
+    background: #000;
+  }
+  .hl-reel-body {
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .hl-reel-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+  }
+  .hl-reel-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .hl-reel-missing {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 9 / 16;
+    max-height: 60vh;
+    background: var(--color-surface-sunken);
+    color: var(--color-ink-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1rem;
+  }
+  .hl-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--color-surface-sunken);
+  }
+  .hl-comment {
+    border-top: 1px solid var(--color-border);
+    padding-top: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hl-feed { scroll-snap-type: none; }
+  }
 }
