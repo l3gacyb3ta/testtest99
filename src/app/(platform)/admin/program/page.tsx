@@ -3,7 +3,7 @@ import { Permission } from "@/lib/permissions"
 import { getProgramSettings, currentWeekNumber } from "@/lib/program"
 import { findUnsyncedApprovals } from "@/lib/airtable/sync"
 import { THEMES, TOTAL_WEEKS } from "@/lib/config/program"
-import { TIERS } from "@/lib/config/tiers"
+import { TIERS, requiredHoursFor } from "@/lib/config/tiers"
 import { EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -78,17 +78,20 @@ export default async function AdminProgramPage() {
         {/* Tier values are code, not data: editing them is a pull request, and
             every review freezes the numbers it used, so changing them never
             rewrites anyone's history. */}
-        <Table head={["Tier", "Grant", "Hours covered"]}>
+        <Table head={["Tier", "Grant", "Funded hours", "Banked hours", "Required"]}>
           {TIERS.map((tier) => (
             <tr key={tier.id}>
               <td>{tier.name}</td>
               <td>${tier.grantUsd}</td>
-              <td>{tier.minHours}h</td>
+              <td>{tier.fundingHours}h</td>
+              <td>{tier.bankHours}h</td>
+              <td>{requiredHoursFor(tier)}h</td>
             </tr>
           ))}
         </Table>
         <p className="hl-hint">
-          Edit these in <code>lib/config/tiers.ts</code>. Tier 2 and Tier 3 are placeholders.
+          Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts;
+          banked hours are forced savings that can only ever be spent on a printer.
         </p>
       </Panel>
     </div>

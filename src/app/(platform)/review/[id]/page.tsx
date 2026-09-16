@@ -213,7 +213,8 @@ export default async function ReviewDetailPage({ params }: Props) {
             id: t.id,
             name: t.name,
             grantUsd: t.grantUsd,
-            minHours: t.minHours,
+            fundingHours: t.fundingHours,
+            bankHours: t.bankHours,
           }))}
           currentTier={project.tier}
           computedHours={breakdown.computedTotal}

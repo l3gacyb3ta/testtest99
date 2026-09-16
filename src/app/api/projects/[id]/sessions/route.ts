@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/guards"
 import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { recomputeStreak } from "@/lib/streak"
 import { paginationQuery, cursorArgs, pageResult } from "@/lib/pagination"
 import { stampSessionTiming } from "@/lib/submissions"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -69,36 +70,42 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
 
   const timing = await stampSessionTiming(new Date())
 
-  const session = await prisma.workSession.create({
-    data: {
-      themeProjectId: id,
-      phase: data.phase,
-      title: sanitize(data.title),
-      content: data.content ? sanitizeHtml(data.content) : null,
-      hoursClaimed: data.hoursClaimed,
-      hoursSource: data.hoursSource,
-      effectiveDate: timing.effectiveDate,
-      weekNumber: timing.weekNumber,
-      media: {
-        create: data.media.map((m, i) => ({
-          type: m.type,
-          objectKey: m.objectKey,
-          contentType: m.contentType ?? null,
-          byteSize: m.byteSize ?? null,
-          sortOrder: i,
-        })),
+  // One transaction: a session and the streak it feeds have to land together,
+  // or a rolled-back write leaves an inflated streak with nothing behind it.
+  const session = await prisma.$transaction(async (tx) => {
+    const created = await tx.workSession.create({
+      data: {
+        themeProjectId: id,
+        phase: data.phase,
+        title: sanitize(data.title),
+        content: data.content ? sanitizeHtml(data.content) : null,
+        hoursClaimed: data.hoursClaimed,
+        hoursSource: data.hoursSource,
+        effectiveDate: timing.effectiveDate,
+        weekNumber: timing.weekNumber,
+        media: {
+          create: data.media.map((m, i) => ({
+            type: m.type,
+            objectKey: m.objectKey,
+            contentType: m.contentType ?? null,
+            byteSize: m.byteSize ?? null,
+            sortOrder: i,
+          })),
+        },
+        timelapses: {
+          create: data.timelapses.map((t) => ({
+            objectKey: t.objectKey ?? null,
+            playbackUrl: t.playbackUrl ?? null,
+            coveredSeconds: t.coveredSeconds ?? null,
+            runtimeSeconds: t.runtimeSeconds ?? null,
+            speedupFactor: t.speedupFactor ?? null,
+          })),
+        },
       },
-      timelapses: {
-        create: data.timelapses.map((t) => ({
-          objectKey: t.objectKey ?? null,
-          playbackUrl: t.playbackUrl ?? null,
-          coveredSeconds: t.coveredSeconds ?? null,
-          runtimeSeconds: t.runtimeSeconds ?? null,
-          speedupFactor: t.speedupFactor ?? null,
-        })),
-      },
-    },
-    include: { media: true, timelapses: true },
+      include: { media: true, timelapses: true },
+    })
+    await recomputeStreak(tx, gate.user.id)
+    return created
   })
 
   await logAudit({

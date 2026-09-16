@@ -29,7 +29,7 @@ export default async function AdminUserPage({ params }: Props) {
   const detail = await getUserDetail(id)
   if (!detail) notFound()
 
-  const { user, balance, ledger, orders, printer } = detail
+  const { user, balances, ledger, orders, printer } = detail
   const canManageRoles = hasPermission(roles, Permission.MANAGE_ROLES)
   const canManageCredit = hasPermission(roles, Permission.MANAGE_CREDIT)
   const canManageUsers = hasPermission(roles, Permission.MANAGE_USERS)
@@ -46,7 +46,8 @@ export default async function AdminUserPage({ params }: Props) {
       />
 
       <div className="hl-row">
-        <Stat label={`${CREDIT_NAME_PLURAL} balance`} value={balance} />
+        <Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />
+        <Stat label="Printer fund" value={balances.banked} />
         <Stat label="Themes shipped" value={`${printer.shippedCount} / ${printer.required}`} />
         <Stat label="Verified" value={user.verificationStatus ?? "unknown"} />
       </div>

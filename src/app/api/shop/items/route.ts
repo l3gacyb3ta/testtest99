@@ -9,10 +9,10 @@ export const GET = withRoute(async () => {
   const gate = await requireSession()
   if (gate.error) return gate.error
 
-  const [{ items, balance }, access] = await Promise.all([
+  const [{ items, balances }, access] = await Promise.all([
     getShopItemsFor(gate.user.id),
     getShopAccess(gate.user.id),
   ])
 
-  return ok({ items, balance, access })
+  return ok({ items, balances, access })
 })

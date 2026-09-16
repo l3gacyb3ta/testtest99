@@ -76,6 +76,22 @@ enum MediaType {
   VIDEO
 }
 
+/// Which pot a ledger row moves coins in or out of.
+///
+/// BANKED is the printer fund: coins the program forces a participant to save
+/// (a tier's `bankHours` on every approved design) and which can only ever be
+/// spent on a printer. Without this split, someone could spend the lot on
+/// filament in week 3 and finish the program with nothing to print on, which
+/// is the exact outcome the forced-savings rule exists to prevent.
+///
+/// The two balances are separate SUMs over this column, never a single total
+/// with a reserved portion subtracted — a reserve you have to remember to
+/// subtract is a reserve some query will forget.
+enum CoinBucket {
+  SPENDABLE
+  BANKED
+}
+
 /// Ledger entry kinds.
 ///
 /// There is deliberately no *_REVERSED twin of any kind. A reversal is a
@@ -85,8 +101,12 @@ enum MediaType {
 /// ledger has to remember to include the twin, and lib/currency.ts carries a
 /// long comment about the one that forgot and overcounted forever.
 enum LedgerKind {
-  EXCESS_HOURS           // credit minted from hours beyond the tier minimum
+  DESIGN_BANKED_HOURS    // a tier's bankHours, forced into the printer fund
+  DESIGN_EXCESS_HOURS    // design hours beyond funding + bank, freely spendable
+  BUILD_HOURS            // every approved build hour; no BOM to fund
+  BOM_SAVINGS            // dollars left unspent on the parts order
   THEME_COMPLETION_BONUS // flat award for shipping a theme (design + build approved)
+  PARTS_TOP_UP           // negative; extra parts money charged against coins
   ADMIN_ADJUSTMENT       // manual grant or clawback, signed
   REVIEWER_PAYMENT       // compensation for review work
   SHOP_PURCHASE          // always negative
@@ -94,9 +114,20 @@ enum LedgerKind {
 }
 
 enum ShopItemCategory {
+  /// A printer itself. The only category BANKED coins may be spent on.
+  PRINTER
   PRINTER_UPGRADE
   CONSUMABLE
   MISC
+}
+
+enum PostStatus {
+  /// Uploaded to R2, not yet playable (thumbnail/duration still unknown).
+  PROCESSING
+  PUBLISHED
+  /// Taken out of the feed by a moderator; still visible to its author.
+  HIDDEN
+  REMOVED
 }
 
 enum ShopOrderStatus {
@@ -134,6 +165,8 @@ enum AuditAction {
   USER_LINK_HACKATIME
   USER_UNLINK_HACKATIME
   USER_PLACE_ORDER
+  USER_CREATE_POST
+  USER_DELETE_POST
 
   // Review
   REVIEW_CLAIM
@@ -160,6 +193,8 @@ enum AuditAction {
   ADMIN_FULFILL_ORDER
   ADMIN_REJECT_ORDER
   ADMIN_UPDATE_PROGRAM_SETTINGS
+  ADMIN_HIDE_POST
+  ADMIN_RESTORE_POST
 
   // Printer
   PRINTER_QUALIFIED
@@ -213,6 +248,18 @@ model User {
   encryptedPhone          String?
 
   joinedProgramAt DateTime?
+
+  /// Journalling streak, in days.
+  ///
+  /// Denormalised rather than derived: the dashboard and every feed row show
+  /// it, and deriving it means a GROUP BY over the whole session table per
+  /// render. It is recomputed from WorkSession.effectiveDate whenever a
+  /// session is written, so the table stays the source of truth and this is a
+  /// cache that can be rebuilt.
+  currentStreak Int     @default(0)
+  longestStreak Int     @default(0)
+  /// YYYY-MM-DD in the program timezone of the last day that counted.
+  lastStreakDate String?
   /// While now() is before this, the global submission gate does not apply to
   /// any of this user's phases. Stasis added per-user and per-project override
   /// columns after doing manual database surgery for every extension request.
@@ -227,6 +274,8 @@ model User {
   accounts       Account[]
   roles          UserRole[]
   themeProjects  ThemeProject[]
+  posts          Post[]
+  postViews      PostView[]
   ledgerEntries  LedgerEntry[]
   shopOrders     ShopOrder[]
   shopOrderNotes ShopOrderNote[]    @relation("ShopOrderNoteAuthor")
@@ -362,9 +411,29 @@ model ThemeProject {
   /// credit balance would quietly grow.
   approvedHours   Float?
   approvedHoursAt DateTime?
-  /// Credit minted from excess hours, frozen alongside approvedHours so the
-  /// ledger and the UI can never disagree about what was paid.
-  excessCredit    Int?
+  /// Authoritative approved hours for the DESIGN phase, frozen at design
+  /// approval — the counterpart of `approvedHours` above, which is the build's.
+  /// Design hours mint coins now (they did not in the first version of this
+  /// schema), so they need the same protection against a participant adding
+  /// sessions after approval and quietly growing their balance.
+  designApprovedHours   Float?
+  designApprovedHoursAt DateTime?
+
+  /// Coins minted from this project, frozen alongside the hours that produced
+  /// them so the ledger and the UI can never disagree about what was paid.
+  ///
+  /// Three fields rather than a banked/spendable pair because they have three
+  /// different sources and each is reconciled against its own LedgerKind:
+  /// the design's forced savings, the design's overtime, and the build's
+  /// hours. Collapsing them would make an un-approval of one phase have to
+  /// work out which part of a combined number belonged to the other.
+  designBankedCoins    Int?
+  designSpendableCoins Int?
+  buildCoins           Int?
+
+  /// Dollars of the grant the participant did not spend on parts, entered from
+  /// their receipts. Converts 1:1 into spendable coins.
+  bomSavingsUsd Int?
 
   /// Per-project deadline override, layered on top of the per-user one.
   /// Either being in the future opens the gate.
@@ -379,6 +448,7 @@ model ThemeProject {
   hackatimeLinks HackatimeLink[]
   submissions    PhaseSubmission[]
   ledgerEntries  LedgerEntry[]
+  posts          Post[]
 
   /// One themed project per theme per person. This makes "five themed
   /// projects" a schema invariant rather than a convention, which is what lets
@@ -600,13 +670,102 @@ model SubmissionReview {
   frozenApprovedHours    Float?
   frozenTier             Int?
   frozenGrantUsd         Int?
-  frozenExcessCredit     Int?
+  frozenBankedCoins      Int?
+  frozenSpendableCoins   Int?
+  /// The tier's hour split as it stood at review time. `frozenTier` alone is
+  /// not enough to reconstruct a payout once the tier table has been edited.
+  frozenFundingHours     Float?
+  frozenBankHours        Float?
 
   createdAt DateTime @default(now())
 
   @@index([submissionId])
   @@index([reviewerId, createdAt])
   @@map("submission_review")
+}
+
+// ─── Feed ────────────────────────────────────────────────────────────────────
+
+/// A short video made for the Doomscroller.
+///
+/// Deliberately NOT a WorkSession or a SessionMedia row. A journal entry is
+/// evidence a reviewer reads to decide what someone is paid; a post is
+/// something a participant makes to be watched. Sharing one table would mean
+/// every feed query has to exclude review evidence and every hours rollup has
+/// to exclude posts — two filters that only have to be forgotten once for
+/// either private journal media to appear in a public feed, or a post to
+/// inflate someone's hours.
+///
+/// Like SessionMedia, this stores the R2 object key and never a URL: the
+/// public URL is minted at read time, so moving buckets or putting a CDN in
+/// front does not mean rewriting every row.
+model Post {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Optional: a post can be about a project, or just about the week.
+  themeProjectId String?
+  themeProject   ThemeProject? @relation(fields: [themeProjectId], references: [id], onDelete: SetNull)
+
+  caption String @db.Text
+
+  /// R2 keys, namespaced by user id so abuse is traceable and orphans are
+  /// findable.
+  objectKey    String
+  thumbnailKey String?
+
+  contentType    String?
+  byteSize       Int?
+  durationSeconds Int?
+  width          Int?
+  height         Int?
+
+  status      PostStatus @default(PROCESSING)
+  publishedAt DateTime?
+
+  /// Denormalised count of PostView rows. The rows stay as the audit trail;
+  /// this is what the feed renders.
+  viewCount Int @default(0)
+
+  /// Moderation. Set together, and never by anything but an admin action.
+  hiddenAt     DateTime?
+  hiddenById   String?
+  hiddenReason String?
+
+  /// Program week at creation, frozen — same reasoning as WorkSession.
+  weekNumber Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  views PostView[]
+
+  /// The feed's hot path: published posts, newest first.
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([userId, createdAt])
+  @@index([themeProjectId])
+  @@map("post")
+}
+
+/// One row per viewer per post.
+///
+/// Exists so "went viral" is a number nobody can inflate by refreshing, which
+/// matters because the program pays out prizes on virality. The unique key is
+/// the whole mechanism: a repeat view is a failed insert, not an increment.
+model PostView {
+  id     String @id @default(cuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("post_view")
 }
 
 // ─── Economy ─────────────────────────────────────────────────────────────────
@@ -627,6 +786,9 @@ model LedgerEntry {
   themeProject   ThemeProject? @relation(fields: [themeProjectId], references: [id], onDelete: SetNull)
 
   kind   LedgerKind
+  /// Which pot this moves. A purchase that draws on both writes one row per
+  /// bucket, which is why the shopOrder uniqueness below includes it.
+  bucket CoinBucket @default(SPENDABLE)
   /// Signed. Positive credits, negative debits.
   amount Int
 
@@ -647,10 +809,17 @@ model LedgerEntry {
   @@index([userId, createdAt])
   /// The reconcile aggregate must be a single index scan.
   @@index([userId, themeProjectId, kind])
-  /// At most one purchase row and one refund row per order. Postgres treats
-  /// nulls as distinct, so account-level rows are unaffected. This is what
-  /// stops a double-submitted purchase form from charging twice.
-  @@unique([shopOrderId, kind])
+  /// Both balances are a SUM over this.
+  @@index([userId, bucket])
+  /// At most one purchase row and one refund row per order PER BUCKET.
+  /// Postgres treats nulls as distinct, so account-level rows are unaffected.
+  /// This is what stops a double-submitted purchase form from charging twice.
+  ///
+  /// `bucket` is part of the key because buying a printer can legitimately
+  /// write two SHOP_PURCHASE rows for one order — one draining the printer
+  /// fund, one taking the remainder from spendable coins. Without it the
+  /// second insert violates the constraint and the whole purchase rolls back.
+  @@unique([shopOrderId, kind, bucket])
   @@map("ledger_entry")
 }
 

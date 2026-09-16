@@ -3,6 +3,7 @@ import { ok, fail, parseBody, withRoute } from "@/lib/api"
 import { requireSession } from "@/lib/guards"
 import { sessionUpdateSchema } from "@/lib/schemas/session"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
+import { recomputeStreak } from "@/lib/streak"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
 import { AuditAction, logAudit } from "@/lib/audit"
 
@@ -78,9 +79,15 @@ export const DELETE = withRoute(async (_req: Request, { params }: Params) => {
     return fail("PHASE_LOCKED", "This entry has been reviewed and can no longer be deleted")
   }
 
-  await prisma.workSession.update({
-    where: { id: sessionId },
-    data: { deletedAt: new Date() },
+  // Deleting the only session on a day removes that day from the run, so the
+  // streak has to be recomputed with it. PATCH does not, because it cannot
+  // change `effectiveDate` — the set of journalled days is the same after it.
+  await prisma.$transaction(async (tx) => {
+    await tx.workSession.update({
+      where: { id: sessionId },
+      data: { deletedAt: new Date() },
+    })
+    await recomputeStreak(tx, gate.user.id)
   })
 
   await logAudit({

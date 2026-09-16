@@ -27,6 +27,41 @@ async function main() {
   console.log(`program settings: start ${settings.eventStartDate.toISOString().slice(0, 10)}`)
 
   const items = [
+    // ── Printers ─────────────────────────────────────────────────────────────
+    // The only category banked coins can be spent on, and the reason the
+    // forced-savings rule exists. `requiresPrinterQualified` is false: you buy
+    // a printer with coins you earned, and the minimum path is sized to reach
+    // the cheapest one (see PRINTER_FLOOR_COINS in lib/config/program.ts).
+    {
+      id: "printer-entry",
+      name: "Entry-level 3D printer",
+      description:
+        "Your own printer, assembled and ready. The one the program is sized so everyone can reach.",
+      priceCredits: 175,
+      category: ShopItemCategory.PRINTER,
+      requiresPrinterQualified: false,
+      sortOrder: 1,
+    },
+    {
+      id: "printer-a1-mini",
+      name: "Bambu A1 Mini",
+      description: "Faster, quieter and better supported than the entry-level machine.",
+      priceCredits: 250,
+      category: ShopItemCategory.PRINTER,
+      requiresPrinterQualified: false,
+      sortOrder: 2,
+    },
+    {
+      id: "printer-a1",
+      name: "Bambu A1",
+      description: "The full-size A1. A bigger build volume and the same toolhead.",
+      priceCredits: 375,
+      category: ShopItemCategory.PRINTER,
+      requiresPrinterQualified: false,
+      sortOrder: 3,
+    },
+
+    // ── Upgrades and consumables ─────────────────────────────────────────────
     {
       id: "printer-enclosure",
       name: "Printer enclosure",

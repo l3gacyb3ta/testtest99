@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic"
 
 export default async function ShopPage() {
   const { user } = await requireSessionPage()
-  const [{ items, balance }, access] = await Promise.all([
+  const [{ items, balances }, access] = await Promise.all([
     getShopItemsFor(user.id),
     getShopAccess(user.id),
   ])
@@ -19,12 +19,13 @@ export default async function ShopPage() {
     <div className="hl-stack">
       <PageHeader
         title="Shop"
-        subtitle={`Upgrades for the 3D printer you earn by shipping all five themes.`}
+        subtitle="A printer of your own, and the upgrades that bolt onto it."
         actions={<Link href="/shop/orders">My orders</Link>}
       />
 
       <div className="hl-row">
-        <Stat label={`${CREDIT_NAME_PLURAL} available`} value={balance} />
+        <Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={balances.spendable} />
+        <Stat label="Printer fund" value={balances.banked} />
       </div>
 
       {!access.open ? (

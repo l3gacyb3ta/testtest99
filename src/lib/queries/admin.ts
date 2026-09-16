@@ -1,7 +1,7 @@
 import "server-only"
 import prisma from "@/lib/prisma"
 import { ShopOrderStatus } from "@/app/generated/prisma/enums"
-import { getBalance } from "@/lib/currency"
+import { getBalances } from "@/lib/currency"
 import { getPrinterQualification } from "@/lib/printer"
 
 export async function listUsers(opts: { q?: string; cursor?: string; limit: number }) {
@@ -62,7 +62,9 @@ export async function getUserDetail(userId: string) {
           tier: true,
           grantUsd: true,
           approvedHours: true,
-          excessCredit: true,
+          designBankedCoins: true,
+          designSpendableCoins: true,
+          buildCoins: true,
         },
       },
       printerAward: true,
@@ -70,8 +72,8 @@ export async function getUserDetail(userId: string) {
   })
   if (!user) return null
 
-  const [balance, ledger, orders, printer] = await Promise.all([
-    prisma.$transaction((tx) => getBalance(tx, userId)),
+  const [balances, ledger, orders, printer] = await Promise.all([
+    prisma.$transaction((tx) => getBalances(tx, userId)),
     prisma.ledgerEntry.findMany({
       where: { userId },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -85,7 +87,7 @@ export async function getUserDetail(userId: string) {
     getPrinterQualification(userId),
   ])
 
-  return { user, balance, ledger, orders, printer }
+  return { user, balances, ledger, orders, printer }
 }
 
 export async function listOrders(opts: {

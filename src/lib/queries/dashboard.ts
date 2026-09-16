@@ -1,12 +1,18 @@
 import "server-only"
 import prisma from "@/lib/prisma"
 import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
-import { getBalance, getEarnedCredit } from "@/lib/currency"
+import { getBalances, getEarnedCredit, type Balances } from "@/lib/currency"
 import { getHoursBreakdown } from "@/lib/hours"
 import { getPrinterQualification } from "@/lib/printer"
-import { currentWeekNumber, getProgramSettings, weekDateRange } from "@/lib/program"
+import {
+  currentWeekNumber,
+  effectiveDateFor,
+  getProgramSettings,
+  weekDateRange,
+} from "@/lib/program"
 import { THEMES, getThemeDef, scheduleForWeek } from "@/lib/config/program"
 import { materializeThemeProjects } from "@/lib/provisioning"
+import { streakAsOf } from "@/lib/streak"
 
 export interface ThemeCard {
   id: string
@@ -31,8 +37,11 @@ export interface DashboardData {
   weekRange: { start: Date; end: Date } | null
   focus: { themeLabel: string; phase: Phase } | null
   timezone: string
-  balance: number
+  balances: Balances
   earned: number
+  /** Expired against today, so a run that lapsed reads 0 rather than stale. */
+  streak: number
+  longestStreak: number
   printer: Awaited<ReturnType<typeof getPrinterQualification>>
   cards: ThemeCard[]
 }
@@ -41,11 +50,15 @@ export async function getDashboard(userId: string): Promise<DashboardData> {
   // Self-heal: anyone whose signup hook failed still gets a working dashboard.
   await materializeThemeProjects(userId)
 
-  const [settings, currentWeek, projects, balance, earned, printer] = await Promise.all([
+  const [settings, currentWeek, projects, user, balances, earned, printer] = await Promise.all([
     getProgramSettings(),
     currentWeekNumber(),
     prisma.themeProject.findMany({ where: { userId, deletedAt: null } }),
-    prisma.$transaction((tx) => getBalance(tx, userId)),
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { currentStreak: true, longestStreak: true, lastStreakDate: true },
+    }),
+    prisma.$transaction((tx) => getBalances(tx, userId)),
     prisma.$transaction((tx) => getEarnedCredit(tx, userId)),
     getPrinterQualification(userId),
   ])
@@ -90,8 +103,10 @@ export async function getDashboard(userId: string): Promise<DashboardData> {
       ? { themeLabel: getThemeDef(scheduled.theme.id).label, phase: scheduled.phase }
       : null,
     timezone: settings.programTimezone,
-    balance,
+    balances,
     earned,
+    streak: streakAsOf(user, effectiveDateFor(new Date(), settings.programTimezone)),
+    longestStreak: user.longestStreak,
     printer,
     cards,
   }

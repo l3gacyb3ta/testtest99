@@ -1,6 +1,7 @@
 import "server-only"
 import prisma from "@/lib/prisma"
 import {
+  CoinBucket,
   LedgerKind,
   Phase,
   PhaseStatus,
@@ -9,7 +10,7 @@ import {
 } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HttpError } from "@/lib/errors"
-import { excessCreditFor, getHoursBreakdown } from "@/lib/hours"
+import { buildCoinsFor, designCoinsFor, getHoursBreakdown, type CoinSplit } from "@/lib/hours"
 import { lockUserCredit, reconcileGrant } from "@/lib/currency"
 import { ensurePrinterAward } from "@/lib/printer"
 import { getTierOrThrow, isTierId } from "@/lib/config/tiers"
@@ -112,7 +113,8 @@ export interface FinalizeOutcome {
   approvedHours: number | null
   tier: number | null
   grantUsd: number | null
-  excessCredit: number | null
+  /** Coins this decision minted, by pot. Null when not approving. */
+  coins: CoinSplit | null
   printerQualified: boolean
 }
 
@@ -194,10 +196,19 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
       ? (input.grantUsdOverride ?? getTierOrThrow(tier).grantUsd)
       : project.grantUsd
 
-  const excessCredit =
-    approving && phase === Phase.BUILD && tier && approvedHours !== null
-      ? excessCreditFor(tier, approvedHours)
+  // Both phases mint coins now, by different rules: a design pays out only
+  // above its tier's funding hours and forces the first `bankHours` of that
+  // into the printer fund, while a build pays every hour into spendable coins.
+  const coins: CoinSplit | null =
+    approving && approvedHours !== null
+      ? phase === Phase.DESIGN
+        ? tier
+          ? designCoinsFor(tier, approvedHours)
+          : null
+        : buildCoinsFor(approvedHours)
       : null
+
+  const tierDef = tier ? getTierOrThrow(tier) : null
 
   const nextStatus: PhaseStatus =
     input.result === ReviewResult.APPROVED
@@ -250,7 +261,10 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
         frozenApprovedHours: approvedHours,
         frozenTier: tier,
         frozenGrantUsd: grantUsd,
-        frozenExcessCredit: excessCredit,
+        frozenBankedCoins: coins?.banked ?? null,
+        frozenSpendableCoins: coins?.spendable ?? null,
+        frozenFundingHours: tierDef?.fundingHours ?? null,
+        frozenBankHours: tierDef?.bankHours ?? null,
       },
     })
 
@@ -266,7 +280,17 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
             designReviewComments: input.feedback,
             designReviewedAt: new Date(),
             designReviewedById: input.reviewerId,
-            ...(approving ? { tier, grantUsd, grantEmittedAt: new Date() } : {}),
+            ...(approving
+              ? {
+                  tier,
+                  grantUsd,
+                  grantEmittedAt: new Date(),
+                  designApprovedHours: approvedHours,
+                  designApprovedHoursAt: new Date(),
+                  designBankedCoins: coins?.banked ?? null,
+                  designSpendableCoins: coins?.spendable ?? null,
+                }
+              : {}),
           }
         : {
             buildStatus: nextStatus,
@@ -274,7 +298,11 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
             buildReviewedAt: new Date(),
             buildReviewedById: input.reviewerId,
             ...(approving
-              ? { approvedHours, approvedHoursAt: new Date(), excessCredit }
+              ? {
+                  approvedHours,
+                  approvedHoursAt: new Date(),
+                  buildCoins: coins?.spendable ?? null,
+                }
               : {}),
           }
 
@@ -282,14 +310,41 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
 
     // Credit is reconciled to a target rather than appended, so approving the
     // same build five times converges instead of compounding.
+    if (phase === Phase.DESIGN) {
+      // The forced savings and the overtime are separate kinds paying into
+      // separate pots, so an un-approval can zero each one independently and
+      // neither has to work out which share of a combined number was its own.
+      await reconcileGrant(tx, {
+        userId: project.userId,
+        themeProjectId: project.id,
+        kind: LedgerKind.DESIGN_BANKED_HOURS,
+        bucket: CoinBucket.BANKED,
+        target: approving ? (coins?.banked ?? 0) : 0,
+        note: approving && tierDef
+          ? `${approvedHours}h approved: ${tierDef.fundingHours}h funded at $${tierDef.grantUsd}, ${tierDef.bankHours}h to the printer fund`
+          : "Design approval withdrawn",
+        createdById: input.reviewerId,
+      })
+      await reconcileGrant(tx, {
+        userId: project.userId,
+        themeProjectId: project.id,
+        kind: LedgerKind.DESIGN_EXCESS_HOURS,
+        target: approving ? (coins?.spendable ?? 0) : 0,
+        note: approving && tierDef
+          ? `Hours beyond Tier ${tier}'s ${tierDef.fundingHours + tierDef.bankHours}h`
+          : "Design approval withdrawn",
+        createdById: input.reviewerId,
+      })
+    }
+
     if (phase === Phase.BUILD) {
       await reconcileGrant(tx, {
         userId: project.userId,
         themeProjectId: project.id,
-        kind: LedgerKind.EXCESS_HOURS,
-        target: approving ? (excessCredit ?? 0) : 0,
+        kind: LedgerKind.BUILD_HOURS,
+        target: approving ? (coins?.spendable ?? 0) : 0,
         note: approving
-          ? `${approvedHours}h approved against a ${tier ? getTierOrThrow(tier).minHours : "?"}h Tier ${tier} minimum`
+          ? `${approvedHours}h of build work`
           : "Build approval withdrawn",
         createdById: input.reviewerId,
       })
@@ -314,7 +369,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
       approvedHours,
       tier,
       grantUsd,
-      excessCredit,
+      coins,
       printerQualified: !!award,
     }
   })
@@ -344,7 +399,7 @@ export async function finalizeReview(input: FinalizeInput): Promise<FinalizeOutc
         tier: outcome.tier,
         grantUsd: outcome.grantUsd,
         approvedHours: outcome.approvedHours,
-        excessCredit: outcome.excessCredit,
+        coins: outcome.coins,
       },
     },
   })
@@ -392,21 +447,48 @@ export async function unapprovePhase(
               tier: null,
               grantUsd: null,
               grantEmittedAt: null,
+              designApprovedHours: null,
+              designApprovedHoursAt: null,
+              designBankedCoins: null,
+              designSpendableCoins: null,
             }
           : {
               buildStatus: PhaseStatus.update_requested,
               buildReviewComments: reason,
               approvedHours: null,
               approvedHoursAt: null,
-              excessCredit: null,
+              buildCoins: null,
             },
     })
+
+    if (phase === Phase.DESIGN) {
+      // Includes the banked half. Forced savings are still savings someone was
+      // credited for work that is no longer approved, so they unwind too —
+      // otherwise un-approving a design leaves free printer money behind.
+      await reconcileGrant(tx, {
+        userId: project.userId,
+        themeProjectId,
+        kind: LedgerKind.DESIGN_BANKED_HOURS,
+        bucket: CoinBucket.BANKED,
+        target: 0,
+        note: `Design un-approved: ${reason}`,
+        createdById: adminId,
+      })
+      await reconcileGrant(tx, {
+        userId: project.userId,
+        themeProjectId,
+        kind: LedgerKind.DESIGN_EXCESS_HOURS,
+        target: 0,
+        note: `Design un-approved: ${reason}`,
+        createdById: adminId,
+      })
+    }
 
     if (phase === Phase.BUILD) {
       await reconcileGrant(tx, {
         userId: project.userId,
         themeProjectId,
-        kind: LedgerKind.EXCESS_HOURS,
+        kind: LedgerKind.BUILD_HOURS,
         target: 0,
         note: `Build un-approved: ${reason}`,
         createdById: adminId,

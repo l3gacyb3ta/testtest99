@@ -4,7 +4,13 @@ import { requirePermission } from "@/lib/guards"
 import { Permission } from "@/lib/permissions"
 import { creditAdjustSchema } from "@/lib/schemas/admin"
 import { sanitize } from "@/lib/sanitize"
-import { appendLedgerEntry, getBalance, lockUserCredit, LedgerKind } from "@/lib/currency"
+import {
+  appendLedgerEntry,
+  getBalances,
+  lockUserCredit,
+  CoinBucket,
+  LedgerKind,
+} from "@/lib/currency"
 import { AuditAction, logAudit } from "@/lib/audit"
 
 export const POST = withRoute(async (req: Request) => {
@@ -13,14 +19,18 @@ export const POST = withRoute(async (req: Request) => {
 
   const parsed = await parseBody(req, creditAdjustSchema)
   if (parsed.error) return parsed.error
-  const { userId, amount, reason } = parsed.data
+  const { userId, amount, reason, bucket } = parsed.data
 
   const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
   if (!target) return fail("NOT_FOUND", "User not found")
 
   const entry = await prisma.$transaction(async (tx) => {
     await lockUserCredit(tx, userId)
-    const balance = await getBalance(tx, userId)
+    const balances = await getBalances(tx, userId)
+    // Guard the pot being moved, not the combined total: a clawback that the
+    // total can absorb may still take the spendable pot negative, and banked
+    // coins are not available to cover it.
+    const balance = bucket === "BANKED" ? balances.banked : balances.spendable
     // A negative balance is not a state the shop or any display knows how to
     // render, so refuse rather than create one.
     if (balance + amount < 0) {
@@ -32,6 +42,7 @@ export const POST = withRoute(async (req: Request) => {
     return appendLedgerEntry(tx, {
       userId,
       kind: LedgerKind.ADMIN_ADJUSTMENT,
+      bucket: bucket === "BANKED" ? CoinBucket.BANKED : CoinBucket.SPENDABLE,
       amount,
       note: sanitize(reason),
       createdById: gate.user.id,
@@ -52,6 +63,7 @@ export const POST = withRoute(async (req: Request) => {
     metadata: {
       amount,
       reason,
+      bucket,
       before: entry.balanceBefore,
       after: entry.balanceAfter,
     },

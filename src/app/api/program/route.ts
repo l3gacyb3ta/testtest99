@@ -30,7 +30,8 @@ export const GET = withRoute(async () => {
       id: t.id,
       name: t.name,
       grantUsd: t.grantUsd,
-      minHours: t.minHours,
+      fundingHours: t.fundingHours,
+      bankHours: t.bankHours,
       blurb: t.blurb,
     })),
   })

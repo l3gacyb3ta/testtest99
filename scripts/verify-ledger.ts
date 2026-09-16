@@ -1,7 +1,13 @@
 import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
-import { Phase, PhaseStatus, ReviewResult, Theme } from "../src/app/generated/prisma/enums"
+import {
+  Phase,
+  PhaseStatus,
+  ReviewResult,
+  ShopItemCategory,
+  Theme,
+} from "../src/app/generated/prisma/enums"
 
 /**
  * End-to-end check of the money path.
@@ -26,9 +32,9 @@ function check(label: string, actual: unknown, expected: unknown) {
 
 async function main() {
   const { finalizeReview, unapprovePhase } = await import("../src/lib/review")
-  const { getBalance } = await import("../src/lib/currency")
+  const { getBalances } = await import("../src/lib/currency")
   const { getPrinterQualification } = await import("../src/lib/printer")
-  const { excessCreditFor } = await import("../src/lib/hours")
+  const { buildCoinsFor } = await import("../src/lib/hours")
   const { THEME_COMPLETION_BONUS } = await import("../src/lib/config/program")
 
   const stamp = Date.now()
@@ -56,7 +62,7 @@ async function main() {
     },
   })
 
-  // 18 hours of journal work against a 10-hour Tier 1 minimum.
+  // 18 hours of journal work. A build has no funding floor, so all of it pays.
   await prisma.workSession.create({
     data: {
       themeProjectId: project.id,
@@ -67,8 +73,10 @@ async function main() {
     },
   })
 
-  const expectedExcess = excessCreditFor(1, 18)
-  const expectedTotal = expectedExcess + THEME_COMPLETION_BONUS
+  // This exercise approves a BUILD, so every coin it mints is spendable: the
+  // banked pot is only ever fed by a design approval.
+  const expectedBuildCoins = buildCoinsFor(18).spendable
+  const expectedTotal = expectedBuildCoins + THEME_COMPLETION_BONUS
 
   async function approve() {
     const submission = await prisma.phaseSubmission.create({
@@ -89,22 +97,25 @@ async function main() {
     })
   }
 
-  const balanceStart = await prisma.$transaction((tx) => getBalance(tx, participant.id))
-  check("starting balance", balanceStart, 0)
+  const spendable = async () =>
+    (await prisma.$transaction((tx) => getBalances(tx, participant.id))).spendable
+  const banked = async () =>
+    (await prisma.$transaction((tx) => getBalances(tx, participant.id))).banked
+
+  check("starting balance", await spendable(), 0)
 
   const first = await approve()
-  const afterFirst = await prisma.$transaction((tx) => getBalance(tx, participant.id))
   check("approved hours frozen", first.approvedHours, 18)
-  check("excess credit", first.excessCredit, expectedExcess)
-  check("balance after first approval", afterFirst, expectedTotal)
+  check("build coins minted", first.coins?.spendable, expectedBuildCoins)
+  check("build mints nothing into the printer fund", first.coins?.banked, 0)
+  check("balance after first approval", await spendable(), expectedTotal)
+  check("printer fund untouched by a build", await banked(), 0)
 
   await unapprovePhase(project.id, Phase.BUILD, reviewer.id, reviewer.email, "checking reversal")
-  const afterUnapprove = await prisma.$transaction((tx) => getBalance(tx, participant.id))
-  check("balance after un-approval returns to zero", afterUnapprove, 0)
+  check("balance after un-approval returns to zero", await spendable(), 0)
 
   await approve()
-  const afterSecond = await prisma.$transaction((tx) => getBalance(tx, participant.id))
-  check("balance after re-approval does not double", afterSecond, expectedTotal)
+  check("balance after re-approval does not double", await spendable(), expectedTotal)
 
   const entries = await prisma.ledgerEntry.count({ where: { userId: participant.id } })
   // Two credits, two reversals, two credits again: history is appended, never
@@ -153,8 +164,7 @@ async function main() {
   check("self-review is refused", selfReviewRejected, true)
 
   // The balance must be untouched by the attempt.
-  const afterSelfReview = await prisma.$transaction((tx) => getBalance(tx, participant.id))
-  check("self-review minted nothing", afterSelfReview, expectedTotal)
+  check("self-review minted nothing", await spendable(), expectedTotal)
 
   // Concurrent purchases must not double-spend. The balance is a SUM over an
   // append-only table, so without a per-user lock ten parallel requests all
@@ -181,16 +191,115 @@ async function main() {
   const succeeded = attempts.filter((a) => a.status === "fulfilled").length
   check("only one of eight concurrent purchases succeeds", succeeded, 1)
 
-  const afterPurchase = await prisma.$transaction((tx) => getBalance(tx, participant.id))
-  check("balance never goes negative", afterPurchase, 0)
+  check("balance never goes negative", await spendable(), 0)
+
+  // ── The printer fund ───────────────────────────────────────────────────────
+  //
+  // Everything above spends the ordinary pot. What follows is the invariant the
+  // forced-savings rule rests on: banked coins are legal tender for a printer
+  // and for nothing else. If this ever passes by accident, the rule is decor.
+  const { designCoinsFor } = await import("../src/lib/hours")
+  const design = designCoinsFor(1, 11)
+  // Tier 1 funds 6h and banks 2h, so 11h is 10 banked + 15 spendable.
+  check("design banks the tier's bankHours", design.banked, 10)
+  check("design pays the rest as spendable", design.spendable, 15)
+
+  const saver = await prisma.user.create({
+    data: {
+      email: `saver-${stamp}@example.test`,
+      name: "Printer Fund Saver",
+      verificationStatus: "verified",
+    },
+  })
+  const saverSpendable = async () =>
+    (await prisma.$transaction((tx) => getBalances(tx, saver.id))).spendable
+  const saverBanked = async () =>
+    (await prisma.$transaction((tx) => getBalances(tx, saver.id))).banked
+
+  const designProject = await prisma.themeProject.create({
+    data: {
+      userId: saver.id,
+      theme: Theme.CAD,
+      title: "Ledger check bracket",
+      description: "A bracket for checking the printer fund.",
+      designStatus: PhaseStatus.in_review,
+    },
+  })
+  await prisma.workSession.create({
+    data: {
+      themeProjectId: designProject.id,
+      phase: Phase.DESIGN,
+      title: "Modelling",
+      hoursClaimed: 11,
+      effectiveDate: "2026-09-10",
+    },
+  })
+  const designSubmission = await prisma.phaseSubmission.create({
+    data: { themeProjectId: designProject.id, phase: Phase.DESIGN },
+  })
+  const designOutcome = await finalizeReview({
+    submissionId: designSubmission.id,
+    reviewerId: reviewer.id,
+    reviewerName: reviewer.name,
+    reviewerEmail: reviewer.email,
+    result: ReviewResult.APPROVED,
+    feedback: "Approved at Tier 1.",
+    reason: "11h of modelling.",
+    tier: 1,
+  })
+  check("design approval banks coins", designOutcome.coins?.banked, 10)
+  check("printer fund holds the banked coins", await saverBanked(), 10)
+  check("spendable got the overtime only", await saverSpendable(), 15)
+
+  // An upgrade costs more than the spendable pot but less than the two
+  // combined. It must be refused: the printer fund is not available to it.
+  const upgrade = await prisma.shopItem.create({
+    data: {
+      id: `ledger-check-upgrade-${stamp}`,
+      name: "Ledger check upgrade",
+      description: "Priced between the spendable pot and the combined total.",
+      category: ShopItemCategory.PRINTER_UPGRADE,
+      priceCredits: 20,
+      maxPerUser: 0,
+      requiresPrinterQualified: false,
+    },
+  })
+  let upgradeRefused = false
+  try {
+    await purchase(saver.id, upgrade.id, 1)
+  } catch {
+    upgradeRefused = true
+  }
+  check("banked coins cannot buy an upgrade", upgradeRefused, true)
+  check("the refused purchase moved nothing", await saverBanked(), 10)
+
+  // The same 20 coins, on a printer, must succeed — and must take the banked
+  // ten FIRST, leaving the spendable pot as intact as possible.
+  const printerItem = await prisma.shopItem.create({
+    data: {
+      id: `ledger-check-printer-${stamp}`,
+      name: "Ledger check printer",
+      description: "The cheapest printer in the world.",
+      category: ShopItemCategory.PRINTER,
+      priceCredits: 20,
+      maxPerUser: 0,
+      requiresPrinterQualified: false,
+    },
+  })
+  await purchase(saver.id, printerItem.id, 1)
+  check("a printer drains the fund first", await saverBanked(), 0)
+  check("and takes the remainder from spendable", await saverSpendable(), 5)
 
   // Clean up so the script is re-runnable. Order matters: SubmissionReview
   // restricts deleting its reviewer, so the participant (whose projects cascade
   // down to those reviews) has to go first.
   await prisma.user.delete({ where: { id: participant.id } })
+  await prisma.user.delete({ where: { id: saver.id } })
   await prisma.user.delete({ where: { id: reviewer.id } })
   // The item can only go once the orders referencing it are gone with the user.
   await prisma.shopItem.delete({ where: { id: item.id } })
+  await prisma.shopItem.delete({ where: { id: upgrade.id } })
+  await prisma.shopItem.delete({ where: { id: printerItem.id } })
   await prisma.programSettings.update({
     where: { id: "singleton" },
     data: { shopOpen: false },

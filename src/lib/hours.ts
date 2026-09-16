@@ -3,10 +3,7 @@ import prisma from "@/lib/prisma"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
-import {
-  CREDIT_PER_EXCESS_HOUR,
-  MAX_EXCESS_CREDIT_PER_PROJECT,
-} from "@/lib/config/program"
+import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
 
 export interface HoursBreakdown {
   /** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
@@ -26,7 +23,7 @@ export interface HoursBreakdown {
 
   /** journalHours + hackatimeHours. The reviewer's default. */
   computedTotal: number
-  /** ThemeProject.approvedHours once frozen. */
+  /** This phase's frozen hours on ThemeProject, once its review has landed. */
   frozenTotal: number | null
   /** frozenTotal ?? computedTotal. The number every caller should use. */
   effectiveHours: number
@@ -57,6 +54,7 @@ export async function getHoursBreakdown(
       where: { id: themeProjectId },
       select: {
         approvedHours: true,
+        designApprovedHours: true,
         user: { select: { hackatimeUserId: true } },
       },
     }),
@@ -117,7 +115,11 @@ export async function getHoursBreakdown(
 
   const claimedSeconds = journalHoursClaimed * 3600
   const computedTotal = round2(journalHours + hackatimeHours)
-  const frozenTotal = project?.approvedHours ?? null
+  // Each phase freezes its own hours. Reading the build's column for a design
+  // breakdown would report a design as already-frozen the moment its build was
+  // approved, and hand the reviewer the wrong phase's number.
+  const frozenTotal =
+    (phase === Phase.DESIGN ? project?.designApprovedHours : project?.approvedHours) ?? null
 
   return {
     journalHours: round2(journalHours),
@@ -135,18 +137,67 @@ export async function getHoursBreakdown(
 }
 
 /**
- * Credit minted by hours beyond the tier's minimum.
+ * Coins a phase minted, split by which pot they land in.
  *
- * Capped because `approvedHours` can come from a reviewer typing into a box,
- * and a fat-fingered 1000 should not mint five thousand credits.
+ * A type alias rather than an interface on purpose: this gets written into the
+ * audit row's JSON payload, and Prisma's `InputJsonValue` only accepts types
+ * with an implicit index signature, which interfaces do not have.
  */
-export function excessCreditFor(tierId: TierId | number, approvedHours: number): number {
+export type CoinSplit = {
+  /** Printer fund. Spendable on a printer and nothing else. */
+  banked: number
+  /** Ordinary coins. */
+  spendable: number
+  total: number
+}
+
+/**
+ * Coins minted by an approved DESIGN phase.
+ *
+ * The tier's hours come in two layers and the order matters:
+ *
+ *   [0, fundingHours)                    → dollars, not coins. This is the
+ *                                          parts grant; it buys the BOM.
+ *   [fundingHours, +bankHours)           → BANKED coins. The forced savings.
+ *   [fundingHours + bankHours, ∞)        → spendable coins.
+ *
+ * So a Tier 1 design approved at 8h mints 0 spendable and 2h × 5 = 10 banked,
+ * and the same design approved at 11h mints 10 banked and 15 spendable. Under-
+ * shooting is handled by the same arithmetic rather than a special case: an
+ * approval at 7h banks one hour's worth, because `min` clamps it.
+ *
+ * Spendable coins are capped: `approvedHours` can come from a reviewer typing
+ * into a box, and a fat-fingered 1000 should not mint five thousand coins. The
+ * banked half needs no cap — it is bounded by `bankHours` by construction.
+ */
+export function designCoinsFor(tierId: TierId | number, approvedHours: number): CoinSplit {
   const tier = getTierOrThrow(tierId)
-  const excess = Math.max(0, approvedHours - tier.minHours)
-  return Math.min(
-    Math.floor(excess * CREDIT_PER_EXCESS_HOUR),
-    MAX_EXCESS_CREDIT_PER_PROJECT,
+  const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
+  const bankedHours = Math.min(beyondFunding, tier.bankHours)
+  const spendableHours = beyondFunding - bankedHours
+
+  const banked = Math.floor(bankedHours * COINS_PER_HOUR)
+  const spendable = Math.min(
+    Math.floor(spendableHours * COINS_PER_HOUR),
+    MAX_COINS_PER_PROJECT,
   )
+  return { banked, spendable, total: banked + spendable }
+}
+
+/**
+ * Coins minted by an approved BUILD phase.
+ *
+ * Every hour counts, with no funding floor subtracted: the build has no BOM to
+ * pay for — the parts were bought with the design's grant — so the hours are
+ * the participant's to keep. This is the half of the economy that gets someone
+ * from the 50 banked coins five Tier 1 designs produce up to a printer.
+ */
+export function buildCoinsFor(approvedHours: number): CoinSplit {
+  const spendable = Math.min(
+    Math.floor(Math.max(0, approvedHours) * COINS_PER_HOUR),
+    MAX_COINS_PER_PROJECT,
+  )
+  return { banked: 0, spendable, total: spendable }
 }
 
 function round2(n: number): number {

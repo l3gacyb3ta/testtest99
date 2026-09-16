@@ -6,23 +6,51 @@ import { Theme, Phase } from "@/app/generated/prisma/enums"
  */
 
 /** Shown wherever the currency is named. One line to rename it everywhere. */
-export const CREDIT_NAME_PLURAL = "sparks"
-export const CREDIT_NAME_SINGULAR = "spark"
-
-/** Approved hours beyond a tier's minimum convert at this rate. */
-export const CREDIT_PER_EXCESS_HOUR = 5
+export const CREDIT_NAME_PLURAL = "coins"
+export const CREDIT_NAME_SINGULAR = "coin"
 
 /**
- * Ceiling on credit minted from one project's excess hours. `approvedHours` can
- * come from a reviewer typing into a box, and a fat-fingered 1000 should not
- * mint five thousand credits.
+ * One coin is one dollar, and an hour of work is worth five of them.
+ *
+ * This single rate drives both halves of the economy: design hours beyond the
+ * tier's funding hours, and every build hour. Changing it moves the printer
+ * out of reach of someone doing the minimum — see PRINTER_FLOOR_COINS.
  */
-export const MAX_EXCESS_CREDIT_PER_PROJECT = 250
+export const COINS_PER_HOUR = 5
+
+/**
+ * Ceiling on coins minted from one project's hours. `approvedHours` can come
+ * from a reviewer typing into a box, and a fat-fingered 1000 should not mint
+ * five thousand coins.
+ */
+export const MAX_COINS_PER_PROJECT = 250
 
 /** Flat award for shipping a theme (design and build both approved). */
 export const THEME_COMPLETION_BONUS = 25
 
-/** All five themes shipped earns the 3D printer. */
+/**
+ * Coins the entry-level printer costs, and the target the forced-savings rule
+ * is sized against.
+ *
+ * The arithmetic this has to keep working: five design weeks at Tier 1 bank
+ * 5 × 2h × COINS_PER_HOUR = 50, and five build weeks at roughly 5h each add
+ * 5 × 5h × COINS_PER_HOUR = 125. 50 + 125 = 175. If you change COINS_PER_HOUR,
+ * a tier's bankHours, or this price, check that identity still holds or the
+ * minimum path stops landing on a printer.
+ *
+ * The real prices live on the seeded ShopItem rows; this constant exists so
+ * the dashboard can show progress toward "a printer" before the participant
+ * has picked one.
+ */
+export const PRINTER_FLOOR_COINS = 175
+
+/**
+ * Themes shipped before printer UPGRADES unlock.
+ *
+ * The printer itself is bought with coins and is not gated on this — the
+ * forced-savings rule is what guarantees someone can afford one. Upgrades bolt
+ * onto a printer, so buying one before finishing is meaningless.
+ */
 export const THEMES_REQUIRED_FOR_PRINTER = 5
 
 /** Fallbacks used only when seeding a fresh ProgramSettings row. */
@@ -33,6 +61,20 @@ export const DEFAULT_PROGRAM_TIMEZONE =
 
 export const TOTAL_WEEKS = 10
 export const DESIGN_WEEKS = 5
+
+/**
+ * Streaks.
+ *
+ * A day counts when the participant logs a work session with that day as its
+ * `effectiveDate` in the program timezone — the same stamp the journal already
+ * writes, so the streak is derived from work rather than from logging in.
+ *
+ * `STREAK_GRACE_DAYS = 1` means one missed day does not reset you: the streak
+ * breaks on the second. Hardware work is not a daily-habit app, and a rule
+ * that punishes a day at a robotics competition would mostly teach people to
+ * file a fake session.
+ */
+export const STREAK_GRACE_DAYS = 1
 
 export interface ThemeDef {
   readonly id: Theme

@@ -24,7 +24,9 @@ export default async function DashboardPage() {
       />
 
       <div className="hl-row">
-        <Stat label={`${CREDIT_NAME_PLURAL} available`} value={data.balance} />
+        <Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={data.balances.spendable} />
+        <Stat label="Printer fund" value={data.balances.banked} />
+        <Stat label="Day streak" value={data.streak} />
         <Stat label={`${CREDIT_NAME_PLURAL} earned`} value={data.earned} />
         <Stat
           label="Themes shipped"

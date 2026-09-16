@@ -1,6 +1,6 @@
 import "server-only"
 import prisma from "@/lib/prisma"
-import { LedgerKind } from "@/app/generated/prisma/enums"
+import { CoinBucket, LedgerKind, ShopItemCategory } from "@/app/generated/prisma/enums"
 import type { LedgerEntry, Prisma } from "@/app/generated/prisma/client"
 
 type Tx = Prisma.TransactionClient
@@ -28,7 +28,10 @@ export async function lockUserCredit(tx: Tx, userId: string): Promise<void> {
 
 /** Kinds that represent earning, as opposed to spending. */
 const EARNING_KINDS: LedgerKind[] = [
-  LedgerKind.EXCESS_HOURS,
+  LedgerKind.DESIGN_BANKED_HOURS,
+  LedgerKind.DESIGN_EXCESS_HOURS,
+  LedgerKind.BUILD_HOURS,
+  LedgerKind.BOM_SAVINGS,
   LedgerKind.THEME_COMPLETION_BONUS,
   LedgerKind.ADMIN_ADJUSTMENT,
   LedgerKind.REVIEWER_PAYMENT,
@@ -39,9 +42,43 @@ async function sumFor(tx: Tx, where: Prisma.LedgerEntryWhereInput): Promise<numb
   return _sum.amount ?? 0
 }
 
-/** Authoritative balance. Always SUM(amount) — there is no balance column. */
-export async function getBalance(tx: Tx, userId: string): Promise<number> {
-  return sumFor(tx, { userId })
+/** Both pots, plus their total. Every balance read should go through this. */
+export interface Balances {
+  /** Ordinary coins. Buys anything in the shop. */
+  spendable: number
+  /** The printer fund. Buys a printer and nothing else. */
+  banked: number
+  /** spendable + banked. For display only — never a spending limit. */
+  total: number
+}
+
+/**
+ * Authoritative balances. Always SUM(amount) — there is no balance column.
+ *
+ * Returns the two pots separately rather than a total and a reserve, because a
+ * reserve is something a caller can forget to subtract and a pot is not: there
+ * is no way to spend banked coins by accident when the number you were handed
+ * never included them.
+ */
+export async function getBalances(tx: Tx, userId: string): Promise<Balances> {
+  const [spendable, banked] = await Promise.all([
+    sumFor(tx, { userId, bucket: CoinBucket.SPENDABLE }),
+    sumFor(tx, { userId, bucket: CoinBucket.BANKED }),
+  ])
+  return { spendable, banked, total: spendable + banked }
+}
+
+/**
+ * What this user can spend on `category` right now.
+ *
+ * Banked coins are only legal tender for a printer, so the answer depends on
+ * what is being bought. This is the only function that should ever decide
+ * that, and `purchase()` is its only caller that matters.
+ */
+export function spendableFor(balances: Balances, category: ShopItemCategory): number {
+  return category === ShopItemCategory.PRINTER
+    ? balances.total
+    : balances.spendable
 }
 
 /** Lifetime earnings, ignoring spending. For progress displays. */
@@ -52,6 +89,8 @@ export async function getEarnedCredit(tx: Tx, userId: string): Promise<number> {
 export interface LedgerEntryParams {
   userId: string
   kind: LedgerKind
+  /** Which pot to move. Defaults to SPENDABLE; only the forced savings differ. */
+  bucket?: CoinBucket
   amount: number
   note?: string | null
   themeProjectId?: string | null
@@ -70,11 +109,16 @@ export async function appendLedgerEntry(
   tx: Tx,
   params: LedgerEntryParams,
 ): Promise<LedgerEntry> {
-  const balanceBefore = await getBalance(tx, params.userId)
+  const bucket = params.bucket ?? CoinBucket.SPENDABLE
+  // Scoped to the bucket: a combined figure here would make the audit columns
+  // disagree with the balance the participant was actually shown and spent
+  // against, which is the one question these columns exist to answer.
+  const balanceBefore = await sumFor(tx, { userId: params.userId, bucket })
   return tx.ledgerEntry.create({
     data: {
       userId: params.userId,
       kind: params.kind,
+      bucket,
       amount: params.amount,
       note: params.note ?? null,
       themeProjectId: params.themeProjectId ?? null,
@@ -90,6 +134,13 @@ export interface ReconcileParams {
   userId: string
   themeProjectId: string
   kind: LedgerKind
+  /**
+   * The pot this kind pays into. Fixed per kind — DESIGN_BANKED_HOURS is
+   * always BANKED and everything else is always SPENDABLE — so passing the
+   * wrong one here would split one grant across two pots and make the
+   * reconcile sum converge on a target it can never reach.
+   */
+  bucket?: CoinBucket
   /** What the total for this (user, project, kind) should now be. */
   target: number
   note: string
@@ -128,6 +179,7 @@ export async function reconcileGrant(
   return appendLedgerEntry(tx, {
     userId: params.userId,
     kind: params.kind,
+    bucket: params.bucket ?? CoinBucket.SPENDABLE,
     amount: delta,
     note: params.note,
     themeProjectId: params.themeProjectId,
@@ -152,4 +204,4 @@ export async function getLedgerPage(
   return { items, nextCursor: hasMore && last ? last.id : null }
 }
 
-export { LedgerKind }
+export { CoinBucket, LedgerKind }
