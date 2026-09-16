@@ -11,8 +11,8 @@ import spiritguy from "../../public/art/extras/spiritguy.png";
 // Parked: the corner decals, to be placed later.
 // import CornerDecal, { type DecalName } from "@/components/corner-decal";
 import ImageSlot from "@/components/image-slot";
-import type { Step } from "@/lib/content";
-import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/content";
+import type { Step } from "@/lib/site/content";
+import { ASIDES, DESIGN_WEEKS, STEPS } from "@/lib/site/content";
 import {
   COMP_WIDTH,
   STACK_VIEW,
@@ -23,7 +23,7 @@ import {
   stackWeld,
   u,
   weld,
-} from "@/lib/stage";
+} from "@/lib/site/stage";
 
 /**
  * The header plate — "how does it work?".

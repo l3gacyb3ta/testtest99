@@ -16,15 +16,15 @@
  */
 import type { StaticImageData } from "next/image";
 
-import buildArt from "../../public/art/build.png";
-import getFundingArt from "../../public/art/getfunding.png";
-import prizesArt from "../../public/art/prizes.png";
-import allWeeksArt from "../../public/art/weeks/allweeks.png";
-import flightControllerPhoto from "../../public/projects/flightcontroller.png";
-import hexapodPhoto from "../../public/projects/hexapod.png";
-import icepiPhoto from "../../public/projects/icepi.png";
-import jukeboxPhoto from "../../public/projects/jukebox.png";
-import macropadPhoto from "../../public/projects/macropad.png";
+import buildArt from "../../../public/art/build.png";
+import getFundingArt from "../../../public/art/getfunding.png";
+import prizesArt from "../../../public/art/prizes.png";
+import allWeeksArt from "../../../public/art/weeks/allweeks.png";
+import flightControllerPhoto from "../../../public/projects/flightcontroller.png";
+import hexapodPhoto from "../../../public/projects/hexapod.png";
+import icepiPhoto from "../../../public/projects/icepi.png";
+import jukeboxPhoto from "../../../public/projects/jukebox.png";
+import macropadPhoto from "../../../public/projects/macropad.png";
 
 export const BRAND = {
   name: "Half Life",
@@ -107,7 +107,10 @@ export type Step = {
   caption?: string;
 };
 
-export const STEPS: Step[] = [
+/** Exactly four, in comp order: design, funding, build, printer. The
+ *  arity is load-bearing — `process.tsx` destructures these positionally
+ *  and gives each one its own plate. */
+export const STEPS: [Step, Step, Step, Step] = [
   {
     id: "design",
     title: "spend 5 weeks designing 5 projects",
@@ -136,7 +139,8 @@ export const STEPS: Step[] = [
 
 export type Aside = { id: string; title: string; body: string };
 
-export const ASIDES: Aside[] = [
+/** Exactly two; each is placed at its own offset on the process band. */
+export const ASIDES: [Aside, Aside] = [
   {
     id: "viral",
     title: "earn more prizes by going viral!",

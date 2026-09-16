@@ -1,4 +1,4 @@
-import { FAQS } from "@/lib/content";
+import { FAQS } from "@/lib/site/content";
 
 /**
  * Comp geometry: a 1615-wide field of 725 × 323 plates, two up, 56px apart

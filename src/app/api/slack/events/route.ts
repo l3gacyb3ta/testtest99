@@ -6,13 +6,13 @@ import {
   postMessage,
   verifySlackRequest,
   type SlackBlock,
-} from "@/lib/slack";
+} from "@/lib/site/slack";
 import {
   SELF_RESOLVE_ACTIONS_BLOCK_ID,
   TICKET_ACTIONS_BLOCK_ID,
   ticketSection,
   type TicketRef,
-} from "@/lib/tickets";
+} from "@/lib/site/tickets";
 
 // Signature verification needs Node's crypto, not the edge runtime.
 export const runtime = "nodejs";

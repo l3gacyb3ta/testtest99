@@ -93,3 +93,5 @@ id_rsa*
 package-lock.json
 yarn.lock
 .pnpm-store/
+# generated prisma client — output path is set in prisma/schema.prisma
+/src/app/generated

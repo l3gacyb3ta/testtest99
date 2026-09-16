@@ -1,9 +1,7 @@
 import Wordmark from "@/components/wordmark";
-import { FOOTER_COLUMNS } from "@/lib/content";
+import { FOOTER_COLUMNS } from "@/lib/site/content";
 
 export default function SiteFooter() {
-  const year = new Date().getFullYear();
-
   return (
     <footer className="mt-auto bg-hl-ink text-hl-paper">
       <div className="mx-auto max-w-[1615px] px-4 pt-16 pb-10 sm:px-8 min-[1180px]:px-[3.4vw] min-[1180px]:pt-24">

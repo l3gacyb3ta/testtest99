@@ -9,8 +9,8 @@ import AnnouncementBanner from "@/components/announcement-banner";
 import flagArt from "../../public/art/hackclub-flag.svg";
 import SignupForm from "@/components/signup-form";
 import Wordmark from "@/components/wordmark";
-import { BRAND } from "@/lib/content";
-import { swashBoxWidth, u } from "@/lib/stage";
+import { BRAND } from "@/lib/site/content";
+import { swashBoxWidth, u } from "@/lib/site/stage";
 
 /**
  * The hero plate, taken to half the grid.

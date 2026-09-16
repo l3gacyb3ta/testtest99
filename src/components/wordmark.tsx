@@ -3,7 +3,7 @@ import type { StaticImageData } from "next/image";
 import Image from "next/image";
 
 import logoArt from "../../public/art/logo.png";
-import { BRAND } from "@/lib/content";
+import { BRAND } from "@/lib/site/content";
 
 const LOGO_SRC: StaticImageData | null = logoArt;
 

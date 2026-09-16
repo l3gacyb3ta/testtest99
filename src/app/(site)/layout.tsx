@@ -13,7 +13,7 @@ import "./globals.css";
  * donation to charity for commercial use.
  */
 const masterpiece = localFont({
-  src: "../../public/fonts/Masterpiece.ttf",
+  src: "../../../public/fonts/Masterpiece.ttf",
   variable: "--font-masterpiece",
   weight: "400",
   style: "normal",

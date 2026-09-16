@@ -4,7 +4,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import ImageSlot from "@/components/image-slot";
-import { BUILD_CARDS } from "@/lib/content";
+import { BUILD_CARDS } from "@/lib/site/content";
 
 /**
  * The belt carries one card past you every this many seconds — at every
@@ -208,7 +208,9 @@ export default function BuildCarousel() {
 
     // A decorative loop has no business running off-screen.
     const observer = new IntersectionObserver(
-      ([entry]) => {
+      (entries) => {
+        const entry = entries[entries.length - 1];
+        if (!entry) return;
         onscreenRef.current = entry.isIntersecting;
         wake();
       },

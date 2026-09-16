@@ -4,8 +4,8 @@ import {
   updateMessage,
   verifySlackRequest,
   type SlackBlock,
-} from "@/lib/slack";
-import { resolveBlocks, ticketSection, type TicketRef } from "@/lib/tickets";
+} from "@/lib/site/slack";
+import { resolveBlocks, ticketSection, type TicketRef } from "@/lib/site/tickets";
 
 export const runtime = "nodejs";
 

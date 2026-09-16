@@ -3,8 +3,8 @@
 import Image from "next/image";
 
 import brushstroke from "../../public/art/brushstroke.png";
-import { BRAND } from "@/lib/content";
-import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/stage";
+import { BRAND } from "@/lib/site/content";
+import { SWASH_INSET_X, SWASH_INSET_Y } from "@/lib/site/stage";
 import {
   useCallback,
   useEffect,

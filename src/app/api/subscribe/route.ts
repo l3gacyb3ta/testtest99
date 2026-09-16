@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { normalizeEmail, rateLimited, recordSignup } from "@/lib/signups";
+import { normalizeEmail, rateLimited, recordSignup } from "@/lib/site/signups";
 
 /** Referral codes and UTM values are freeform, untrusted client input — cap
  * length and drop anything that isn't a string rather than validate a shape. */
