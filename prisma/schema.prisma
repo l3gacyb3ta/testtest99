@@ -367,13 +367,6 @@ model Session {
 model Account {
   id String @id
 
-  /// The provider's stable issuer identity. better-auth keys accounts on
-  /// (issuer, accountId), NOT on (providerId, accountId): providerId is our
-  /// local label for a provider, while the issuer is what the provider itself
-  /// asserts, so it is the half that actually identifies an upstream account.
-  /// Required by better-auth >= 1.7 — without it every sign-in fails inside
-  /// findAccountOwnerByKey.
-  issuer                String
   accountId             String
   providerId            String
   userId                String
@@ -388,10 +381,24 @@ model Account {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  /// Matches better-auth's own index. Without it a retried OAuth callback can
-  /// create two rows for the same upstream identity, and "find this user's HCA
-  /// account" becomes nondeterministic about which refresh token it picks up.
-  @@unique([issuer, accountId])
+  /// Matches what better-auth actually queries. Without it a retried OAuth
+  /// callback can create two rows for the same upstream identity, and "find
+  /// this user's HCA account" becomes nondeterministic about which refresh
+  /// token it picks up.
+  ///
+  /// This used to be `@@unique([issuer, accountId])` with a required `issuer`
+  /// column, on the belief that better-auth >= 1.7 keys accounts on the
+  /// issuer. It does not: `findAccountOwnerByKey` in 1.7.5 takes
+  /// `{ providerId, accountId }`, and neither better-auth nor @better-auth/core
+  /// writes an `issuer` field at all. A NOT NULL column nothing populates made
+  /// prisma.account.create() fail on every sign-in, which better-auth reports
+  /// as the far less helpful `?error=unable_to_create_user`.
+  ///
+  /// Do not reinstate `issuer` without checking that the installed version
+  /// writes it — and note that making it merely optional would be worse than
+  /// useless here, because Postgres treats NULLs as distinct and this
+  /// constraint would stop preventing anything.
+  @@unique([providerId, accountId])
   @@index([userId])
   @@map("account")
 }
