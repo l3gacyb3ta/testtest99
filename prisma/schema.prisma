@@ -121,6 +121,21 @@ enum ShopItemCategory {
   MISC
 }
 
+/// Self-reported, from the first onboarding question.
+///
+/// Its only mechanical effect is which funding tier the tier step highlights:
+/// the comp's own note says the answer "will highlight appropriate funding
+/// tier when the choice shows up". It never gates anything — the copy under
+/// the question promises "this will have no effect on your experience, it's
+/// just for us", and a field that quietly did gate something would make that
+/// line a lie.
+enum HardwareExperience {
+  FIRST_TIME
+  A_LITTLE
+  A_GOOD_AMOUNT
+  ITS_LIFE
+}
+
 enum PostStatus {
   /// Uploaded to R2, not yet playable (thumbnail/duration still unknown).
   PROCESSING
@@ -167,6 +182,8 @@ enum AuditAction {
   USER_PLACE_ORDER
   USER_CREATE_POST
   USER_DELETE_POST
+  USER_ADVANCE_ONBOARDING
+  USER_COMPLETE_ONBOARDING
 
   // Review
   REVIEW_CLAIM
@@ -248,6 +265,24 @@ model User {
   encryptedPhone          String?
 
   joinedProgramAt DateTime?
+
+  hardwareExperience HardwareExperience?
+
+  /// How far through the first checkpoint this participant has got.
+  ///
+  /// Stores the furthest step REACHED, so closing the tab and coming back
+  /// resumes rather than restarts. The step list itself lives in
+  /// lib/config/onboarding.ts rather than in an enum here: the comp has
+  /// already renumbered this flow once (a 5-step version survives on the older
+  /// Figma page), and re-ordering copy should not need a migration.
+  onboardingStep        Int       @default(0)
+  onboardingCompletedAt DateTime?
+
+  /// The tracking tutorial is the one step the comp marks dismissible —
+  /// "option in corner to dismiss if you've journaled before". Recorded
+  /// separately from the step counter so we can tell "read it" from "skipped
+  /// it" when deciding whether to show journal hints later.
+  trackingTutorialDismissedAt DateTime?
 
   /// Journalling streak, in days.
   ///
@@ -434,6 +469,22 @@ model ThemeProject {
   /// Dollars of the grant the participant did not spend on parts, entered from
   /// their receipts. Converts 1:1 into spendable coins.
   bomSavingsUsd Int?
+
+  /// The tier the PARTICIPANT asked for, set during onboarding and editable
+  /// until the design is submitted.
+  ///
+  /// Deliberately not `tier`: that one is the reviewer's decision and is what
+  /// the grant is paid against, and a field a participant can edit must never
+  /// be the field that decides money. This is a stated preference the reviewer
+  /// sees — the comp is explicit that the choice "can be changed later".
+  requestedTier Int?
+
+  /// Set when the participant took one of the suggested starter projects
+  /// instead of describing their own. Per the comp, that locks the request to
+  /// Tier 1: the starter builds are scoped to be Tier 1 work, so letting
+  /// someone pick one and then request Tier 3 would be asking a reviewer to
+  /// turn down a number the app itself offered them.
+  starterProjectId String?
 
   /// Per-project deadline override, layered on top of the per-user one.
   /// Either being in the future opens the gate.

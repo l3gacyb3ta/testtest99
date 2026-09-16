@@ -1,6 +1,8 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { requireSessionPage } from "@/lib/page-guards"
 import { getDashboard } from "@/lib/queries/dashboard"
+import { needsOnboarding } from "@/lib/onboarding"
 import { CREDIT_NAME_PLURAL, TOTAL_WEEKS } from "@/lib/config/program"
 import { Badge, Callout, Panel, PageHeader, Stat, statusLabel, statusTone } from "@/app/components/ui"
 
@@ -8,6 +10,12 @@ export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
   const { user } = await requireSessionPage()
+
+  // The first checkpoint runs before the dashboard, as the comp has it. This
+  // is deliberately not a layout-level check: /onboarding lives under the same
+  // layout, and a redirect there would loop.
+  if (await needsOnboarding(user.id)) redirect("/onboarding")
+
   const data = await getDashboard(user.id)
 
   return (
