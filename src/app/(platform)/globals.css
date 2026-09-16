@@ -23,7 +23,16 @@
 
   --color-ink: #100f30; /* body text */
   --color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
-  --color-ink-muted: #979bab;
+  /*
+   * The comp's secondary grey is #979bab, which is 2.77:1 on white — below the
+   * 4.5:1 body-text floor, and this is read by teenagers on school laptops in
+   * bright rooms. Darkened along its own hue (228°) and saturation rather than
+   * swapped for a neutral, so it stays the comp's colour: 5.06:1 on white,
+   * 4.76:1 on the page ground.
+   */
+  --color-ink-muted: #696e82;
+  /* The original, kept for the decorative rules and borders that are not text. */
+  --color-line-soft: #cacedd;
 
   --color-accent: #52b4d5; /* primary blue */
   --color-accent-bright: #61cdf1; /* the header sign */
@@ -80,6 +89,37 @@ a {
   color: var(--color-ink-strong);
 }
 
+/*
+ * The surfaces we did not draw still carry the design. Left at their defaults
+ * these are the browser's blue, and they belong to no design system.
+ */
+::selection {
+  background: var(--color-mint);
+  color: var(--color-ink-strong);
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--color-accent);
+}
+
+* {
+  scrollbar-color: var(--color-line-soft) transparent;
+  scrollbar-width: thin;
+}
+
+/* Headings inherit the display face and weight rather than the browser's. */
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 800;
+  color: var(--color-ink-strong);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
 @layer components {
   /* ── App shell ─────────────────────────────────────────────────────────── */
   /*
@@ -130,6 +170,12 @@ a {
     .hl-sidebar {
       position: static;
     }
+    /*
+     * On one column the sidebar is three tall cards of chrome. Leaving it
+     * first means scrolling past the whole nav, the printer card and the
+     * account card to reach the thing you opened the app for.
+     */
+    .hl-main { order: -1; }
   }
 
   /* ── Cards ─────────────────────────────────────────────────────────────── */
@@ -300,6 +346,12 @@ a {
     width: 129px;
     height: 129px;
   }
+  /* Real names include long unbroken ones; the card must not burst. */
+  .hl-account-name {
+    font-size: 1.375rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
 
   /* ── Accent label ──────────────────────────────────────────────────────── */
   /* "VIEW MORE", "LOG OUT", "YESTERDAY" — Comico, small, tracked out. */
@@ -311,7 +363,7 @@ a {
     color: var(--color-accent);
     text-decoration: none;
   }
-  .hl-label--muted { color: var(--color-border); }
+  .hl-label--muted { color: var(--color-ink-muted); }
 
   /* ── Buttons ───────────────────────────────────────────────────────────── */
   .hl-btn {
@@ -359,6 +411,29 @@ a {
   .hl-select:focus-visible,
   .hl-nav-item:focus-visible,
   .hl-label:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* An icon-only control: the target is the button, not the glyph. */
+  .hl-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-ink-muted);
+    cursor: pointer;
+  }
+  .hl-icon-btn:hover {
+    color: var(--color-ink-strong);
+    background: var(--color-surface-sunken);
+  }
+  .hl-icon-btn:focus-visible {
     outline: 3px solid var(--color-accent);
     outline-offset: 2px;
   }
@@ -494,7 +569,8 @@ a {
     display: flex;
     align-items: center;
     min-height: 115px;
-    padding: 1.4rem 2rem;
+    /* The torn edge eats into the first ~1rem, so the copy starts inside it. */
+    padding: 1.5rem 2.5rem;
     background-image: url("/brand/week-banner.png");
     background-size: 100% 100%;
     background-repeat: no-repeat;
@@ -507,11 +583,14 @@ a {
     text-transform: uppercase;
     margin: 0;
   }
+  /* "DESIGN YOUR BREADBOARD COMPUTER" is the longest headline the program can
+     produce; the ceiling is set so it takes two lines rather than three. */
   .hl-banner-title {
-    font-size: clamp(1.6rem, 3.2vw, 3.125rem);
+    font-size: clamp(1.5rem, 2.6vw, 2.5rem);
     font-weight: 800;
     margin: 0.1rem 0 0;
-    line-height: 1;
+    line-height: 1.05;
+    text-wrap: balance;
   }
 
   /* ── The checkpoint path ───────────────────────────────────────────────── */
@@ -590,14 +669,19 @@ a {
     width: 40px;
     height: 40px;
   }
-  /* The hours node fills from the bottom as the hours come in. */
+  /*
+   * The hours node fills from the bottom as the hours come in, in the SAME
+   * teal the finished nodes use — so the filled part reads as the part that is
+   * done. A neutral tint here just made the disc look two-tone, with no clue
+   * which half meant progress.
+   */
   .hl-node-fill {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--color-mint);
-    opacity: 0.35;
+    background: var(--color-teal);
+    opacity: 0.85;
   }
   .hl-node-label {
     font-weight: 700;
@@ -703,12 +787,13 @@ a {
     background: var(--color-border);
     border-radius: 2px;
   }
+  /* Same call as the rail title: a date separator carries information. */
   .hl-daymark > span {
     font-family: var(--font-accent);
     font-size: 1.125rem;
     letter-spacing: 0.03em;
     text-transform: uppercase;
-    color: var(--color-border);
+    color: var(--color-ink-muted);
   }
 
   /* ── The Doomscroller rail ─────────────────────────────────────────────── */
@@ -725,10 +810,12 @@ a {
     justify-content: space-between;
     margin-bottom: 0.7rem;
   }
+  /* The comp sets this in the border grey. That is 1.6:1 — decorative, and
+     this is the panel's name, so it takes the readable muted instead. */
   .hl-rail-title {
     font-family: var(--font-accent);
     font-size: 1.125rem;
-    color: var(--color-border);
+    color: var(--color-ink-muted);
     margin: 0;
   }
   .hl-rail-body {

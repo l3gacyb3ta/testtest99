@@ -94,7 +94,7 @@ export default async function DashboardLayout({
             <span className="hl-avatar" aria-hidden="true" />
           )}
           <div className="hl-stack hl-stack--tight" style={{ gap: "0.35rem" }}>
-            <strong style={{ fontSize: "1.375rem" }}>{shell.user.name ?? user.email}</strong>
+            <strong className="hl-account-name">{shell.user.name ?? user.email}</strong>
             <LogOutButton />
           </div>
         </section>

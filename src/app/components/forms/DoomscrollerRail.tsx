@@ -1,5 +1,6 @@
 "use client"
 import Link from "next/link"
+import { CloseIcon } from "@/app/components/ui"
 import { useEffect, useState, useSyncExternalStore } from "react"
 
 /**
@@ -97,11 +98,10 @@ export function DoomscrollerRail() {
         <button
           type="button"
           aria-label="Hide the Doomscroller"
-          className="hl-label hl-label--muted"
-          style={{ background: "none", border: 0, cursor: "pointer", fontSize: "1.1rem" }}
+          className="hl-icon-btn"
           onClick={dismiss}
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
