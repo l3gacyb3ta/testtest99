@@ -104,6 +104,34 @@ export function Callout({
  * from whatever font happens to render it, so it never matches the stroke of
  * anything around it.
  */
+/**
+ * A participant's avatar, falling back to the programme's own art.
+ *
+ * The comp puts a gato illustration in the account card rather than an empty
+ * square, and most participants will not have set a picture — so the fallback
+ * is the common case, not the edge case.
+ *
+ * Not next/image: an avatar URL comes from Slack or R2 and its host is only
+ * known at runtime, which next/image refuses unless it is listed at build time.
+ */
+export function Avatar({
+  src,
+  large = false,
+  alt = "",
+}: Readonly<{ src?: string | null; large?: boolean; alt?: string }>) {
+  const className = `hl-avatar${large ? " hl-avatar--lg" : ""}`
+  if (src) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img className={className} src={src} alt={alt} />
+  }
+  return (
+    <span className={`${className} hl-avatar--fallback`} role="img" aria-label={alt || "No picture set"}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/gato/schematic.png" alt="" />
+    </span>
+  )
+}
+
 export function CloseIcon({ size = 18 }: Readonly<{ size?: number }>) {
   return (
     <svg

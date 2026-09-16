@@ -312,6 +312,41 @@ h4 {
     margin: 0.75rem 0 0;
   }
 
+  /*
+   * The comp stands a gato beside the printer card, overlapping its right
+   * edge. It is decoration, so it is out of the accessibility tree and out of
+   * the pointer's way.
+   */
+  .hl-card--mascot {
+    position: relative;
+  }
+  .hl-card-mascot {
+    position: absolute;
+    right: -1.75rem;
+    bottom: -0.5rem;
+    width: 108px;
+    height: auto;
+    pointer-events: none;
+  }
+  @media (max-width: 900px) {
+    .hl-card-mascot { right: 0.5rem; width: 84px; }
+  }
+
+  /* An empty state that says something, rather than a line of grey text. */
+  .hl-empty-art {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    padding: 1.5rem 1rem;
+    color: var(--color-ink-muted);
+  }
+  .hl-empty-art img {
+    width: 132px;
+    height: auto;
+  }
+
   /* ── Progress ──────────────────────────────────────────────────────────── */
   .hl-progress {
     position: relative;
@@ -346,6 +381,19 @@ h4 {
     width: 129px;
     height: 129px;
   }
+  /* The fallback holds the gato art on the brand navy. */
+  .hl-avatar--fallback {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: var(--color-teal);
+  }
+  .hl-avatar--fallback img {
+    width: 84%;
+    height: 84%;
+    object-fit: contain;
+  }
+
   /* Real names include long unbroken ones; the card must not burst. */
   .hl-account-name {
     font-size: 1.375rem;
@@ -585,6 +633,22 @@ h4 {
   }
   /* "DESIGN YOUR BREADBOARD COMPUTER" is the longest headline the program can
      produce; the ceiling is set so it takes two lines rather than three. */
+  .hl-banner-copy {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+  }
+  .hl-banner-art {
+    margin-left: auto;
+    width: clamp(88px, 12vw, 139px);
+    height: auto;
+    flex: 0 0 auto;
+    /* The art is a sticker with its own pale outline; it needs no shadow. */
+  }
+  @media (max-width: 700px) {
+    /* At this width the headline needs the whole band. */
+    .hl-banner-art { display: none; }
+  }
   .hl-banner-title {
     font-size: clamp(1.5rem, 2.6vw, 2.5rem);
     font-weight: 800;

@@ -41,6 +41,8 @@ export interface CheckpointTrack {
   week: number
   theme: Theme
   themeLabel: string
+  /** The week's illustration, named by the theme's own slug. */
+  themeArt: string
   phase: Phase
   /** The banner headline: "DESIGN YOUR PCB". */
   headline: string
@@ -168,6 +170,7 @@ export async function getCheckpointTrack(userId: string): Promise<CheckpointTrac
     week,
     theme,
     themeLabel: def.label,
+    themeArt: `/brand/themes/${def.slug}.png`,
     phase,
     headline:
       phase === Phase.DESIGN

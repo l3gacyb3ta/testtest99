@@ -1,3 +1,4 @@
+import Image from "next/image"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { requireSessionPage } from "@/lib/page-guards"
@@ -34,12 +35,22 @@ export default async function DashboardPage() {
       {track ? (
         <>
           <div className="hl-banner">
-            <div>
+            <div className="hl-banner-copy">
               <p className="hl-banner-week">
                 Week {track.week}/{TOTAL_WEEKS}:
               </p>
               <p className="hl-banner-title">{track.headline}</p>
             </div>
+            {/* The week's own illustration, as the comp has it. Decorative —
+                the headline already names the theme. */}
+            <Image
+              className="hl-banner-art"
+              src={track.themeArt}
+              alt=""
+              width={139}
+              height={139}
+              priority
+            />
           </div>
           <CheckpointPath checkpoints={track.checkpoints} />
         </>

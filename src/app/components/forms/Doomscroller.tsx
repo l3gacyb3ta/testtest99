@@ -1,6 +1,6 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Badge, Button, Callout } from "@/app/components/ui"
+import { Avatar, Badge, Button, Callout } from "@/app/components/ui"
 
 interface ApiError {
   error?: { message?: string }
@@ -206,7 +206,13 @@ export function Doomscroller({
   }
 
   if (reels.length === 0) {
-    return <Callout>Nothing here yet. Post the first reel.</Callout>
+    return (
+      <div className="hl-empty-art">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/gato/confused.png" alt="" />
+        <p style={{ margin: 0 }}>Nothing here yet. Post the first reel.</p>
+      </div>
+    )
   }
 
   return (
@@ -239,14 +245,7 @@ export function Doomscroller({
 
             <div className="hl-reel-body">
               <div className="hl-reel-meta">
-                {reel.author.image ? (
-                  // Not next/image: the host is only known at runtime from
-                  // S3_PUBLIC_URL, and an unlisted host renders blank.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="hl-avatar" src={reel.author.image} alt="" />
-                ) : (
-                  <span className="hl-avatar" aria-hidden="true" />
-                )}
+                <Avatar src={reel.author.image} />
                 <strong>{reel.author.name ?? "Someone"}</strong>
                 {reel.author.streak > 0 ? (
                   <span className="hl-muted" title="Day streak">
