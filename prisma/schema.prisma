@@ -200,6 +200,7 @@ enum AuditAction {
   USER_PLACE_ORDER
   USER_CREATE_POST
   USER_DELETE_POST
+  USER_HANDOFF_UPLOAD
   USER_COMMENT_POST
   USER_DELETE_COMMENT
   USER_ADVANCE_ONBOARDING
@@ -333,6 +334,7 @@ model User {
   themeProjects  ThemeProject[]
   posts          Post[]
   postViews      PostView[]
+  uploadHandoffs UploadHandoff[]
   postLikes      PostLike[]
   postComments   PostComment[]
   ledgerEntries  LedgerEntry[]
@@ -1080,6 +1082,49 @@ model PrinterAward {
 
   @@index([status])
   @@map("printer_award")
+}
+
+/// A one-shot permission to upload one video, used to hand recording off to a
+/// phone without asking anyone to log in on it.
+///
+/// The desktop mints one of these, renders the token as a QR code, and the
+/// phone opens it. That URL is a BEARER CREDENTIAL — whoever holds it can
+/// upload one video as the user it belongs to — so every property here is
+/// about keeping the blast radius to exactly that:
+///
+/// - the token is never stored, only its SHA-256, so a database leak does not
+///   hand anyone a working upload link;
+/// - `usedAt` is claimed with a guarded UPDATE, so two phones racing the same
+///   QR code cannot both upload;
+/// - `expiresAt` is minutes, not hours, because the code is displayed on a
+///   screen that other people can see;
+/// - the upload is written under the OWNER's prefix, taken from this row and
+///   never from the request.
+model UploadHandoff {
+  id String @id @default(cuid())
+
+  /// SHA-256 of the token. Unique so a lookup is one indexed read.
+  tokenHash String @unique
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  /// Set the moment a phone claims it. Non-null means spent, forever.
+  usedAt    DateTime?
+  /// Set when the desktop has picked the result up, so it stops polling.
+  claimedAt DateTime?
+
+  /// Populated by the phone's upload.
+  objectKey   String?
+  contentType String?
+  byteSize    Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("upload_handoff")
 }
 
 // ─── Ops ─────────────────────────────────────────────────────────────────────

@@ -1,0 +1,51 @@
+import { ok, fail, withRoute } from "@/lib/api"
+import { completeHandoff } from "@/lib/handoff"
+import { AuditAction, logAudit } from "@/lib/audit"
+import { resolveHandoff } from "@/lib/handoff"
+
+export const dynamic = "force-dynamic"
+export const maxDuration = 60
+
+/**
+ * The phone's upload. DELIBERATELY UNAUTHENTICATED.
+ *
+ * The whole feature is "record on your phone without signing in on it", so the
+ * handoff token is the only credential. Everything that limits it lives in
+ * lib/handoff.ts: single use, minutes-long expiry, and an object key built
+ * from the handoff's OWNER rather than from anything in this request.
+ */
+export const POST = withRoute(async (req: Request) => {
+  const form = await req.formData().catch(() => null)
+  if (!form) return fail("INVALID_BODY", "Expected a multipart form")
+
+  const token = form.get("token")
+  if (typeof token !== "string" || !token) return fail("INVALID_BODY", "Missing token")
+
+  const file = form.get("file")
+  if (!(file instanceof File)) return fail("INVALID_BODY", "Expected a `file` field")
+
+  // Resolved twice — once to attribute the audit row, once inside
+  // completeHandoff where the claim actually happens. Only the second one is
+  // authoritative.
+  const target = await resolveHandoff(token)
+
+  const result = await completeHandoff(token, {
+    name: file.name,
+    type: file.type,
+    size: file.size,
+    bytes: async () => Buffer.from(await file.arrayBuffer()),
+  })
+
+  if (target) {
+    await logAudit({
+      action: AuditAction.USER_HANDOFF_UPLOAD,
+      actorId: target.userId,
+      actorEmail: null,
+      targetType: "UploadHandoff",
+      targetId: target.id,
+      metadata: { objectKey: result.objectKey, byteSize: file.size },
+    })
+  }
+
+  return ok({ uploaded: true }, { status: 201 })
+})

@@ -62,6 +62,12 @@ export const config = {
     // `api/integrations` is excluded so turning on basic auth for a staging
     // deploy does not take every scheduled job red at once. `api/health` is
     // excluded so the container healthcheck keeps working either way.
-    "/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/health).*)",
+    //
+    // `r/` and `api/handoff/upload` are the phone-handoff pair. They are
+    // reached by scanning a QR code on a phone that has no session and no
+    // basic-auth credentials, so gating them would break the feature on
+    // exactly the deployments it is most useful on. They carry their own
+    // credential: a single-use token that expires in minutes.
+    "/((?!_next/static|_next/image|favicon.ico|api/upload|api/integrations|api/health|api/handoff/upload|r/).*)",
   ],
 }

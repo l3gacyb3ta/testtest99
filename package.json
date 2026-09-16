@@ -20,7 +20,8 @@
     "dump-airtable-schema": "tsx --conditions=react-server scripts/dump-airtable-schema.ts",
     "verify:onboarding": "tsx --conditions=react-server scripts/verify-onboarding.ts",
     "verify:feed": "tsx --conditions=react-server scripts/verify-feed.ts",
-    "verify:uploads": "tsx --conditions=react-server scripts/verify-uploads.ts"
+    "verify:uploads": "tsx --conditions=react-server scripts/verify-uploads.ts",
+    "verify:handoff": "tsx --conditions=react-server scripts/verify-handoff.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",
@@ -31,6 +32,7 @@
     "isomorphic-dompurify": "^2.35.0",
     "next": "16.3.4",
     "prisma": "^7.10.0",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
@@ -39,6 +41,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.10.2",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",

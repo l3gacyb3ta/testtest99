@@ -1,7 +1,8 @@
 "use client"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
-import { Button, Callout, Field } from "@/app/components/ui"
+import { Button, Callout, Field, Panel } from "@/app/components/ui"
+import { PhoneHandoff } from "@/app/components/forms/PhoneHandoff"
 
 interface ApiError {
   error?: { message?: string }
@@ -41,6 +42,12 @@ export function PostComposer({
   const [projectId, setProjectId] = useState<string>("")
   const [stage, setStage] = useState<"idle" | "uploading" | "posting">("idle")
   const [error, setError] = useState<string | null>(null)
+  /**
+   * An object key that arrived from a phone. When set it stands in for the
+   * file input entirely — the bytes are already in R2, so there is nothing
+   * left to upload.
+   */
+  const [handoffKey, setHandoffKey] = useState<string | null>(null)
 
   const busy = stage !== "idle"
 
@@ -49,24 +56,36 @@ export function PostComposer({
     setError(null)
 
     const file = fileRef.current?.files?.[0]
-    if (!file) {
-      setError("Pick a video first.")
+    if (!file && !handoffKey) {
+      setError("Record or pick a video first.")
       return
     }
 
     try {
-      setStage("uploading")
-      const form = new FormData()
-      form.append("file", file)
-      form.append("folder", "posts")
+      let objectKey = handoffKey
 
-      const uploaded = await fetch("/api/upload", { method: "POST", body: form })
-      if (!uploaded.ok) {
-        const payload = (await uploaded.json().catch(() => ({}))) as ApiError
-        setError(payload.error?.message ?? `Upload failed (${uploaded.status})`)
+      // A phone upload is already in the bucket; only a locally chosen file
+      // still has to be sent.
+      if (!objectKey && file) {
+        setStage("uploading")
+        const form = new FormData()
+        form.append("file", file)
+        form.append("folder", "posts")
+
+        const uploaded = await fetch("/api/upload", { method: "POST", body: form })
+        if (!uploaded.ok) {
+          const payload = (await uploaded.json().catch(() => ({}))) as ApiError
+          setError(payload.error?.message ?? `Upload failed (${uploaded.status})`)
+          return
+        }
+        const { data } = (await uploaded.json()) as { data: { objectKey: string } }
+        objectKey = data.objectKey
+      }
+
+      if (!objectKey) {
+        setError("Record or pick a video first.")
         return
       }
-      const { data } = (await uploaded.json()) as { data: { objectKey: string } }
 
       setStage("posting")
       const created = await fetch("/api/posts", {
@@ -75,7 +94,7 @@ export function PostComposer({
         body: JSON.stringify({
           kind,
           caption,
-          objectKey: data.objectKey,
+          objectKey,
           themeProjectId: projectId === "" ? null : projectId,
         }),
       })
@@ -87,6 +106,7 @@ export function PostComposer({
 
       setCaption("")
       setProjectId("")
+      setHandoffKey(null)
       if (fileRef.current) fileRef.current.value = ""
       router.refresh()
     } catch (err) {
@@ -100,9 +120,22 @@ export function PostComposer({
     <form onSubmit={submit} className="hl-stack hl-stack--tight">
       {error ? <Callout tone="danger">{error}</Callout> : null}
 
-      <Field label="Video" hint="mp4, webm or mov.">
-        <input ref={fileRef} className="hl-input" type="file" accept="video/*" disabled={busy} />
-      </Field>
+      <Panel title="Record on your phone">
+        <PhoneHandoff onReady={setHandoffKey} />
+      </Panel>
+
+      {handoffKey ? (
+        <Callout>
+          Using the video from your phone.{" "}
+          <button type="button" className="hl-btn" onClick={() => setHandoffKey(null)}>
+            Use a file instead
+          </button>
+        </Callout>
+      ) : (
+        <Field label="Video" hint="mp4, webm or mov. Or record on your phone above.">
+          <input ref={fileRef} className="hl-input" type="file" accept="video/*" disabled={busy} />
+        </Field>
+      )}
 
       <Field label="Caption">
         <textarea
