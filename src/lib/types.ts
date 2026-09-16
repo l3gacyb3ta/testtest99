@@ -24,13 +24,25 @@ export interface Checkpoint {
   atHours?: number;
   /** Reel checkpoints carry the brief for what to film. */
   reelBrief?: string;
+  /**
+   * The two halves of the fork the trail opens once the week is past its tier
+   * floor: one more session, or wrap the week up. Both sit on the same row of
+   * the trail, and finishing one is what settles the route.
+   */
+  branch?: "keep" | "submit";
 }
 
-/** One saved journal session: the entry, and the time its timelapses carried. */
+/** One saved journal session: the entry, the time claimed, and the evidence. */
 export interface SessionLog {
   id: string;
   minutes: number;
   body: string;
+  /**
+   * Timelapse clips picked for this session. The photo evidence is not listed
+   * here: it is written into `body` as Markdown images, so the entry and the
+   * pictures that back it can never drift apart.
+   */
+  clips: string[];
 }
 
 /** Everything about a week that does not depend on the maker's tier. */
@@ -56,8 +68,15 @@ export interface WeekMeta {
 export interface Week extends WeekMeta {
   /** The tier of this week's project — it decides how many chapters there are. */
   tier: 1 | 2 | 3;
-  /** Hours that fund the project. Reaching it unlocks the closing reel. */
+  /** Hours that fund the project. Above this, time banks instead. */
   fundingHours: number;
+  /**
+   * Hours before the week can be handed in: the funded hours plus enough
+   * banking to keep the cheapest machine reachable. Submitting under this
+   * would end the season with no printer, so the gate sits here and not on
+   * the funded line. See MIN_HOURS_PER_WEEK.
+   */
+  submitHours: number;
   /** Funded hours plus the hours your goal asks you to bank. */
   targetHours: number;
   /** Hours that pay for the project rather than banking. Build weeks: none. */
@@ -70,7 +89,6 @@ export interface Tier {
   funding: number;
   hours: string;
   toBank: string;
-  prize: string;
   detail: string;
   /** Hours that fund the project — the floor that opens the closing reel. */
   fundingHours: number;

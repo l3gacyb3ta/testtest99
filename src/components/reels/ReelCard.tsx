@@ -11,7 +11,7 @@ function compact(n: number) {
 }
 
 /**
- * One reel. The rail stacks these in a snap column, the Reels page lays them
+ * One reel. The rail stacks these in a snap column, the Doomscroller page lays them
  * out as a wall — the sizing comes in through `className` so the artwork,
  * the counts and the gradient read identically in both.
  */

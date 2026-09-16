@@ -7,9 +7,18 @@
  *
  *   banked = (shopPrice - 5 hours * 5 build weeks * $5) / 5 design weeks / $5
  *
+ * Read the shape of that formula, because every projection below depends on
+ * it: the season is ten weeks, and the two halves bank differently. The five
+ * build weeks are the same five hours for everyone and none of them is funded,
+ * so they hand every maker the same flat BUILD_WEEK_COINS whatever machine
+ * they picked. Only the remainder is paced against the design weeks, and there
+ * are five of those. A projection that charges the whole price to the design
+ * rate asks for weeks the season does not have.
+ *
  * Those banked hours are the same whatever tier you are on — the tier decides
  * how many funded hours sit underneath them, not how much you bank.
  */
+import { BUILD_HOURS, WEEK_META } from "./curriculum";
 
 export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc";
 
@@ -22,11 +31,14 @@ export interface PrinterGoal {
   shopPrice: number;
   /** What it costs in the shop. One coin is one dollar. */
   coins: number;
-  /** Hours a week on tier 1 that land this by the end of the season. */
+  /** Hours a design week asks on tier 1 to land this by the end of the season. */
   hoursPerWeek: number;
   /** Of those hours, the ones that bank instead of funding your project. */
   bankedHours: number;
-  /** Coins a design week earns at that pace — banked hours at $5 each. */
+  /**
+   * Coins a design week earns at that pace — banked hours at $5 each. A build
+   * week does not use this; it banks BUILD_WEEK_COINS / BUILD_WEEKS flat.
+   */
   coinsPerWeek: number;
   kind: PrinterKind;
   link: string;
@@ -42,7 +54,10 @@ export interface PrinterGoal {
  */
 export const TIER1_MIN_HOURS = 10;
 
-const SHEET: PrinterGoal[] = [
+/** The sheet as typed, minus the one column that is derived from another. */
+type SheetRow = Omit<PrinterGoal, "coinsPerWeek">;
+
+const SHEET: SheetRow[] = [
   {
     id: "ender-3-v3-se",
     name: "Ender 3 V3 SE",
@@ -51,7 +66,6 @@ const SHEET: PrinterGoal[] = [
     coins: 219,
     hoursPerWeek: 9.76,
     bankedHours: 3.76,
-    coinsPerWeek: 219,
     kind: "bedslinger",
     link: "https://store.creality.com/products/ender-3-v3-se-3d-printer",
     blurb: "Open-frame bed-slinger, and the machine half the internet learned on.",
@@ -64,7 +78,6 @@ const SHEET: PrinterGoal[] = [
     coins: 241,
     hoursPerWeek: 10.64,
     bankedHours: 4.64,
-    coinsPerWeek: 241,
     kind: "bedslinger",
     link: "https://us.store.bambulab.com/products/a1-mini",
     blurb: "Bed-slinger, auto-levelling, genuinely good. Small bed, no excuses.",
@@ -77,7 +90,6 @@ const SHEET: PrinterGoal[] = [
     coins: 248,
     hoursPerWeek: 10.9,
     bankedHours: 4.9,
-    coinsPerWeek: 248,
     kind: "resin",
     note: "Resin",
     link: "https://us.elegoo.com/collections/lcd-printers/products/mars-5-4k-6-6inch-monochrome-lcd-resin-3d-printer",
@@ -91,7 +103,6 @@ const SHEET: PrinterGoal[] = [
     coins: 274,
     hoursPerWeek: 11.96,
     bankedHours: 5.96,
-    coinsPerWeek: 274,
     kind: "bedslinger",
     link: "https://us.elegoo.com/collections/fdm-printers/products/elegoo-neptune-4-fdm-3d-printer",
     blurb: "Direct drive and a bigger bed, still an open frame you can reach into.",
@@ -104,9 +115,8 @@ const SHEET: PrinterGoal[] = [
     coins: 275,
     hoursPerWeek: 12,
     bankedHours: 6,
-    coinsPerWeek: 275,
     kind: "cnc",
-    note: "Not a printer",
+    note: "CNC Router",
     link: "https://www.monoprice.com/product?p_id=44220",
     blurb: "A benchtop router kit. It cuts wood, acrylic and soft metal instead of adding plastic.",
   },
@@ -118,7 +128,6 @@ const SHEET: PrinterGoal[] = [
     coins: 329,
     hoursPerWeek: 14.16,
     bankedHours: 8.16,
-    coinsPerWeek: 329,
     kind: "corexy",
     link: "https://us.elegoo.com/collections/fdm-printers/products/centauri-2",
     blurb: "Enclosed CoreXY at roughly open-frame money. Fast, and it keeps the heat in.",
@@ -131,7 +140,6 @@ const SHEET: PrinterGoal[] = [
     coins: 329,
     hoursPerWeek: 14.16,
     bankedHours: 8.16,
-    coinsPerWeek: 329,
     kind: "bedslinger",
     link: "https://us.store.bambulab.com/products/a1",
     blurb: "The Mini's big sibling. Same idea, 256mm of bed to spread out on.",
@@ -144,7 +152,6 @@ const SHEET: PrinterGoal[] = [
     coins: 439,
     hoursPerWeek: 18.56,
     bankedHours: 12.56,
-    coinsPerWeek: 439,
     kind: "corexy",
     link: "https://us.store.bambulab.com/products/p1s",
     blurb: "Enclosed CoreXY, filters, the lot. The one people stop upgrading from.",
@@ -153,6 +160,19 @@ const SHEET: PrinterGoal[] = [
 
 /** The coins one banked hour is worth. The sheet's $5, at a coin to the dollar. */
 export const COINS_PER_HOUR = 5;
+
+/** The season, counted off the curriculum rather than restated here. */
+export const BUILD_WEEKS = WEEK_META.filter((w) => w.phase === "build").length;
+export const DESIGN_WEEKS = WEEK_META.length - BUILD_WEEKS;
+export const SEASON_WEEKS = WEEK_META.length;
+
+/**
+ * What the build half banks for everyone, whichever machine is on the wall:
+ * BUILD_HOURS a week, none of it funded, at COINS_PER_HOUR. This is the
+ * `5 hours * 5 build weeks * $5` term the sheet subtracts before it works out
+ * column 4, so it is money the projection may count on rather than ask for.
+ */
+export const BUILD_WEEK_COINS = BUILD_HOURS * COINS_PER_HOUR * BUILD_WEEKS;
 
 /**
  * Column 4 is the economy and is left exactly as the sheet has it — every tier
@@ -171,11 +191,44 @@ export const DEFAULT_GOAL_ID = "bambu-a1-mini";
 /** The steepest weekly commitment on the board — the scale everything else reads against. */
 export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek));
 
+/**
+ * The gentlest, which is the cheapest machine's pace — and so the floor under
+ * every design week whatever is taped to the wall. Bank less than this and the
+ * season cannot end in a printer at all, which is the one outcome the program
+ * does not offer; a week short of it is not a week that can be handed in.
+ *
+ * It is TIER1_MIN_HOURS by construction, since the floor is what lifts the
+ * cheapest machine to ten, but it is read off the board rather than restated
+ * so that repricing the catalogue moves the gate with it.
+ */
+export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek));
+
+/**
+ * Coins that should be banked once `weekId` is behind you, to still land the
+ * goal on time. Design weeks carry the goal's own rate; build weeks carry the
+ * flat hours everyone logs. At SEASON_WEEKS this lands exactly on the price,
+ * which is what makes it a pace rather than a guess — and what lets a big
+ * early week pay for a thin later one without anybody being warned twice.
+ */
+export function paceTarget(goal: PrinterGoal, weekId: number): number {
+  const design = Math.min(weekId, DESIGN_WEEKS);
+  const build = Math.max(0, weekId - DESIGN_WEEKS);
+  return design * goal.coinsPerWeek + build * BUILD_HOURS * COINS_PER_HOUR;
+}
+
 export function printerById(id: string): PrinterGoal {
   return PRINTERS.find((p) => p.id === id) ?? PRINTERS.find((p) => p.id === DEFAULT_GOAL_ID)!;
 }
 
-/** Whole weeks of banking left, at the pace that goal assumes. */
+/**
+ * Design weeks of banking still to do, at the pace that goal assumes.
+ *
+ * Only the design weeks are a variable. The build weeks bank BUILD_WEEK_COINS
+ * for every maker on every goal, so that much of the price is already spoken
+ * for and pacing it against the design rate would invent weeks — enough of
+ * them to run past the end of a season that is only SEASON_WEEKS long.
+ */
 export function weeksToGo(goal: PrinterGoal, coins: number): number {
-  return Math.max(0, Math.ceil((goal.coins - coins) / goal.coinsPerWeek));
+  const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS);
+  return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek));
 }

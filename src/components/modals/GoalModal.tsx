@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { PrinterArt } from "@/components/art";
 import { IconCheck, IconClock, IconCoin } from "@/components/icons";
 import { Button, cx } from "@/components/ui";
+import { BUILD_HOURS } from "@/lib/curriculum";
 import {
   MAX_HOURS_PER_WEEK,
   PRINTERS,
@@ -57,14 +58,21 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
           <p className="mr-auto w-full text-[0.82rem] leading-snug text-navy-soft sm:w-auto sm:max-w-[44ch]">
             <span className="font-extrabold text-navy">{goal.name}</span>
             {toGo > 0 ? (
-              <>
-                {" — "}
-                <span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, about{" "}
-                {weeks} {weeks === 1 ? "week" : "weeks"} at {goal.hoursPerWeek.toFixed(1)} hours a
-                week.{" "}
-              </>
+              weeks > 0 ? (
+                <>
+                  {" — "}
+                  <span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go: about{" "}
+                  {goal.hoursPerWeek.toFixed(1)} hours a week for {weeks} design weeks{" "}
+                </>
+              ) : (
+                <>
+                  {" — "}
+                  <span className="tabular-nums">{toGo.toLocaleString()}</span> coins to go, and the
+                  build weeks cover it at {BUILD_HOURS} hours a week.{" "}
+                </>
+              )
             ) : (
-              <> — you have banked enough already. Go and spend it. </>
+              <> you&apos;ve earned enough coins to earn this printer! </>
             )}
             <a
               href={goal.link}
@@ -72,7 +80,7 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
               rel="noreferrer"
               className="font-semibold whitespace-nowrap text-sky-deep underline decoration-dashed underline-offset-4 transition-colors hover:text-navy"
             >
-              See it
+              Link to printer
             </a>
           </p>
           <Button variant="outline" onClick={onClose}>
@@ -86,9 +94,10 @@ export function GoalModal({ open, onClose }: { open: boolean; onClose: () => voi
     >
       <ModalTitle
         id={titleId}
-        sub="Every coin you bank is aimed at one machine, and you can move the target whenever you like. The hours are what tier 1 asks of you each week to land it."
+        subWide
+        sub="Spend more time on your hardware projects to unlock better printers! You can change this goal anytime you'd like."
       >
-        What are you banking toward?
+        What&apos;s your big prize?
       </ModalTitle>
 
       <div role="radiogroup" aria-labelledby={titleId} className="grid gap-x-4 gap-y-6 sm:grid-cols-2">
@@ -149,7 +158,7 @@ function GoalCard({
             style={{ boxShadow: "0 2px 5px rgba(28,26,89,.14)" }}
           />
           <span className="label relative block py-[5px] text-center text-[0.58rem] tracking-[0.14em] text-navy">
-            picked
+            selected
           </span>
         </span>
       )}
@@ -174,7 +183,7 @@ function GoalCard({
               </span>
               {current && (
                 <span className="hand mt-0.5 block text-[0.72rem] text-teal-deep">
-                  on your wall right now
+                  your goal right now
                 </span>
               )}
             </span>
@@ -204,12 +213,9 @@ function GoalCard({
               {goal.coins.toLocaleString()}
             </span>
           </span>
-          <span className="hand text-[0.76rem] text-navy-soft">
-            ${Math.round(goal.shopPrice)} delivered
-          </span>
           <span className="ml-auto flex items-center gap-1.5 text-[0.79rem] font-semibold text-teal-deep">
             <IconClock className="text-[0.95rem]" />
-            <span className="tabular-nums">{goal.hoursPerWeek.toFixed(1)}</span> hrs/week
+            <span className="tabular-nums">{goal.hoursPerWeek.toFixed(1)}</span> hrs/design wk
           </span>
         </span>
 

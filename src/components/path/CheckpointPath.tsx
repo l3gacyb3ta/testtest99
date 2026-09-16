@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { EnderPrinter, WeekScene } from "@/components/art";
+import { Fragment, useEffect, useRef } from "react";
+import { PrinterArt, WeekScene } from "@/components/art";
 import {
   IconCheck,
   IconChevronsUp,
@@ -13,7 +13,8 @@ import {
   IconSparkle,
   IconUpload,
 } from "@/components/icons";
-import { Chip, Meter, Panel, cx } from "@/components/ui";
+import { Chip, Panel, cx } from "@/components/ui";
+import { printerById } from "@/lib/printers";
 import { useStore } from "@/lib/store";
 import type { Checkpoint, Week } from "@/lib/types";
 
@@ -37,7 +38,7 @@ const KIND_ICON = {
  * entries — so they get a smaller puck and a shorter stride. Big node, run of
  * small ones, big node: the week reads as rhythm instead of as a queue.
  */
-const isBeat = (c: Checkpoint) => c.kind === "journal";
+const isBeat = (c: Checkpoint) => c.kind === "journal" && !c.branch;
 
 /** Where a node sits, counting the strides taken to reach it. */
 const offsetOf = (full: number, beats: number, extra = "") =>
@@ -61,11 +62,14 @@ function CheckpointNode({
   top,
   left,
   isCurrent,
+  choice = false,
 }: {
   checkpoint: Checkpoint;
   top: string;
   left: string;
   isCurrent: boolean;
+  /** One half of a fork: both arms are live, and neither is the recommendation. */
+  choice?: boolean;
 }) {
   const { stateOf, isUnlocked, setOpenCheckpoint, phase } = useStore();
   const st = stateOf(checkpoint.id);
@@ -88,7 +92,7 @@ function CheckpointNode({
       )}
       style={{ top, left, transform: "translateX(-50%)" }}
     >
-      {isCurrent && phase !== "aim" && (
+      {isCurrent && !choice && phase !== "aim" && (
         <div
           data-callout=""
           className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(11rem,38vw)]"
@@ -128,7 +132,9 @@ function CheckpointNode({
         aria-label={`${checkpoint.title} — ${status}`}
         className={cx("puck", nodeTone(checkpoint.kind, st.done, unlocked))}
       >
-        {isCurrent && <span aria-hidden="true" className={cx("halo", gold && "halo-gold")} />}
+        {(isCurrent || choice) && (
+          <span aria-hidden="true" className={cx("halo", gold && "halo-gold")} />
+        )}
         <span className="puck-face">
           <Icon
             className={cx(
@@ -205,55 +211,101 @@ function WeekBanner({ week, index }: { week: Week; index: number }) {
   );
 }
 
+/** Where the two halves of a fork sit, as a percentage of the column. */
+const FORK_AT = [24, 76];
+
 /**
  * One week's stretch of trail. Positions are walked rather than multiplied,
  * because entries and milestones take different-sized strides — but the
  * left-right swing still comes from the node's place in the line.
+ *
+ * A week past its tier floor ends in a fork: two checkpoints on one row,
+ * pinned left and right instead of taking the swing. The fork is always the
+ * last row, which is what lets every row before it keep using its own index
+ * for the sine — the trail above a fork is laid out exactly as it was.
  */
 function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }) {
-  const placed: { cp: Checkpoint; full: number; beats: number; beat: boolean }[] = [];
+  // Group into rows: singles all the way down, then the fork as one row of two.
+  const rows: Checkpoint[][] = [];
+  for (const cp of week.checkpoints) {
+    const last = rows[rows.length - 1];
+    if (cp.branch && last?.[0]?.branch) last.push(cp);
+    else rows.push([cp]);
+  }
+
+  const placed: { row: Checkpoint[]; full: number; beats: number; beat: boolean }[] = [];
   let full = 0;
   let beats = 0;
-  for (const [i, cp] of week.checkpoints.entries()) {
-    const beat = isBeat(cp);
+  for (const [i, row] of rows.entries()) {
+    const beat = row.every(isBeat);
     if (i > 0) {
       if (beat) beats += 1;
       else full += 1;
     }
-    placed.push({ cp, full, beats, beat });
+    placed.push({ row, full, beats, beat });
   }
+
+  const leftOf = (i: number, j: number) =>
+    placed[i].row.length > 1 ? FORK_AT[j] : offsetAt(i);
 
   const dots: React.ReactNode[] = [];
   for (let i = 0; i < placed.length - 1; i += 1) {
-    const stride = placed[i + 1].beat ? "var(--step-sm)" : "var(--step)";
+    const next = placed[i + 1];
+    const stride = next.beat ? "var(--step-sm)" : "var(--step)";
     const size = placed[i].beat ? "var(--node-sm)" : "var(--node)";
-    for (const f of [0.3, 0.5, 0.7]) {
-      dots.push(
-        <span
-          key={`${i}-${f}`}
-          aria-hidden="true"
-          className="absolute size-[7px] rounded-full bg-line-strong/45"
-          style={{
-            top: offsetOf(placed[i].full, placed[i].beats, ` + ${f} * ${stride} + ${size} / 2`),
-            left: `${offsetAt(i + f)}%`,
-            transform: "translate(-50%, -50%)",
-          }}
-        />,
-      );
+    // Into a fork the run splits and each arm is drawn straight to its node;
+    // down the chain the dots keep sampling the sine, so the curve they have
+    // always traced is untouched.
+    for (const [j] of next.row.entries()) {
+      for (const f of [0.3, 0.5, 0.7]) {
+        dots.push(
+          <span
+            key={`${i}-${j}-${f}`}
+            aria-hidden="true"
+            className="absolute size-[7px] rounded-full bg-line-strong/45"
+            style={{
+              top: offsetOf(placed[i].full, placed[i].beats, ` + ${f} * ${stride} + ${size} / 2`),
+              left:
+                next.row.length > 1
+                  ? `${leftOf(i, 0) + (FORK_AT[j] - leftOf(i, 0)) * f}%`
+                  : `${offsetAt(i + f)}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+          />,
+        );
+      }
     }
   }
 
   return (
     <div className="relative" style={{ height: offsetOf(full, beats, " + var(--node) + 52px") }}>
       {dots}
-      {placed.map(({ cp, full: f, beats: b }, i) => (
-        <CheckpointNode
-          key={cp.id}
-          checkpoint={cp}
-          top={offsetOf(f, b)}
-          left={`${offsetAt(i)}%`}
-          isCurrent={cp.id === currentId}
-        />
+      {placed.map(({ row, full: f, beats: b }, i) => (
+        <Fragment key={row[0].id}>
+          {row.length > 1 && (
+            <p
+              aria-hidden="true"
+              className="hand absolute text-[0.78rem] text-line-strong"
+              style={{
+                top: offsetOf(f, b, " + var(--node) / 2"),
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              or
+            </p>
+          )}
+          {row.map((cp, j) => (
+            <CheckpointNode
+              key={cp.id}
+              checkpoint={cp}
+              top={offsetOf(f, b)}
+              left={`${leftOf(i, j)}%`}
+              isCurrent={cp.id === currentId}
+              choice={row.length > 1}
+            />
+          ))}
+        </Fragment>
       ))}
     </div>
   );
@@ -264,29 +316,39 @@ function PhaseDivider() {
     <div className="relative my-10 flex items-center gap-4" aria-hidden="true">
       <span className="h-px flex-1 bg-line" />
       <Panel tone="teal" radius={999} className="bg-mint px-5 py-2">
-        <p className="label text-teal-deep">Halfway — now you build all five</p>
+        <p className="label text-teal-deep">Halfway! Now it&apos;s time to build</p>
       </Panel>
       <span className="h-px flex-1 bg-line" />
     </div>
   );
 }
 
+/**
+ * What the whole trail is aimed at, so it shows the machine actually on the
+ * wall rather than the one at the bottom of the catalogue.
+ *
+ * No meter under it. Coins, hours and the streak are the only running totals
+ * this product keeps, and the header already carries them everywhere; a
+ * fourth bar here would be a number to check rather than a thing to want.
+ * The picture is the point.
+ */
 function GrandPrize() {
-  const { totalDone, totalCheckpoints: total } = useStore();
+  const { goalId } = useStore();
+  const goal = printerById(goalId);
+
   return (
     <Panel tone="gold" radius={24} className="relative mt-12 overflow-hidden bg-gold-pale px-6 py-8 sm:px-10">
       <div className="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
-        <EnderPrinter className="h-40 w-auto shrink-0 sm:h-48" />
+        <PrinterArt kind={goal.kind} className="h-40 w-auto shrink-0 sm:h-48" />
         <div className="min-w-0">
           <Chip tone="gold">Finish all ten weeks</Chip>
           <h2 className="mt-3 text-[1.7rem] leading-tight font-extrabold tracking-[-0.03em] text-navy sm:text-[2.2rem]">
-            Creality Ender V3
+            {goal.name}
           </h2>
           <p className="mt-2 max-w-[54ch] text-[0.95rem] leading-relaxed text-navy-soft">
-            Ship every week and the printer is yours, shipped to your door. Miss a week and you keep
+            Bank the coins and it is yours, shipped to your door. Miss a week and you keep
             everything you built anyway — the funding is not a loan.
           </p>
-          <Meter className="mt-5 max-w-sm" value={totalDone} max={total} tone="gold" label={`${totalDone}/${total} checkpoints`} />
         </div>
       </div>
     </Panel>
@@ -307,10 +369,12 @@ export function CheckpointPath() {
 
     // The week banner is sticky, so centring the node can park its callout
     // underneath it. Hand back whatever the banner took, plus a little air.
-    const callout = node.querySelector<HTMLElement>("[data-callout]");
+    // A node on a fork row has no callout — there the node's own top is the
+    // edge that has to clear.
     const banner = node.closest("section")?.querySelector<HTMLElement>("[data-week-banner]");
-    if (!callout || !banner) return;
-    const overlap = banner.getBoundingClientRect().bottom + 12 - callout.getBoundingClientRect().top;
+    if (!banner) return;
+    const lead = node.querySelector<HTMLElement>("[data-callout]") ?? node;
+    const overlap = banner.getBoundingClientRect().bottom + 12 - lead.getBoundingClientRect().top;
     if (overlap > 0) window.scrollBy(0, -overlap);
   }, [hydrated, currentCheckpointId, phase]);
 

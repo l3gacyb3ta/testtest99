@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
-import { COINS_PER_HOUR, DEFAULT_GOAL_ID, printerById } from "./printers";
+import { COINS_PER_HOUR, DEFAULT_GOAL_ID, MIN_HOURS_PER_WEEK, printerById } from "./printers";
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types";
 
 export type IntroPhase =
@@ -74,7 +74,12 @@ interface Ctx extends SaveShape {
   addProject: (p: Omit<Project, "id">) => void;
   setProjectTier: (id: string, tier: 1 | 2 | 3) => void;
   complete: (id: string, patch?: Partial<CheckpointState>) => void;
-  logSession: (id: string, minutes: number, body: string) => void;
+  logSession: (
+    id: string,
+    minutes: number,
+    body: string,
+    evidence?: Pick<SessionLog, "clips">,
+  ) => void;
   stateOf: (id: string) => CheckpointState;
   isUnlocked: (id: string) => boolean;
   currentCheckpointId: string | null;
@@ -84,12 +89,10 @@ interface Ctx extends SaveShape {
   weekOf: (weekId: number) => Week;
   /** Hours logged across every session checkpoint in a week. */
   weekHours: (weekId: number) => number;
-  totalCheckpoints: number;
   setOpenCheckpoint: (id: string | null) => void;
   setDoomscroller: (open: boolean) => void;
   setGoal: (id: string) => void;
   reset: () => void;
-  totalDone: number;
 }
 
 const StoreContext = createContext<Ctx | null>(null);
@@ -222,6 +225,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const target = build
           ? BUILD_HOURS
           : goal.hoursPerWeek + (tier.fundingHours - TIERS[0].fundingHours);
+        // The same shape as the target, with the cheapest machine's pace in
+        // place of this goal's: the least a week can be worth and still leave
+        // a printer at the end of the season.
+        const submitHours = build
+          ? BUILD_HOURS
+          : MIN_HOURS_PER_WEEK + (tier.fundingHours - TIERS[0].fundingHours);
         // The trail is as long as the work was: every finished entry is a node,
         // and one more waits at the end for the entry about to be written. The
         // minutes come along because reels are placed where the clock crossed.
@@ -238,7 +247,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // Build-week hours all bank; the grant paid for the design week.
           bankedFrom: build ? 0 : tier.fundingHours,
           targetHours: target,
-          checkpoints: checkpointsFor(meta, tier, written, (cid) => save.progress[cid]?.done ?? false),
+          submitHours,
+          checkpoints: checkpointsFor(
+            meta,
+            written,
+            (cid) => save.progress[cid]?.done ?? false,
+            submitHours,
+          ),
         };
       }),
     [tierForWeek, goal, save.progress],
@@ -246,11 +261,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const allCheckpoints = useMemo(() => weeks.flatMap((w) => w.checkpoints), [weeks]);
 
-  /** One saved journal: an entry, plus whatever time its timelapses carry. */
-  const logSession = useCallback((id: string, minutes: number, body: string) => {
+  /** One saved journal: the entry, the time claimed, and the evidence for it. */
+  const logSession = useCallback(
+    (
+      id: string,
+      minutes: number,
+      body: string,
+      evidence: Pick<SessionLog, "clips"> = { clips: [] },
+    ) => {
     setSave((s) => {
       const prev = { ...EMPTY, ...s.progress[id] };
-      const entry: SessionLog = { id: `${id}-s${prev.log.length + 1}`, minutes, body };
+      const entry: SessionLog = {
+        id: `${id}-s${prev.log.length + 1}`,
+        minutes,
+        body,
+        ...evidence,
+      };
 
       // Coins come from banked hours and nothing else. The hours below the
       // week's funded line are what the grant already paid for, so they earn
@@ -272,7 +298,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         },
       };
     });
-  }, [weeks]);
+    },
+    [weeks],
+  );
 
   const weekOf = useCallback(
     (weekId: number): Week => weeks.find((w) => w.id === weekId) ?? weeks[0],
@@ -321,6 +349,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // Unwritten entries never block a milestone — the clock does. Neither
         // does a milestone that is not due yet: the reel waiting at 30h cannot
         // hold up a Submit that opened at 24h.
+        //
+        // "Keep working" rides this rule too, at atHours 0. A reel that has
+        // come due is the cadence asking to be paid before the week runs on;
+        // letting the fork's other arm open around it would make every
+        // progress reel skippable forever.
         const gates = list
           .slice(0, i)
           .filter((c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours);
@@ -338,11 +371,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
     return next?.id ?? null;
   }, [allCheckpoints, save.progress, isUnlocked]);
-
-  const totalDone = useMemo(
-    () => allCheckpoints.filter((c) => save.progress[c.id]?.done).length,
-    [allCheckpoints, save.progress],
-  );
 
   const value: Ctx = {
     ...save,
@@ -368,8 +396,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     allCheckpoints,
     weekOf,
     weekHours,
-    totalDone,
-    totalCheckpoints: allCheckpoints.length,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -2,9 +2,10 @@ import type { Checkpoint, Phase, Tier, WeekMeta } from "./types";
 
 /**
  * Ten weeks: five design weeks, then the same five themes built for real.
- * Checkpoint sequences follow the Checkpoint framework exactly — week 1 opens
- * with the yellow onboarding checkpoint, later design weeks alternate
- * journal/reel pairs, and build weeks end on a working-demo video.
+ * A design week opens by settling what is being made — the yellow onboarding
+ * checkpoint in week 1, the project form after that — and then pitches it in
+ * the idea reel before a single hour is logged against it. Build weeks skip
+ * both and end on a working-demo video.
  */
 
 interface ThemeSeed {
@@ -141,47 +142,69 @@ export const WEEK_META: WeekMeta[] = [
   })),
 ];
 
-/** Reels land on the clock: one every ten hours of logged work, indefinitely. */
+/** Progress reels land on the clock: one every ten hours logged, indefinitely. */
 export const REEL_EVERY = 10;
 
 /**
- * A reel older than this cannot close a week. Going quiet for eight hours and
- * then submitting would put work on the board nobody ever saw, so the submit
- * path asks for a fresh one — while the ten-hour cadence governs carrying on.
+ * A session has to be backed by photographs. Two is the floor whatever the
+ * claim, and past two hours it is one an hour — a long session has to show
+ * more of itself than a short one, which is the only thing standing between a
+ * self-reported number and a made-up one.
  */
-export const REEL_STALE = 8;
+export const MIN_PHOTOS = 2;
+export const photosRequired = (hours: number) => Math.max(MIN_PHOTOS, Math.ceil(hours));
 
 /**
  * The week's checkpoints.
  *
  * Every journal entry is its own node, so the trail is as long as the work
- * actually was — plus one live node for the entry about to be written. Reels
- * are milestones on the week's clock: one falls due every ten hours, placed at
- * the entry that crossed the mark so the trail reads as a chronology rather
- * than a queue with the reels swept to the end. The next, unearned reel always
- * trails the chain so the cadence is visible before you get there.
+ * actually was — plus one live node for the entry about to be written.
  *
- * Submit opens the moment the tier's funded hours are on the board — that is
- * the fork: wrap up, or keep logging. The closing reel is not a node at all; it
+ * There are exactly three occasions for a reel and no others: the idea at the
+ * start, a progress reel every ten hours, and the one that closes the week
+ * inside Submit. The progress reels are placed at the entry that crossed the
+ * mark, so the trail reads as a chronology rather than a queue with the reels
+ * swept to the end, and the next unearned one trails the chain so the cadence
+ * is visible before you get there.
+ *
+ * Submit opens the moment the tier's funded hours are on the board, and from
+ * then on the trail forks rather than continuing: the live entry and Submit
+ * come off the chain and sit side by side as a choice — one more session, or
+ * wrap the week up. Finishing one of them is what settles the route, so
+ * nothing is committed by clicking. The closing reel is not a node at all; it
  * is the last step inside Submit, so submitting always ships a reel.
+ *
+ * A submitted week has no live entry and no pending reel: the choice was made,
+ * and what is left on the trail is the road actually taken.
  */
 export function checkpointsFor(
   meta: WeekMeta,
-  tier: Tier,
   entryMinutes: number[],
   isDone: (id: string) => boolean,
+  /**
+   * The hours this week has to reach before it can be handed in. Passed in
+   * rather than worked out here: it depends on the goal catalogue, and the
+   * catalogue already reads the season out of this file.
+   */
+  submitHours: number,
 ): Checkpoint[] {
   const id = (n: string) => `w${meta.id}-${n}`;
   const out: Checkpoint[] = [];
 
-  const entry = (n: number) =>
+  const entry = (n: number, branch?: "keep") =>
     cp({
       id: id(`entry-${n}`),
       weekId: meta.id,
       kind: "journal",
-      title: `Entry ${n}`,
-      blurb: "One session: what you did, and the timelapse that proves it.",
+      title: branch ? "Keep working" : `Entry ${n}`,
+      blurb: "One session: what you did, and the photos that prove it.",
       entryTarget: 1,
+      branch,
+      // The fork's working arm answers to the week's clock rather than to the
+      // node before it, so a reel that has fallen due holds it shut exactly as
+      // it holds Submit shut. Zero, because carrying on is never gated on
+      // hours of its own — only on what the hours have already earned.
+      atHours: branch ? 0 : undefined,
     });
 
   const milestoneReel = (k: number) =>
@@ -190,7 +213,7 @@ export function checkpointsFor(
       weekId: meta.id,
       kind: "reel",
       atHours: k * REEL_EVERY,
-      title: `${k * REEL_EVERY}h reel`,
+      title: `${k * REEL_EVERY}h progress reel`,
       blurb:
         k === 1
           ? "Ten hours in. Show where the work actually got to."
@@ -201,28 +224,22 @@ export function checkpointsFor(
           : "Put the last version next to this one and say what moved.",
     });
 
-  const catchUpReel = (k: number) =>
-    cp({
-      id: id(`reel-catchup-${k}`),
-      weekId: meta.id,
-      kind: "reel",
-      atHours: k * REEL_EVERY + REEL_STALE,
-      title: "Catch-up reel",
-      blurb: "Eight hours since your last reel. One more before the week closes.",
-      reelBrief: "Where it stands right now, and the one thing you still have not solved.",
-    });
+  // Past the submit floor the live entry leaves the chain and pairs with Submit
+  // as a fork, so the walk stops one short of it. A submitted week has no live
+  // entry at all — the route is settled and the trail shows only what happened.
+  const submitted = isDone(id("submit"));
+  const floorHours = submitHours;
+  const loggedHours = entryMinutes.reduce((n, m) => n + m, 0) / 60;
+  const forked = !submitted && loggedHours >= floorHours;
 
   // Walk the entries, dropping a reel in wherever the clock crosses ten hours.
   let hours = 0;
   let reels = 0;
-  const live = entryMinutes.length + 1;
+  const live = submitted || forked ? entryMinutes.length : entryMinutes.length + 1;
   const pushEntry = (n: number) => {
     out.push(entry(n));
     hours += (entryMinutes[n - 1] ?? 0) / 60;
     while (Math.floor(hours / REEL_EVERY) > reels) {
-      // A catch-up taken at this level stays on the trail, in the place it
-      // happened: just before the milestone that superseded it.
-      if (isDone(id(`reel-catchup-${reels}`))) out.push(catchUpReel(reels));
       reels += 1;
       out.push(milestoneReel(reels));
     }
@@ -238,67 +255,78 @@ export function checkpointsFor(
       reelBrief: "Hold up a sketch, say the idea out loud, name one thing you are unsure about.",
     });
 
-    if (meta.id === 1) {
-      out.push(
-        cp({
-          id: id("onboard"),
-          weekId: meta.id,
-          kind: "onboarding",
-          title: "Get started",
-          blurb: "Six quick questions, then your first project exists.",
-        }),
-      );
-      // Week one keeps its ritual: write one entry, then pitch the idea.
-      pushEntry(1);
-      out.push(ideaReel);
-      for (let n = 2; n <= live; n += 1) pushEntry(n);
-    } else {
-      out.push(
-        cp({
-          id: id("project"),
-          weekId: meta.id,
-          kind: "project",
-          title: "New project",
-          blurb: `Name your ${meta.theme.toLowerCase()} project and pick a funding tier.`,
-        }),
-        ideaReel,
-      );
-      for (let n = 1; n <= live; n += 1) pushEntry(n);
-    }
+    // Every design week opens the same way: say what you are making, then
+    // start logging the making of it. Week one differs only in how the
+    // project comes into existence — the questionnaire stands in for the
+    // form, and the pitch follows it exactly as it does every other week.
+    out.push(
+      meta.id === 1
+        ? cp({
+            id: id("onboard"),
+            weekId: meta.id,
+            kind: "onboarding",
+            title: "Get started",
+            blurb: "Six quick questions, then your first project exists.",
+          })
+        : cp({
+            id: id("project"),
+            weekId: meta.id,
+            kind: "project",
+            title: "New project",
+            blurb: `Name your ${meta.theme.toLowerCase()} project and pick a funding tier.`,
+          }),
+      ideaReel,
+    );
+    for (let n = 1; n <= live; n += 1) pushEntry(n);
   } else {
     for (let n = 1; n <= live; n += 1) pushEntry(n);
   }
 
-  // Submitting on a stale reel: past the tier's floor, eight hours since the
-  // last reel, and the next ten-hour milestone not yet due. That band is the
-  // only place this can bite — past it, the cadence takes over anyway.
-  const floor = meta.phase === "build" ? BUILD_HOURS : tier.fundingHours;
-  const catchUpAt = reels * REEL_EVERY + REEL_STALE;
-  const overdue = hours >= catchUpAt && hours >= floor;
-  if (overdue || isDone(id(`reel-catchup-${reels}`))) out.push(catchUpReel(reels));
+  // The next one on the clock, so the cadence is visible before you get there.
+  // Two weeks have no use for it. A submitted week has already shipped its
+  // closing reel inside Submit, so an unearned one trailing the chain would be
+  // a node nobody can ever take. And a forked week ends in a question: a
+  // locked node standing between the last of the work and that question reads
+  // as a step you have to clear first, when in truth it gates nothing and only
+  // belongs to one of the two answers. It comes back the moment the hours
+  // earn it.
+  if (!submitted && !forked) out.push(milestoneReel(reels + 1));
 
-  // The next one on the clock, so the cadence is visible before it is due.
-  out.push(milestoneReel(reels + 1));
+  const submit = cp({
+    id: id("submit"),
+    weekId: meta.id,
+    // Opens on the week's submit floor — the moment wrapping up becomes a
+    // real choice rather than the only road left.
+    atHours: floorHours,
+    kind: "submit",
+    title: forked ? "Submit project" : "Submit",
+    blurb:
+      meta.phase === "build"
+        ? "A working demo, or an honest write-up of what still needs changing."
+        : "Files, bill of materials, your tier, and the reel that closes the week.",
+    branch: forked ? "submit" : undefined,
+  });
 
-  out.push(
-    cp({
-      id: id("submit"),
-      weekId: meta.id,
-      // Opens on the tier's funded hours — the moment wrapping up becomes a
-      // real choice rather than the only road left.
-      atHours: meta.phase === "build" ? BUILD_HOURS : tier.fundingHours,
-      kind: "submit",
-      title: "Submit",
-      blurb:
-        meta.phase === "build"
-          ? "A working demo, or an honest write-up of what still needs changing."
-          : "Files, bill of materials, your tier, and the reel that closes the week.",
-    }),
-  );
+  // The fork. Both halves are the last row of the week and the renderer lays
+  // them side by side; ordering them keep-then-submit is what puts carrying on
+  // on the left, which is the one the trail has been travelling towards.
+  if (forked) out.push(entry(live + 1, "keep"), submit);
+  else out.push(submit);
 
   return out;
 }
 
+/**
+ * A tier decides how much of a week is funded and how big a project is
+ * expected to be. It decides nothing about the machine at the end of the
+ * season — that is bought with banked coins, and banking is what you do with
+ * the hours above the funded block, at the same five coins an hour on every
+ * tier. Bank the four hours a week the submit floor asks for and you finish
+ * with an Ender 3 V3 SE, whether the projects were tier 1 or tier 3; bank
+ * 12.56 a week and you finish with a Bambu P1S, on tier 1 as readily as on
+ * tier 3. Every goal is reachable from every tier — the tier only moves how
+ * many funded hours sit underneath the banking.
+ */
 export const TIERS: Tier[] = [
   {
     id: 1,
@@ -306,7 +334,6 @@ export const TIERS: Tier[] = [
     hours: "6–8 hours of work",
     toBank: "6 hours fund the project, the rest banks at 5 coins an hour",
     fundingHours: 6,
-    prize: "On track for a Bambu A1 Mini",
     detail:
       "The right pick if this is your first board, model or circuit. Parts are cheap, the scope is one evening of soldering, and nothing here needs a tool you do not already have.",
   },
@@ -316,7 +343,6 @@ export const TIERS: Tier[] = [
     hours: "13–15 hours of work",
     toBank: "13 hours fund the project, the rest banks at 5 coins an hour",
     fundingHours: 13,
-    prize: "On track for a Creality Ender V3",
     detail:
       "For a project with a real enclosure, a handful of ICs, or a part you have to wait on. Most people land here by week three.",
   },
@@ -326,7 +352,6 @@ export const TIERS: Tier[] = [
     hours: "24+ hours of work",
     toBank: "24 hours fund the project, the rest banks at 5 coins an hour",
     fundingHours: 24,
-    prize: "On track for a Prusa Core One",
     detail:
       "Four-layer boards, motorised anything, or a build that needs two revisions to work. Pick this only if you have shipped something before.",
   },

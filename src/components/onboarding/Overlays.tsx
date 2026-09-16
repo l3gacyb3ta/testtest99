@@ -15,7 +15,7 @@ import { Spotlight } from "./Spotlight";
 
 const TOUR = [
   {
-    selector: '[data-tour="doomscroller"], [data-tour="reels-button"]',
+    selector: '[data-tour="doomscroller"], [data-tour="doomscroller-button"]',
     title: "The Doomscroller",
     body: "Every reel anyone posts lands here, newest first. It is the fastest way to see what the rest of the program is building this week.",
   },

@@ -9,6 +9,7 @@ import {
   IconCart,
   IconCheck,
   IconClock,
+  IconEye,
   IconFile,
   IconFilm,
   IconMic,
@@ -16,8 +17,16 @@ import {
   IconUpload,
   IconWarning,
 } from "@/components/icons";
-import { Button, Chip, Field, Meter, OptionRow, Panel, cx, inputClass } from "@/components/ui";
-import { BOM_ROWS, SUBMIT_FILES_BUILD, SUBMIT_FILES_DESIGN, TIERS } from "@/lib/curriculum";
+import { countImages, Markdown } from "@/components/Markdown";
+import { Button, Chip, Field, OptionRow, Panel, cx, inputClass } from "@/components/ui";
+import {
+  BOM_ROWS,
+  photosRequired,
+  SUBMIT_FILES_BUILD,
+  SUBMIT_FILES_DESIGN,
+  TIERS,
+} from "@/lib/curriculum";
+import { paceTarget, printerById } from "@/lib/printers";
 import { useStore } from "@/lib/store";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
@@ -90,57 +99,63 @@ function fmtH(h: number) {
 }
 
 export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, stateOf, logSession, complete, projects, weekOf, weekHours, isUnlocked } =
-    useStore();
+  const { setOpenCheckpoint, logSession, complete, projects, weekOf, weekHours } = useStore();
 
   const week = weekOf(checkpoint.weekId);
 
   // Every journal node is one entry: write it and it is done. The week's clock
   // is what decides whether wrapping up is on the table yet.
 
-  const [tab, setTab] = useState<"journal" | "timelapse" | "sessions">("journal");
+  const [tab, setTab] = useState<"journal" | "timelapse">("journal");
   const [picked, setPicked] = useState<string[]>([CLIPS[0].id]);
   const [body, setBody] = useState("");
-  const [saved, setSaved] = useState<number | null>(null);
+  const [preview, setPreview] = useState(false);
+  // Free text, not a number: a controlled number input that coerces as you
+  // type eats the decimal point the moment you reach for "1.5".
+  const [hoursText, setHoursText] = useState("");
 
   const project = projects.find((p) => p.weekId === (week.phase === "build" ? week.id - 5 : week.id))
     ?? projects[0];
-  const sessionMinutes = CLIPS.filter((c) => picked.includes(c.id)).reduce((n, c) => n + c.minutes, 0);
-  const ok = body.trim().length >= 200 && picked.length > 0;
+
+  // The claim is what the maker types. The photographs are what makes it a
+  // claim rather than a number, which is why the bar rises with it — and they
+  // are counted out of the entry itself, so every picture sits in the sentence
+  // that explains it instead of in a tray underneath.
+  const claimed = Math.max(0, Number(hoursText) || 0);
+  const sessionMinutes = Math.round(claimed * 60);
+  const needPhotos = photosRequired(claimed);
+  const shots = countImages(body);
+  const clipMinutes = CLIPS.filter((c) => picked.includes(c.id)).reduce((n, c) => n + c.minutes, 0);
+
+  const longEnough = body.trim().length >= 200;
+  const enoughPhotos = shots >= needPhotos;
+  const ok = longEnough && enoughPhotos && claimed > 0 && picked.length > 0;
+
+  // One thing at a time, in the order the tabs are laid out — a list of four
+  // faults reads as a wall, and only the first one is actionable anyway.
+  const missing = !ok
+    ? claimed <= 0
+      ? "Add the hours you spent on this session."
+      : !longEnough
+        ? `${200 - body.trim().length} more characters in your entry.`
+        : !enoughPhotos
+          ? `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.`
+          : "Pick the timelapse that belongs to this session."
+    : null;
 
   const hours = weekHours(week.id);
-  const toFloor = Math.max(0, week.fundingHours - hours);
-  // Wrapping up means Submit now — the closing reel is its last step. But a
-  // reel that has already fallen due stands in front of it, so point there
-  // instead of leaving the button mysteriously absent.
-  const submitNode = week.checkpoints.find((c) => c.kind === "submit");
-  const owedReel = week.checkpoints.find(
-    (c) =>
-      c.kind === "reel" &&
-      c.atHours !== undefined &&
-      hours >= c.atHours &&
-      !stateOf(c.id).done,
-  );
-  const wrapUp = owedReel ?? submitNode;
-  const canWrapUp =
-    toFloor === 0 && wrapUp !== undefined && isUnlocked(wrapUp.id) && !stateOf(wrapUp.id).done;
+  const toFloor = Math.max(0, week.submitHours - hours);
 
-  // Every session in the week, in order, whichever node it was written into.
-  const weekLog = week.checkpoints
-    .filter((c) => c.kind === "journal")
-    .flatMap((c) => stateOf(c.id).log);
-
-  // After saving, the trail has already grown the next entry node.
-  const nextEntry = week.checkpoints.find(
-    (c) => c.kind === "journal" && c.id !== checkpoint.id && !stateOf(c.id).done,
-  );
-
+  /**
+   * Finishing hands the maker back to the trail rather than straight into
+   * another entry. What comes next is the trail's to say: logging these hours
+   * may have brought a reel due, or opened the fork at the end of the week,
+   * and a modal that reopens itself would march past both.
+   */
   function save() {
-    logSession(checkpoint.id, sessionMinutes, body.trim());
-    setSaved(sessionMinutes);
+    logSession(checkpoint.id, sessionMinutes, body.trim(), { clips: picked });
     complete(checkpoint.id);
-    setBody("");
-    setPicked([]);
+    setOpenCheckpoint(null);
   }
 
   return (
@@ -154,37 +169,28 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
       footer={
         <>
           <div className="mr-auto flex min-w-[min(100%,16rem)] flex-1 items-center gap-3">
-            <IconClock className="shrink-0 text-lg text-navy-soft" />
-            <p className="hand min-w-0 flex-1 text-[0.76rem] leading-snug text-navy-soft">
-              {toFloor > 0
-                ? `${fmtH(toFloor)} more before you can wrap up the week.`
-                : "Submit your project when it's done!"}
+            {missing ? (
+              <IconWarning className="shrink-0 text-lg text-coral" />
+            ) : (
+              <IconClock className="shrink-0 text-lg text-navy-soft" />
+            )}
+            <p
+              className={cx(
+                "hand min-w-0 flex-1 text-[0.76rem] leading-snug",
+                missing ? "text-coral-deep" : "text-navy-soft",
+              )}
+            >
+              {missing
+                ? missing
+                : toFloor > 0
+                  ? `${fmtH(toFloor)} more before you can wrap up the week.`
+                  : "Submit your project when it's done!"}
             </p>
           </div>
 
-          {saved !== null ? (
-            <>
-              {nextEntry && (
-                <Button variant="outline" onClick={() => setOpenCheckpoint(nextEntry.id)}>
-                  Keep working <IconPlus className="text-base" />
-                </Button>
-              )}
-              {canWrapUp && wrapUp ? (
-                <Button variant="teal" onClick={() => setOpenCheckpoint(wrapUp.id)}>
-                  {owedReel ? "Post your reel" : "Submit project"}{" "}
-                  <IconArrowRight className="text-base" />
-                </Button>
-              ) : (
-                <Button variant="teal" onClick={() => setOpenCheckpoint(null)}>
-                  Done <IconCheck className="text-base" />
-                </Button>
-              )}
-            </>
-          ) : (
-            <Button variant="solid" onClick={save} disabled={!ok}>
-              Finish session <IconArrowRight className="text-base" />
-            </Button>
-          )}
+          <Button variant="solid" onClick={save} disabled={!ok}>
+            Finish <IconArrowRight className="text-base" />
+          </Button>
         </>
       }
     >
@@ -193,7 +199,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
           className="sketch flex gap-1 rounded-full bg-white p-1"
           style={{ "--sk-radius": "999px" } as React.CSSProperties}
         >
-          {(["journal", "timelapse", "sessions"] as const).map((t) => (
+          {(["journal", "timelapse"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -210,64 +216,24 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         </div>
       </div>
 
-      {saved !== null && (
-        <div
-          className="sketch mb-5 flex items-center gap-3 rounded-2xl bg-mint px-5 py-3.5"
-          style={{ "--sk-color": "var(--color-teal)", "--sk-radius": "16px" } as React.CSSProperties}
-        >
-          <IconCheck className="shrink-0 text-xl text-teal-deep" />
-          <p className="text-[0.92rem] leading-snug font-bold text-teal-deep">
-            {fmt(saved)} logged.{" "}
-            {toFloor > 0
-              ? `${fmtH(toFloor)} more and you can wrap the week up whenever you like.`
-              : "You are past your tier's hours — submit your project or keep working!."}
-          </p>
-        </div>
-      )}
-
-      {/* The week's own clock. This is what makes the hours feel like yours:
-          the floor that opens the closing reel, and the point past which
-          everything banks. */}
-      {(
-        <div
-          className="sketch mb-5 rounded-2xl bg-white px-4 py-3.5"
-          style={{ "--sk-color": "var(--color-violet)", "--sk-radius": "16px" } as React.CSSProperties}
-        >
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <p className="label text-violet-deep">This week · tier {week.tier}</p>
-            <p className="hand text-[0.78rem] text-navy-soft tabular-nums">
-              {fmtH(hours)} of {fmtH(week.targetHours)}
-            </p>
-          </div>
-          <Meter
-            className="mt-2"
-            value={Math.min(hours, week.targetHours)}
-            max={week.targetHours}
-            tone={hours >= week.targetHours ? "gold" : "teal"}
-          />
-          <p className="mt-2 text-[0.82rem] leading-snug text-navy-soft">
-            {toFloor > 0 ? (
-              <>
-                You can submit at{" "}
-                <span className="font-bold text-navy">{fmtH(week.fundingHours)}</span> —{" "}
-                {fmtH(toFloor)} to go, and every hour past it banks 5 coins.
-              </>
-            ) : (
-              <>
-                 Submit your project whenever you're done. Every hour past{" "}
-                <span className="font-bold text-navy">{fmtH(week.bankedFrom)}</span> is already
-                banking 5 coins — {fmtH(week.targetHours)} a week is the pace your goal wants.
-              </>
-            )}
-          </p>
-        </div>
-      )}
-
       {tab === "journal" ? (
         <div>
-          <ModalTitle sub="Select your timelapse on the other tab, then write what happened. Minimum journal length is 200 characters.">
+          <ModalTitle sub="Start with the hours, because everything under it is the evidence for them: 200 characters at least, and an image in the entry for each hour — two at minimum. Markdown works, images included.">
             What did you do this session?
           </ModalTitle>
+
+          <div className="mb-4 max-w-[220px]">
+            <Field label="Hours this session" hint="Decimals are fine — 1.5 is an hour and a half.">
+              <input
+                value={hoursText}
+                onChange={(e) => setHoursText(e.target.value.replace(/[^\d.]/g, ""))}
+                inputMode="decimal"
+                placeholder="0"
+                aria-label="Hours spent on this session"
+                className={cx(inputClass, "tabular-nums")}
+              />
+            </Field>
+          </div>
 
           <div className="mb-3 flex flex-wrap items-center gap-2.5">
             <span className="label text-navy-soft">Project:</span>
@@ -288,66 +254,87 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             </Link>
           </div>
 
-          <div className="relative">
-            <FoxMark
-              className="pointer-events-none absolute top-1/2 left-1/2 w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
-              sticker={false}
-            />
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={9}
-              placeholder="Start typing… What did you try, what broke, and what are you doing next time?"
-              aria-label="Journal entry"
-              className={cx(inputClass, "relative resize-none bg-white/70")}
-            />
+          {/* Write and read sit side by side rather than behind a swap, so a
+              long entry can be checked against its own formatting without
+              losing the cursor. Below md there is only room for one, and the
+              toggle picks which. */}
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="label text-violet-deep">Your entry</p>
+            <button
+              type="button"
+              onClick={() => setPreview((v) => !v)}
+              aria-pressed={preview}
+              className={cx(
+                "label inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1.5 transition-colors",
+                preview
+                  ? "border-violet bg-violet-pale text-violet-deep"
+                  : "border-line text-navy-soft hover:border-violet hover:text-navy",
+              )}
+            >
+              <IconEye className="text-base" /> {preview ? "Hide preview" : "Preview"}
+            </button>
           </div>
-          <p
-            className={cx(
-              "hand mt-2 text-right text-[0.76rem] tabular-nums",
-              body.trim().length >= 200 ? "text-teal-deep" : "text-navy-soft",
-            )}
-          >
-            {body.trim().length} / 200 characters
-          </p>
-        </div>
-      ) : tab === "sessions" ? (
-        <div>
-          <ModalTitle sub="Every session logged this week, oldest first.">
-            {weekLog.length === 1 ? "1 session this week" : `${weekLog.length} sessions this week`}
-          </ModalTitle>
 
-          {weekLog.length === 0 ? (
-            <p className="hand py-12 text-center text-[0.9rem] text-navy-soft">
-              nothing logged yet. the first one goes in on the journal tab.
-            </p>
-          ) : (
-            <ol className="grid gap-2.5">
-              {weekLog.map((entry, i) => (
-                <li
-                  key={entry.id}
-                  className="sketch rounded-2xl bg-white px-4 py-3"
-                  style={
-                    { "--sk-color": "var(--color-line)", "--sk-radius": "16px" } as React.CSSProperties
-                  }
-                >
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="label text-violet-deep">Session {i + 1}</p>
-                    <p className="hand text-[0.76rem] text-navy-soft tabular-nums">
-                      {fmt(entry.minutes)}
-                    </p>
-                  </div>
-                  <p className="mt-1.5 line-clamp-3 text-[0.85rem] leading-snug text-navy">
-                    {entry.body}
+          <div className={cx("grid gap-3", preview && "md:grid-cols-2")}>
+            <div className={cx("relative", preview && "hidden md:block")}>
+              <FoxMark
+                className="pointer-events-none absolute top-1/2 left-1/2 w-40 -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
+                sticker={false}
+              />
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={9}
+                placeholder="Start typing… What did you work on? What worked and what didn't? &#10;&#10; Markdown styling enabled! Drop images in with ![alt text](src url)."
+                aria-label="Journal entry"
+                className={cx(inputClass, "relative h-full resize-none bg-white/70")}
+              />
+            </div>
+
+            {preview && (
+              <div
+                className="sketch thin-scroll max-h-[15rem] min-h-[8rem] overflow-y-auto rounded-xl bg-white px-4 py-3 md:max-h-none"
+                style={
+                  { "--sk-color": "var(--color-violet)", "--sk-radius": "12px" } as React.CSSProperties
+                }
+              >
+                {body.trim() ? (
+                  <Markdown
+                    source={body}
+                    className="grid gap-2.5 text-[0.9rem] leading-relaxed text-navy"
+                  />
+                ) : (
+                  <p className="hand text-[0.85rem] text-navy-soft">
+                    nothing to preview yet. headings, **bold**, lists, `code` and
+                    ![images](url) all work.
                   </p>
-                </li>
-              ))}
-            </ol>
-          )}
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-baseline justify-end gap-x-4 gap-y-1">
+            <p
+              className={cx(
+                "hand text-[0.76rem] tabular-nums",
+                shots >= needPhotos ? "text-teal-deep" : "text-navy-soft",
+              )}
+            >
+              {shots} / {needPhotos} images
+            </p>
+            <p
+              className={cx(
+                "hand text-[0.76rem] tabular-nums",
+                longEnough ? "text-teal-deep" : "text-navy-soft",
+              )}
+            >
+              {body.trim().length} / 200 characters
+            </p>
+          </div>
         </div>
       ) : (
         <div>
-          <ModalTitle sub="Pick the recordings that belong to this session. The total time on the clips is the time that gets logged.">
+          <ModalTitle sub="Pick the recordings that belong to this session. These are the lapses already captured on your machine — the hours you log are the ones you enter on the journal tab.">
             Select your timelapses
           </ModalTitle>
 
@@ -391,18 +378,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
             })}
           </div>
 
-          <div className="mt-4">
-            <DropZone
-              icon={IconUpload}
-              title="Drop another recording"
-              hint="MP4, MOV or a screen recording straight off your machine. We speed it up for you."
-              filled={false}
-              onToggle={() => setPicked(CLIPS.map((c) => c.id))}
-            />
-          </div>
-
-          <p className="mt-4 text-center text-[0.95rem] font-bold text-navy tabular-nums">
-            This session: {fmt(sessionMinutes)}
+          <p className="mt-4 text-center text-[0.82rem] text-navy-soft tabular-nums">
+            {picked.length === 0
+              ? "Nothing picked yet."
+              : `${fmt(clipMinutes)} of footage on ${picked.length === 1 ? "1 clip" : `${picked.length} clips`}.`}
           </p>
         </div>
       )}
@@ -635,10 +614,19 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Submit gate
  * ================================================================== */
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, complete, projects, setProjectTier, weekOf } = useStore();
+  const { setOpenCheckpoint, complete, projects, setProjectTier, weekOf, coins, goalId } =
+    useStore();
   const week = weekOf(checkpoint.weekId);
   const isBuild = week.phase === "build";
   const files = isBuild ? SUBMIT_FILES_BUILD : SUBMIT_FILES_DESIGN;
+
+  // The week is long enough to hand in — that gate is the trail's, and this
+  // node would be locked otherwise. What is left to say is whether it was
+  // long enough for the machine actually on the wall. A surplus banked in an
+  // earlier week pays for a thin one, so this reads the running total against
+  // the pace rather than this week against its target.
+  const goal = printerById(goalId);
+  const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - coins));
 
   const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0];
 
@@ -688,12 +676,39 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             </Button>
           ) : (
             <Button variant="coral" disabled={!canAdvance} onClick={submit}>
-              Submit week {week.id} <IconCheck className="text-base" />
+              {owed > 0 ? "Submit anyway" : `Submit week ${week.id}`}{" "}
+              <IconCheck className="text-base" />
             </Button>
           )}
         </>
       }
     >
+      {/* On every step, not just the last one: a maker who is short on hours
+          should find that out before working through the checklist, not after.
+          It warns and does not block — the hours needed for a printer at all
+          are the trail's gate, and this is the gap to the one they chose. */}
+      {owed > 0 && (
+        <div
+          className="sketch mb-5 flex items-start gap-3 rounded-2xl bg-coral/10 px-5 py-4"
+          style={{ "--sk-color": "var(--color-coral)", "--sk-radius": "16px" } as React.CSSProperties}
+        >
+          <IconWarning className="mt-0.5 shrink-0 text-xl text-coral-deep" />
+          <div className="min-w-0">
+            <p className="text-[0.95rem] leading-snug font-extrabold text-coral-deep">
+              You won&apos;t be banking enough coins if you submit the project.
+            </p>
+            <p className="mt-1 text-[0.85rem] leading-snug text-navy-soft">
+              Spend some more time on it! You are{" "}
+              <span className="font-bold text-navy tabular-nums">{owed}</span>{" "}
+              {owed === 1 ? "coin" : "coins"} behind the pace for a{" "}
+              <span className="font-bold text-navy">{goal.name}</span> — every hour past{" "}
+              <span className="font-bold text-navy tabular-nums">{fmtH(week.bankedFrom)}</span> this
+              week banks 5 more. You can still hand it in, and a bigger week later makes it up.
+            </p>
+          </div>
+        </div>
+      )}
+
       {step === 1 && (
         <div>
           <ModalTitle

@@ -16,6 +16,7 @@ import {
 import { cx } from "@/components/ui";
 import { useStore } from "@/lib/store";
 import { DoomscrollerFeed } from "./Doomscroller";
+import { GoalTracker } from "./GoalTracker";
 import { Sidebar, TAB_NAV } from "./Sidebar";
 import { Overlays } from "@/components/onboarding/Overlays";
 
@@ -54,11 +55,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { doomscrollerOpen, setDoomscroller, phase } = useStore();
 
   const cinematic = phase === "cinematic";
-  // The Reels page is this feed at full size. Running the rail alongside it
-  // would put the same six reels on screen twice, so the route wins — without
-  // touching the reader's own open/closed preference.
-  const onReels = pathname.startsWith("/reels");
-  const rail = doomscrollerOpen && !onReels;
+  // The Doomscroller page is this feed at full size. Running the rail feed
+  // alongside it would put the same six reels on screen twice, so the route
+  // wins — without touching the reader's own open/closed preference.
+  const onDoomscroller = pathname.startsWith("/doomscroller");
+  const rail = doomscrollerOpen && !onDoomscroller;
 
   return (
     <>
@@ -92,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* Puts the rail back, under the product's own name for it. A
                 second control labelled "Reels" would compete with the nav
                 item while doing something different. */}
-            {!rail && !onReels && (
+            {!rail && !onDoomscroller && (
               <button
                 type="button"
                 onClick={() => setDoomscroller(true)}
@@ -102,14 +103,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </button>
             )}
 
-            {/* Below lg there is no sidebar, so this is the way into Reels. */}
-            {!onReels && (
+            {/* Below lg there is no sidebar, so this is the way to the page. */}
+            {!onDoomscroller && (
               <Link
-                href="/reels"
-                data-tour="reels-button"
+                href="/doomscroller"
+                data-tour="doomscroller-button"
                 className="label inline-flex items-center gap-1.5 rounded-full border-2 border-line px-3 py-1.5 text-navy-soft transition-colors hover:border-sky hover:text-navy lg:hidden"
               >
-                <IconFilm className="text-base" /> Reels
+                <IconFilm className="text-base" /> Doomscroller
               </Link>
             )}
 
@@ -121,21 +122,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {children}
             </main>
 
-            {/* Stays mounted so the reading column widens into the space
-                rather than snapping — closing is often something the page did,
-                not something the reader asked for. */}
-            <aside
-              data-tour={rail ? "doomscroller" : undefined}
-              inert={!rail}
-              className={cx(
-                "sticky top-16 hidden h-[calc(100dvh_-_4rem)] shrink-0 overflow-hidden py-4 xl:flex",
-                "transition-[width,padding,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)]",
-                rail
-                  ? "w-[316px] pr-5 pl-1 opacity-100 2xl:w-[352px] 2xl:pr-7"
-                  : "w-0 pr-0 pl-0 opacity-0",
-              )}
-            >
-              <div className="flex w-[292px] shrink-0 2xl:w-[324px]">
+            {/* The status rail. Its width is fixed so the trail down the middle
+                never reflows underneath the reader — only the feed inside it
+                opens and closes, and the goal stays up whatever it does. */}
+            <aside className="sticky top-16 hidden h-[calc(100dvh_-_4rem)] w-[316px] shrink-0 flex-col overflow-hidden py-4 pr-5 pl-1 xl:flex 2xl:w-[352px] 2xl:pr-7">
+              <GoalTracker className="shrink-0" />
+
+              {/* Stays mounted through the close so the feed slides shut
+                  rather than vanishing — closing is often something the page
+                  did, not something the reader asked for. */}
+              <div
+                data-tour={rail ? "doomscroller" : undefined}
+                inert={!rail}
+                className={cx(
+                  "flex min-h-0 overflow-hidden",
+                  "transition-[flex-grow,margin,opacity] duration-[420ms] ease-[cubic-bezier(.16,1,.3,1)]",
+                  rail ? "mt-4 flex-1 opacity-100" : "mt-0 flex-[0_1_0%] opacity-0",
+                )}
+              >
                 <DoomscrollerFeed className="min-h-0 w-full" onClose={() => setDoomscroller(false)} />
               </div>
             </aside>

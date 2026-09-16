@@ -164,7 +164,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "s-2",
     name: "Bambu A1 Mini",
-    blurb: "The tier 1 finishing prize. Bed-slinger, auto-levelling, genuinely good.",
+    blurb: "Bed-slinger, auto-levelling, genuinely good. Bank the coins on any tier.",
     price: 241,
     category: "Grants",
     art: "printer",
@@ -279,7 +279,7 @@ export const DOCS: DocArticle[] = [
         heading: "What you get",
         paragraphs: [
           "Every project is funded up to its tier — $30, $65 or $120 — paid straight onto a card you can spend at real vendors. Hours beyond the funded block bank as coins at five an hour, and coins buy things in the shop.",
-          "Finish all ten weeks and the grand prize is a Creality Ender V3, shipped to you.",
+          "Finish all ten weeks and a printer is yours, shipped to you. Which one is up to you: you pick a goal, and the coins you bank buy it. Hit the hours every week and the cheapest machine is guaranteed — bank faster and you can aim higher.",
         ],
       },
     ],
@@ -334,6 +334,7 @@ export const DOCS: DocArticle[] = [
         heading: "How coins work",
         paragraphs: [
           "The first block of hours pays for the project itself. Everything after that banks at five coins an hour, and every dollar you save against your tier banks as one more coin. Work ten hours on a tier 1 project and you get $30 of funding plus twenty banked coins.",
+          "Your tier does not decide which printer you finish with. That is what the banking is for, and it is the same five coins an hour on every tier — the tier only sets how many hours are funded underneath it. Bank a little each week on tier 3 projects and you finish with the cheapest machine; bank hard on tier 1 projects and you finish with the most expensive one.",
         ],
       },
     ],

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EnderPrinter, FoxAvatar, FoxMark, ReelScene, WeekScene } from "@/components/art";
+import { FoxAvatar, FoxMark, PrinterArt, ReelScene, WeekScene } from "@/components/art";
 import {
   IconCheck,
   IconCoin,
@@ -12,7 +12,8 @@ import {
   IconUpload,
 } from "@/components/icons";
 import { Button, cx } from "@/components/ui";
-import { TIERS, WEEK_META, checkpointsFor } from "@/lib/curriculum";
+import { BUILD_HOURS, WEEK_META, checkpointsFor } from "@/lib/curriculum";
+import { MIN_HOURS_PER_WEEK } from "@/lib/printers";
 
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the
@@ -20,8 +21,14 @@ import { TIERS, WEEK_META, checkpointsFor } from "@/lib/curriculum";
  */
 const WEEKS = WEEK_META.map((meta) => ({
   ...meta,
-  checkpoints: checkpointsFor(meta, TIERS[0], [], () => false),
+  checkpoints: checkpointsFor(
+    meta,
+    [],
+    () => false,
+    meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK,
+  ),
 }));
+import { printerById, type PrinterGoal } from "@/lib/printers";
 import { useStore } from "@/lib/store";
 
 /**
@@ -30,7 +37,7 @@ import { useStore } from "@/lib/store";
  * The claim Half Life makes is "ten weeks", so the intro spends its time
  * proving the distance rather than describing it — the camera drops through
  * every week banner in order, a counter on the right ticks 1 to 10, and it
- * decelerates onto the Ender V3 sitting at the bottom of the run. The diorama
+ * decelerates onto the machine sitting at the bottom of the run. The diorama
  * is the real home page at the real proportions, so when the spotlight lands on
  * the yellow checkpoint a moment later the viewer is already oriented.
  */
@@ -92,7 +99,7 @@ const T_DESCENT = T_TRAIL + T.dropIn;
 const T_SETTLE = T_DESCENT + T.descent;
 const T_END = T_SETTLE + T.settle;
 
-const SCRIPT: { at: number; kicker: string; line: string }[] = [
+const SCRIPT: { at: number; kicker: string; line: string | ((goal: string) => string) }[] = [
   {
     at: T_PLATFORM,
     kicker: "This is the whole thing",
@@ -121,7 +128,7 @@ const SCRIPT: { at: number; kicker: string; line: string }[] = [
   {
     at: T_SETTLE,
     kicker: "And at the bottom",
-    line: "A Creality Ender V3, shipped to your door.",
+    line: (goal: string) => `A ${goal}, shipped to your door.`,
   },
 ];
 
@@ -147,7 +154,7 @@ const KIND_ICON = {
   bonus: IconCoin,
 } as const;
 
-function Stage() {
+function Stage({ goal }: { goal: PrinterGoal }) {
   return (
     <div className="relative" style={{ width: STAGE_W, height: STAGE_H }}>
       {/* ---- the shell, in frame while the camera is still at the top ---- */}
@@ -167,9 +174,9 @@ function Stage() {
           ))}
         </MiniPanel>
         <MiniPanel className="relative overflow-hidden px-5 py-4">
-          <EnderPrinter className="absolute -top-1 right-2 h-20 w-auto" />
+          <PrinterArt kind={goal.kind} className="absolute -top-1 right-2 h-20 w-auto" />
           <p className="max-w-[60%] text-[0.95rem] leading-snug font-semibold text-navy">
-            You are on track to get a <span className="text-teal-deep">Bambu A1 Mini</span>
+            You are on track to get a <span className="text-teal-deep">{goal.name}</span>
           </p>
           <div className="mt-3 h-4 w-full overflow-hidden rounded-full bg-mint">
             <div className="h-full w-[12%] rounded-full bg-teal" />
@@ -260,9 +267,9 @@ function Stage() {
         style={{ top: PRIZE_TOP, left: COL_X - 300, width: 600, height: PRIZE_H }}
       >
         <span className="label rounded-full bg-gold px-3 py-1.5 text-navy">Grand prize</span>
-        <EnderPrinter className="mt-3 h-[280px] w-auto" />
+        <PrinterArt kind={goal.kind} className="mt-3 h-[280px] w-auto" />
         <p className="mt-3 text-[2rem] leading-none font-extrabold tracking-[-0.03em] text-navy">
-          Creality Ender V3
+          {goal.name}
         </p>
         <p className="hand mt-2 text-[1rem] text-navy-soft">finish all ten weeks</p>
       </div>
@@ -315,7 +322,8 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
  * Cinematic
  * ------------------------------------------------------------------ */
 export function Cinematic() {
-  const { setPhase, reducedMotion } = useStore();
+  const { setPhase, reducedMotion, goalId } = useStore();
+  const goal = printerById(goalId);
   const camera = useRef<HTMLDivElement>(null);
   const banners = useRef<(HTMLDivElement | null)[]>([]);
   const landing = useRef<(() => void) | null>(null);
@@ -330,7 +338,7 @@ export function Cinematic() {
 
   // The diorama is built once and kept out of every re-render the readouts
   // trigger, so the fall stays a pure transform on a stable layer.
-  const stage = useMemo(() => <Stage />, []);
+  const stage = useMemo(() => <Stage goal={goal} />, [goal]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -555,7 +563,7 @@ export function Cinematic() {
           >
             <p className="label text-coral">{line.kicker}</p>
             <p className="mt-1.5 text-[clamp(1.05rem,2.6vw,1.45rem)] leading-snug font-extrabold tracking-[-0.02em] text-navy">
-              {line.line}
+              {typeof line.line === "function" ? line.line(goal.name) : line.line}
             </p>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { useStore } from "@/lib/store";
 /**
  * A link into a doc. Opening an article is the moment someone commits to
  * reading, so it folds the Doomscroller away and hands the width back to the
- * page. The Reels button in the header brings it back.
+ * page. The Doomscroller button in the header brings it back.
  */
 export function ArticleLink({
   href,
