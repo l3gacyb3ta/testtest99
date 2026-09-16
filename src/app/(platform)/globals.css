@@ -1,32 +1,66 @@
 @import "tailwindcss";
 
 /*
- * The entire design system lives in this file.
+ * The Half-Life design system.
  *
- * The visual direction for Half-Life is not finished. Everything below is a
- * deliberately plain placeholder, and the way to restyle the app is to rewrite
- * this file plus the primitives in app/components/ui/ — no page file contains a
- * colour, a radius, or a font.
+ * Values come from the Figma "platform ui" page — the BRANDING frame
+ * (389:1774) for palette and type, and the [ MAIN PAGE ] / [ EXPLORE PAGE ]
+ * frames for how they are used. Where the comp is silent (hover, focus,
+ * disabled, small screens) the rule is derived from a value it does state.
+ *
+ * This file and app/components/ui/ are the only places that know about colour,
+ * radius or type. A page composes primitives and never writes a raw value.
  */
 
 @theme {
-  --color-surface: #ffffff;
-  --color-surface-raised: #f6f6f7;
-  --color-surface-sunken: #ededf0;
-  --color-border: #d8d8dc;
-  --color-border-strong: #b2b2ba;
-  --color-ink: #17171a;
-  --color-ink-muted: #66666f;
-  --color-accent: #2f5fd0;
-  --color-accent-ink: #ffffff;
-  --color-success: #1a7f45;
-  --color-warning: #8a5a00;
-  --color-danger: #b3261e;
+  /* ── Palette ───────────────────────────────────────────────────────────── */
+  /* The eight swatches of the BRANDING frame, plus its two large grounds. */
+  --color-surface: #fcf7f7; /* page ground — warm off-white, not pure white */
+  --color-surface-raised: #ffffff; /* cards sitting on the ground */
+  --color-surface-sunken: #f2ecec;
+  --color-border: #cacedd;
+  --color-border-strong: #1c1a59;
 
+  --color-ink: #100f30; /* body text */
+  --color-ink-strong: #1c1a59; /* headings, outlines, the brand navy */
+  --color-ink-muted: #979bab;
+
+  --color-accent: #52b4d5; /* primary blue */
+  --color-accent-bright: #61cdf1; /* the header sign */
+  --color-accent-media: #51bce1; /* media blocks in the feed */
+  --color-accent-ink: #1c1a59;
+
+  --color-teal: #06ae97;
+  --color-teal-soft: #75d0c9;
+  --color-mint: #aef2dd;
+  --color-magenta: #b21b9b;
+  --color-coin: #fba62f; /* coin counter */
+  --color-flame: #f35757; /* streak counter, danger, the active nav tab */
+
+  /* Semantic aliases, so primitives read as roles rather than hues. */
+  --color-success: #06ae97;
+  --color-warning: #fba62f;
+  --color-danger: #f35757;
+
+  /* ── Shape ─────────────────────────────────────────────────────────────── */
+  /* The comp uses 4/8/10/14 and a 2px outline on nearly everything. */
   --radius-control: 4px;
-  --radius-panel: 6px;
+  --radius-button: 8px;
+  --radius-panel: 10px;
+  --radius-rail: 14px;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* ── Type ──────────────────────────────────────────────────────────────── */
+  /*
+   * Headings and body are both Plus Jakarta Sans: nav items and names in Bold
+   * 22, body in Regular 16/22, page titles in ExtraBold.
+   *
+   * The accent face is Comico, used only for small uppercase labels
+   * ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the two
+   * numeric counters. It is not on Google Fonts and no licensed file ships
+   * here, so it falls back until one does — see the note in layout.tsx.
+   */
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-accent: var(--font-comico), "Comic Sans MS", "Chalkboard SE", var(--font-jakarta), sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
@@ -43,169 +77,492 @@ body {
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--color-ink-strong);
 }
 
 @layer components {
-  .hl-shell {
-    max-width: 62rem;
+  /* ── App shell ─────────────────────────────────────────────────────────── */
+  /*
+   * Three columns: the 343px sidebar, the content well, and the 409px
+   * Doomscroller rail. The hairline the comp draws down the page at x=425 is
+   * the content column's left border, not a separate element.
+   */
+  .hl-app {
+    display: grid;
+    grid-template-columns: 343px minmax(0, 1fr);
+    gap: 2.4rem;
+    align-items: start;
+    max-width: 1728px;
     margin: 0 auto;
-    padding: 1.5rem 1rem 4rem;
+    padding: 2.5rem 2.75rem 4rem;
   }
-  .hl-nav {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    flex-wrap: wrap;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--color-border);
-    background: var(--color-surface-raised);
+  .hl-app--with-rail {
+    grid-template-columns: 343px minmax(0, 1fr) 409px;
+  }
+  .hl-main {
+    min-width: 0;
+    border-left: 1px solid var(--color-border);
+    padding-left: 2.4rem;
+  }
+
+  /* Narrower than the rail, the feed matters more than the rail. Narrower
+     than the sidebar, the nav becomes a strip above the content. */
+  @media (max-width: 1400px) {
+    .hl-app,
+    .hl-app--with-rail {
+      grid-template-columns: 343px minmax(0, 1fr);
+    }
+    .hl-rail {
+      display: none;
+    }
+  }
+  @media (max-width: 900px) {
+    .hl-app,
+    .hl-app--with-rail {
+      grid-template-columns: minmax(0, 1fr);
+      padding: 1.25rem 1rem 3rem;
+      gap: 1.25rem;
+    }
+    .hl-main {
+      border-left: 0;
+      padding-left: 0;
+    }
+    .hl-sidebar {
+      position: static;
+    }
+  }
+
+  /* ── Cards ─────────────────────────────────────────────────────────────── */
+  .hl-card {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 1.4rem 1.5rem;
   }
   .hl-panel {
-    background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
+    border: 2px solid var(--color-border);
     border-radius: var(--radius-panel);
-    padding: 1rem;
+    padding: 1.4rem 1.5rem;
+    background: var(--color-surface-raised);
   }
-  .hl-stack {
+
+  /* ── Sidebar ───────────────────────────────────────────────────────────── */
+  .hl-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.6rem;
+    position: sticky;
+    top: 2.5rem;
   }
-  .hl-stack--tight {
-    gap: 0.5rem;
-  }
-  .hl-row {
+  .hl-brand {
     display: flex;
-    gap: 1rem;
     align-items: center;
-    flex-wrap: wrap;
+    gap: 0.6rem;
   }
-  .hl-grid {
-    display: grid;
-    gap: 1rem;
-    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  .hl-nav-card {
+    position: relative;
+    padding-top: 2.4rem;
   }
-  .hl-btn {
-    display: inline-block;
-    border: 1px solid var(--color-border-strong);
+  /* The red tab riding the top edge of the nav card. */
+  .hl-nav-tab {
+    position: absolute;
+    top: -1rem;
+    left: 6.5rem;
+    width: 102px;
+    height: 33px;
     border-radius: var(--radius-control);
-    background: var(--color-surface);
+    background: var(--color-flame);
+  }
+  .hl-nav-list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .hl-nav-item {
+    display: block;
+    font-weight: 700;
+    font-size: 1.375rem;
     color: var(--color-ink);
-    padding: 0.45rem 0.85rem;
-    font: inherit;
-    cursor: pointer;
+    text-decoration: none;
+    padding: 0.55rem 0.25rem;
+    border-bottom: 2px solid var(--color-border);
+  }
+  .hl-nav-list li:last-child .hl-nav-item {
+    border-bottom: 0;
+  }
+  /* The comp dims the page you are on rather than highlighting it. */
+  .hl-nav-item--current {
+    opacity: 0.4;
+  }
+  .hl-nav-item:hover {
+    color: var(--color-accent);
+  }
+
+  /* ── Counters (coins, streak) ──────────────────────────────────────────── */
+  .hl-counters {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  .hl-counter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-accent);
+    font-size: 1.875rem;
+    line-height: 1;
+  }
+  .hl-counter--coin { color: var(--color-coin); }
+  .hl-counter--flame { color: var(--color-flame); }
+  .hl-counter-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    display: block;
+  }
+
+  /* ── The hanging sign ──────────────────────────────────────────────────── */
+  /*
+   * Every page title hangs from two straps pinned to the top of the page. The
+   * straps are drawn behind the board and run up past it.
+   */
+  .hl-sign {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin: 1.5rem 0 2.5rem;
+  }
+  .hl-sign-board {
+    position: relative;
+    z-index: 1;
+    background: var(--color-accent-bright);
+    border: 2px solid var(--color-ink-strong);
+    border-radius: var(--radius-button);
+    padding: 0.6rem 2.5rem;
+    min-width: min(340px, 100%);
+    text-align: center;
+  }
+  .hl-sign-board h1 {
+    font-size: clamp(1.75rem, 4vw, 3.75rem);
+    font-weight: 800;
+    color: var(--color-ink-strong);
+    margin: 0;
+    line-height: 1.05;
+  }
+  .hl-sign-strap {
+    position: absolute;
+    top: -4rem;
+    width: 10px;
+    height: 110px;
+    background: var(--color-ink-strong);
+    border-bottom-left-radius: var(--radius-control);
+    border-bottom-right-radius: var(--radius-control);
+  }
+  .hl-sign-strap--left { left: calc(50% - 130px); }
+  .hl-sign-strap--right { right: calc(50% - 130px); }
+  .hl-sign-sub {
+    text-align: center;
+    color: var(--color-ink-muted);
+    margin: 0.75rem 0 0;
+  }
+
+  /* ── Progress ──────────────────────────────────────────────────────────── */
+  .hl-progress {
+    position: relative;
+    height: 19px;
+    border-radius: var(--radius-button);
+    background: var(--color-mint);
+    overflow: hidden;
+  }
+  .hl-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-button);
+    background: var(--color-teal);
+  }
+  .hl-progress-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-teal);
+  }
+
+  /* ── Avatars ───────────────────────────────────────────────────────────── */
+  .hl-avatar {
+    width: 53px;
+    height: 53px;
+    border-radius: var(--radius-button);
+    border: 2px solid var(--color-surface);
+    background: var(--color-ink-strong);
+    object-fit: cover;
+    display: block;
+    flex: 0 0 auto;
+  }
+  .hl-avatar--lg {
+    width: 129px;
+    height: 129px;
+  }
+
+  /* ── Accent label ──────────────────────────────────────────────────────── */
+  /* "VIEW MORE", "LOG OUT", "YESTERDAY" — Comico, small, tracked out. */
+  .hl-label {
+    font-family: var(--font-accent);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-accent);
     text-decoration: none;
   }
+  .hl-label--muted { color: var(--color-border); }
+
+  /* ── Buttons ───────────────────────────────────────────────────────────── */
+  .hl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font: inherit;
+    font-weight: 700;
+    padding: 0.5rem 1.1rem;
+    border-radius: var(--radius-button);
+    border: 2px solid var(--color-ink-strong);
+    background: var(--color-surface-raised);
+    color: var(--color-ink-strong);
+    cursor: pointer;
+    text-decoration: none;
+    line-height: 1.3;
+  }
+  .hl-btn:hover:not(:disabled) {
+    background: var(--color-mint);
+  }
   .hl-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
   }
   .hl-btn--primary {
+    background: var(--color-accent-bright);
+    color: var(--color-ink-strong);
+  }
+  .hl-btn--primary:hover:not(:disabled) {
     background: var(--color-accent);
-    color: var(--color-accent-ink);
-    border-color: transparent;
   }
   .hl-btn--danger {
-    background: var(--color-danger);
-    color: #fff;
-    border-color: transparent;
+    background: var(--color-flame);
+    color: var(--color-surface-raised);
+  }
+  .hl-btn--danger:hover:not(:disabled) {
+    filter: brightness(0.94);
+  }
+
+  /* One visible focus treatment everywhere, since the comp specifies none. */
+  .hl-btn:focus-visible,
+  .hl-input:focus-visible,
+  .hl-textarea:focus-visible,
+  .hl-select:focus-visible,
+  .hl-nav-item:focus-visible,
+  .hl-label:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* ── Fields ────────────────────────────────────────────────────────────── */
+  .hl-label-text {
+    display: block;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--color-ink);
+    margin-bottom: 0.35rem;
   }
   .hl-input,
-  .hl-select,
-  .hl-textarea {
+  .hl-textarea,
+  .hl-select {
     width: 100%;
-    box-sizing: border-box;
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-control);
-    background: var(--color-surface);
-    color: var(--color-ink);
-    padding: 0.45rem 0.5rem;
     font: inherit;
+    color: var(--color-ink);
+    background: var(--color-surface-raised);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-button);
+    padding: 0.6rem 0.75rem;
   }
   .hl-textarea {
-    min-height: 8rem;
-  }
-  .hl-label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+    min-height: 7rem;
+    resize: vertical;
   }
   .hl-hint {
     color: var(--color-ink-muted);
-    font-size: 0.85rem;
+    font-size: 0.875rem;
+    margin: 0;
   }
-  .hl-muted {
-    color: var(--color-ink-muted);
-  }
+  .hl-muted { color: var(--color-ink-muted); }
   .hl-mono {
     font-family: var(--font-mono);
     font-size: 0.85rem;
   }
+
+  /* ── Badges and callouts ───────────────────────────────────────────────── */
+  .hl-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    line-height: 1.4;
+  }
+  .hl-badge--success { color: var(--color-teal); }
+  .hl-badge--warning { color: var(--color-coin); }
+  .hl-badge--danger  { color: var(--color-flame); }
+  .hl-badge--muted   { color: var(--color-ink-muted); }
+
+  .hl-callout {
+    border: 2px solid var(--color-accent);
+    background: var(--color-surface-raised);
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-button);
+  }
+  .hl-callout--danger { border-color: var(--color-flame); }
+  .hl-callout--warning { border-color: var(--color-coin); }
+
+  /* ── Stats ─────────────────────────────────────────────────────────────── */
+  .hl-stat {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    padding: 0.85rem 1rem;
+    min-width: 8rem;
+    background: var(--color-surface-raised);
+  }
+  .hl-stat-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--color-ink-strong);
+  }
+  .hl-stat-label {
+    font-size: 0.78rem;
+    color: var(--color-ink-muted);
+  }
+
+  /* ── Staff top bar ─────────────────────────────────────────────────────── */
+  /*
+   * Review and admin keep a plain strip rather than the participant sidebar.
+   * The comp designs neither, and inventing a sidebar for them would be
+   * guessing — this at least dresses them in the same palette and outline
+   * weight as everything else.
+   */
+  .hl-nav {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0.85rem 1.5rem;
+    border-bottom: 2px solid var(--color-border);
+    background: var(--color-surface-raised);
+    font-weight: 700;
+  }
+  .hl-nav a {
+    text-decoration: none;
+    color: var(--color-ink);
+  }
+  .hl-nav a:hover {
+    color: var(--color-accent);
+  }
+
+  /* ── Layout helpers ────────────────────────────────────────────────────── */
+  .hl-shell {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+  }
+  .hl-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .hl-stack--tight { gap: 0.75rem; }
+  .hl-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .hl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(261px, 1fr));
+    gap: 1.5rem;
+  }
+  .hl-scroll { overflow-x: auto; }
+
+  /* ── Tables ────────────────────────────────────────────────────────────── */
   .hl-table {
     width: 100%;
     border-collapse: collapse;
+    font-size: 0.95rem;
   }
   .hl-table th,
   .hl-table td {
-    border-bottom: 1px solid var(--color-border);
-    padding: 0.5rem;
     text-align: left;
-    vertical-align: top;
+    padding: 0.55rem 0.6rem;
+    border-bottom: 2px solid var(--color-border);
   }
   .hl-table th {
-    font-size: 0.8rem;
-    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--color-ink-strong);
+  }
+
+  /* ── Day separator ─────────────────────────────────────────────────────── */
+  .hl-daymark {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.5rem 0;
+  }
+  .hl-daymark::before,
+  .hl-daymark::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    background: var(--color-border);
+    border-radius: 2px;
+  }
+  .hl-daymark > span {
+    font-family: var(--font-accent);
+    font-size: 1.125rem;
     letter-spacing: 0.03em;
-    color: var(--color-ink-muted);
-  }
-  .hl-scroll {
-    overflow-x: auto;
-  }
-  .hl-badge {
-    display: inline-block;
-    padding: 0.1rem 0.45rem;
-    border-radius: 999px;
-    border: 1px solid currentColor;
-    font-size: 0.75rem;
-    white-space: nowrap;
-  }
-  .hl-badge--success { color: var(--color-success); }
-  .hl-badge--warning { color: var(--color-warning); }
-  .hl-badge--danger  { color: var(--color-danger); }
-  .hl-badge--muted   { color: var(--color-ink-muted); }
-  .hl-callout {
-    border-left: 3px solid var(--color-accent);
-    background: var(--color-surface-sunken);
-    padding: 0.75rem 1rem;
-    border-radius: var(--radius-control);
-  }
-  .hl-callout--danger { border-left-color: var(--color-danger); }
-  .hl-callout--warning { border-left-color: var(--color-warning); }
-  .hl-stat {
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-panel);
-    padding: 0.75rem;
-    min-width: 8rem;
-  }
-  .hl-stat-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-  .hl-stat-label {
-    font-size: 0.8rem;
-    color: var(--color-ink-muted);
+    text-transform: uppercase;
+    color: var(--color-border);
   }
 
-  /* ── Doomscroller ──────────────────────────────────────────────────────── */
+  /* ── The Doomscroller rail ─────────────────────────────────────────────── */
+  .hl-rail {
+    position: sticky;
+    top: 2.5rem;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-rail);
+    padding: 0.9rem;
+  }
+  .hl-rail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+  }
+  .hl-rail-title {
+    font-family: var(--font-accent);
+    font-size: 1.125rem;
+    color: var(--color-border);
+    margin: 0;
+  }
+  .hl-rail-body {
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-button);
+    background: var(--color-surface-raised);
+    box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.1);
+    overflow: hidden;
+    min-height: 20rem;
+  }
 
-  /* Scroll-snap is the whole interaction: one reel fills the column and the
-     next one clicks into place, rather than two half-reels sharing the view. */
+  /* ── Feed ──────────────────────────────────────────────────────────────── */
   .hl-feed {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.5rem;
     max-height: 80vh;
     overflow-y: auto;
     scroll-snap-type: y mandatory;
@@ -213,34 +570,39 @@ a {
   }
   .hl-reel {
     scroll-snap-align: start;
-    border: 1px solid var(--color-border);
+    border: 2px solid var(--color-border);
     border-radius: var(--radius-panel);
     overflow: hidden;
-    background: var(--color-surface-sunken);
+    background: var(--color-surface-raised);
     flex: 0 0 auto;
   }
-  /* Portrait by default — these are phone videos. The cap keeps a tall one
-     from pushing its own controls off the bottom of the column. */
   .hl-reel-video {
     display: block;
     width: 100%;
+    max-width: 100%;
     max-height: 60vh;
     aspect-ratio: 9 / 16;
     object-fit: contain;
-    background: #000;
+    background: var(--color-accent-media);
+    margin-inline: auto;
   }
   .hl-reel-body {
-    padding: 0.75rem 1rem;
+    padding: 0.9rem 1.1rem 1.1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.6rem;
   }
   .hl-reel-meta {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     flex-wrap: wrap;
-    font-size: 0.9rem;
+    font-size: 1rem;
+  }
+  .hl-reel-author {
+    font-weight: 700;
+    font-size: 1.375rem;
+    color: var(--color-ink);
   }
   .hl-reel-actions {
     display: flex;
@@ -251,25 +613,20 @@ a {
   .hl-reel-missing {
     display: grid;
     place-items: center;
+    width: 100%;
     aspect-ratio: 9 / 16;
     max-height: 60vh;
-    background: var(--color-surface-sunken);
-    color: var(--color-ink-muted);
-    font-size: 0.85rem;
+    background: var(--color-accent-media);
+    color: var(--color-surface-raised);
+    font-size: 0.9rem;
     text-align: center;
     padding: 1rem;
-  }
-  .hl-avatar {
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    object-fit: cover;
-    background: var(--color-surface-sunken);
+    margin-inline: auto;
   }
   .hl-comment {
-    border-top: 1px solid var(--color-border);
-    padding-top: 0.5rem;
-    font-size: 0.9rem;
+    border-top: 2px solid var(--color-border);
+    padding-top: 0.6rem;
+    font-size: 0.95rem;
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -53,18 +53,33 @@ export function Panel({
   )
 }
 
+/**
+ * The page title, hung from two straps pinned to the top of the page — the
+ * comp's own device, used on every screen.
+ *
+ * `actions` sit below the board rather than beside it: the sign is centred,
+ * and a button floated next to it would pull the composition off axis.
+ */
 export function PageHeader({
   title,
   subtitle,
   actions,
 }: Readonly<{ title: string; subtitle?: ReactNode; actions?: ReactNode }>) {
   return (
-    <header className="hl-stack hl-stack--tight" style={{ marginBottom: "1.5rem" }}>
-      <div className="hl-row" style={{ justifyContent: "space-between" }}>
-        <h1 style={{ margin: 0, fontSize: "1.4rem" }}>{title}</h1>
-        {actions}
+    <header>
+      <div className="hl-sign">
+        <span className="hl-sign-strap hl-sign-strap--left" aria-hidden="true" />
+        <span className="hl-sign-strap hl-sign-strap--right" aria-hidden="true" />
+        <div className="hl-sign-board">
+          <h1>{title}</h1>
+        </div>
       </div>
-      {subtitle ? <p className="hl-muted" style={{ margin: 0 }}>{subtitle}</p> : null}
+      {subtitle ? <p className="hl-sign-sub">{subtitle}</p> : null}
+      {actions ? (
+        <div className="hl-row" style={{ justifyContent: "center", marginTop: "1rem" }}>
+          {actions}
+        </div>
+      ) : null}
     </header>
   )
 }
@@ -106,7 +121,7 @@ export function Field({
 }: Readonly<{ label: string; hint?: ReactNode; children: ReactNode }>) {
   return (
     <label className="hl-stack hl-stack--tight" style={{ gap: "0.25rem" }}>
-      <span className="hl-label">{label}</span>
+      <span className="hl-label-text">{label}</span>
       {children}
       {hint ? <span className="hl-hint">{hint}</span> : null}
     </label>
