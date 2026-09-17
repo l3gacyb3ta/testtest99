@@ -657,27 +657,100 @@ h4 {
     text-wrap: balance;
   }
 
-  /* ── The checkpoint path ───────────────────────────────────────────────── */
+  /* ── The programme path ───────────────────────────────────────────────── */
   /*
-   * A winding lane of pressable nodes. Node offsets come from the comp and are
-   * applied per item; the connecting line is the list's own left edge, drawn
-   * behind the nodes.
+   * Ten weeks as one continuous track. Each week is a section with its own
+   * header and lane; the lane's swing and node geometry come from the comp.
    */
+  .hl-programme {
+    display: flex;
+    flex-direction: column;
+    gap: 3.5rem;
+    margin-top: 2rem;
+  }
+  .hl-week {
+    scroll-margin-top: 1.5rem;
+  }
+  /* Weeks not yet reached recede without being hidden — the point of the
+     track is that you can see what is coming. */
+  .hl-week--future {
+    opacity: 0.55;
+  }
+  .hl-week--future:hover,
+  .hl-week--future:focus-within {
+    opacity: 1;
+  }
+  .hl-week-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--color-line-soft);
+  }
+  .hl-week-art {
+    width: 72px;
+    height: auto;
+    flex: 0 0 auto;
+  }
+  .hl-week-number {
+    font-family: var(--font-accent);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+    margin: 0;
+  }
+  .hl-week-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--color-ink-strong);
+    margin: 0.1rem 0 0;
+  }
+  .hl-week--current .hl-week-title {
+    font-size: 1.6rem;
+  }
+  .hl-week-progress {
+    font-size: 0.875rem;
+    color: var(--color-ink-muted);
+    margin: 0.15rem 0 0;
+  }
+
   .hl-path {
     list-style: none;
-    margin: 2.5rem auto 1rem;
+    margin: 1.25rem auto 0;
     padding: 0;
     max-width: 560px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2.25rem;
   }
   .hl-node {
     display: flex;
     justify-content: center;
     width: 100%;
   }
+  /* The drawn curve joining one node to the next. */
+  .hl-connector-row {
+    width: 100%;
+    height: 56px;
+    display: block;
+  }
+  /* The trail has to read as a path from across the room, so it takes the
+     muted ink rather than the border grey — on this ground the border colour
+     disappears at the size a dotted line actually occupies. */
+  .hl-connector {
+    display: block;
+    width: 100%;
+    height: 100%;
+    stroke: var(--color-ink-muted);
+    opacity: 0.55;
+    overflow: visible;
+  }
+  .hl-connector--done {
+    stroke: var(--color-teal);
+    opacity: 1;
+  }
+
   .hl-node-link {
     display: flex;
     flex-direction: column;
@@ -691,8 +764,8 @@ h4 {
   .hl-node-link[aria-disabled="true"] {
     cursor: default;
   }
-  /* The comp's node is two stacked ellipses; the solid drop shadow is the
-     lower one, which is what makes it read as a physical button. */
+  /* The comp draws each node as two stacked ellipses; the solid drop is the
+     lower one, and it is what makes them read as pressable. */
   .hl-node-disc {
     position: relative;
     display: grid;
@@ -707,12 +780,18 @@ h4 {
     transition: transform 0.12s ease, box-shadow 0.12s ease;
   }
   .hl-node--done .hl-node-disc {
-    background: var(--color-teal);
-    box-shadow: 0 6px 0 #04836f;
+    background: var(--color-accent);
+    box-shadow: 0 6px 0 #2f7fa0;
   }
   .hl-node--current .hl-node-disc {
-    background: var(--color-accent);
-    box-shadow: 0 6px 0 var(--color-ink-strong);
+    background: var(--color-magenta);
+    box-shadow: 0 6px 0 #7d1370;
+  }
+  /* Not started, and not forbidden: the comp's cream disc. */
+  .hl-node--upcoming .hl-node-disc {
+    background: #fbe3d0;
+    color: #b98a62;
+    box-shadow: 0 6px 0 #c9a284;
   }
   .hl-node--locked .hl-node-disc {
     background: var(--color-surface-sunken);
@@ -734,23 +813,23 @@ h4 {
     height: 40px;
   }
   /*
-   * The hours node fills from the bottom as the hours come in, in the SAME
-   * teal the finished nodes use — so the filled part reads as the part that is
-   * done. A neutral tint here just made the disc look two-tone, with no clue
-   * which half meant progress.
+   * The hours node fills from the bottom as the hours come in, in a DEEPER
+   * TONE OF THE NODE'S OWN HUE rather than in the completion teal. Teal read
+   * as a second, unrelated colour sitting inside the disc; one hue at two
+   * depths reads as one thing partly filled, which is what it is.
    */
   .hl-node-fill {
     position: absolute;
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--color-teal);
-    opacity: 0.85;
+    background: #7d1370;
   }
   .hl-node-label {
     font-weight: 700;
     font-size: 1.05rem;
   }
+  .hl-node--upcoming .hl-node-label,
   .hl-node--locked .hl-node-label {
     color: var(--color-ink-muted);
   }
@@ -764,6 +843,7 @@ h4 {
     .hl-node {
       margin-inline-start: 0 !important;
     }
+    .hl-connector-row { height: 40px; }
   }
   @media (prefers-reduced-motion: reduce) {
     .hl-node-disc { transition: none; }

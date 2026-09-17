@@ -21,6 +21,7 @@ import type { CSSProperties } from "react"
 
 export const WOBBLE_FILTER_ID = "hl-wobble"
 export const WOBBLE_FILTER_SOFT_ID = "hl-wobble-soft"
+export const WOBBLE_FILTER_PATH_ID = "hl-wobble-path"
 
 /**
  * The filter definitions. Rendered once, in the platform layout.
@@ -55,6 +56,22 @@ export function WobbleDefs() {
         >
           <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="3" result="noise" />
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+        {/*
+          The connectors between checkpoint nodes. Their own region again,
+          because the curve lives in a 0 0 100 60 viewBox rather than the
+          rule's 300 x 10 one, and a region sized for the rule clips it.
+        */}
+        <filter
+          id={WOBBLE_FILTER_PATH_ID}
+          filterUnits="userSpaceOnUse"
+          x="-20"
+          y="-20"
+          width="140"
+          height="100"
+        >
+          <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="11" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.6" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
     </svg>

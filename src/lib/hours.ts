@@ -137,6 +137,52 @@ export async function getHoursBreakdown(
 }
 
 /**
+ * The summation half of getHoursBreakdown, separated so a caller that has
+ * already loaded sessions and links in bulk can apply the SAME rules without
+ * issuing three more queries per project.
+ *
+ * Extracted rather than reimplemented: these rules decide what people are paid,
+ * and a second copy that drifts is a second answer to "how many hours is this".
+ */
+export interface SessionRow {
+  hoursClaimed: number
+  hoursApproved: number | null
+  hoursSource: HoursSource
+}
+
+export interface LinkRow {
+  hoursApproved: number | null
+  cachedSeconds: number | null
+}
+
+export function rollUpHours(
+  sessions: readonly SessionRow[],
+  links: readonly LinkRow[],
+  frozenTotal: number | null,
+): { journalHours: number; hackatimeHours: number; computedTotal: number; effectiveHours: number } {
+  let journalHours = 0
+  for (const s of sessions) {
+    // A HACKATIME_TRACKED session still exists as evidence but contributes
+    // zero: its time already arrives through the link.
+    if (s.hoursSource === HoursSource.HACKATIME_TRACKED) continue
+    journalHours += s.hoursApproved ?? s.hoursClaimed
+  }
+
+  let hackatimeHours = 0
+  for (const link of links) {
+    hackatimeHours += link.hoursApproved ?? (link.cachedSeconds ?? 0) / 3600
+  }
+
+  const computedTotal = round2(journalHours + hackatimeHours)
+  return {
+    journalHours: round2(journalHours),
+    hackatimeHours: round2(hackatimeHours),
+    computedTotal,
+    effectiveHours: frozenTotal ?? computedTotal,
+  }
+}
+
+/**
  * Coins a phase minted, split by which pot they land in.
  *
  * A type alias rather than an interface on purpose: this gets written into the

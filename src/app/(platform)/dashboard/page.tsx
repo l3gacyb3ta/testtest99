@@ -3,11 +3,11 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { requireSessionPage } from "@/lib/page-guards"
 import { getDashboard } from "@/lib/queries/dashboard"
-import { getCheckpointTrack } from "@/lib/checkpoints"
+import { getProgrammePath } from "@/lib/checkpoints"
 import { needsOnboarding } from "@/lib/onboarding"
 import { CREDIT_NAME_PLURAL, TOTAL_WEEKS } from "@/lib/config/program"
 import { Badge, Callout, Panel, PageHeader, Stat, statusLabel, statusTone } from "@/app/components/ui"
-import { CheckpointPath } from "@/app/components/ui/CheckpointPath"
+import { ProgrammePath } from "@/app/components/ui/ProgrammePath"
 
 export const dynamic = "force-dynamic"
 
@@ -19,10 +19,12 @@ export default async function DashboardPage() {
   // layout, and a redirect there would loop.
   if (await needsOnboarding(user.id)) redirect("/onboarding")
 
-  const [data, track] = await Promise.all([
+  const [data, programme] = await Promise.all([
     getDashboard(user.id),
-    getCheckpointTrack(user.id),
+    getProgrammePath(user.id),
   ])
+
+  const thisWeek = programme.weeks.find((w) => w.state === "current")
 
   return (
     <div className="hl-stack">
@@ -32,38 +34,39 @@ export default async function DashboardPage() {
         ten scheduled weeks there is no track, so the page falls back to the
         plain header.
       */}
-      {track ? (
-        <>
-          <div className="hl-banner">
-            <div className="hl-banner-copy">
-              <p className="hl-banner-week">
-                Week {track.week}/{TOTAL_WEEKS}:
-              </p>
-              <p className="hl-banner-title">{track.headline}</p>
-            </div>
-            {/* The week's own illustration, as the comp has it. Decorative —
-                the headline already names the theme. */}
-            <Image
-              className="hl-banner-art"
-              src={track.themeArt}
-              alt=""
-              width={139}
-              height={139}
-              priority
-            />
+      {/*
+        The banner names the week you are in; the path below is the whole
+        programme, so you can scroll ahead and see what is coming.
+      */}
+      {thisWeek ? (
+        <div className="hl-banner">
+          <div className="hl-banner-copy">
+            <p className="hl-banner-week">
+              Week {thisWeek.week}/{TOTAL_WEEKS}:
+            </p>
+            <p className="hl-banner-title">{thisWeek.headline}</p>
           </div>
-          <CheckpointPath checkpoints={track.checkpoints} />
-        </>
+          <Image
+            className="hl-banner-art"
+            src={thisWeek.themeArt}
+            alt=""
+            width={139}
+            height={139}
+            priority
+          />
+        </div>
       ) : (
         <PageHeader
-          title={`Week ${data.currentWeek || "—"} of ${TOTAL_WEEKS}`}
+          title="The programme"
           subtitle={
-            data.currentWeek === 0
-              ? "The program has not started yet."
+            programme.currentWeek === 0
+              ? "Half Life has not started yet. Here is the whole ten weeks."
               : "Outside the scheduled weeks. You can still work on anything."
           }
         />
       )}
+
+      <ProgrammePath weeks={programme.weeks} currentWeek={programme.currentWeek} />
 
       <div className="hl-row">
         <Stat label={`${CREDIT_NAME_PLURAL} to spend`} value={data.balances.spendable} />
