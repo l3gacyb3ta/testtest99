@@ -95,6 +95,8 @@ function seededCeremony(): Ceremony {
 }
 
 interface Ctx {
+  /** Who is signed in. Display fields only. */
+  viewer: StoreSnapshot["viewer"];
   phase: IntroPhase;
   doomscrollerOpen: boolean;
   experience: Experience | null;

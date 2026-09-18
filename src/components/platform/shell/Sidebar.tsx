@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { signOut } from "@/lib/auth-client";
 import { FoxAvatar, FoxMark } from "@/components/platform/art";
 import { IconLogout } from "@/components/platform/icons";
 import { Panel, cx } from "@/components/platform/ui";
-import { ME } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { GoalTracker } from "./GoalTracker";
 
@@ -32,7 +33,9 @@ export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller");
 
 export function Sidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const { reset } = useStore();
+  const { reset, viewer } = useStore();
+  const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
   return (
     <div className={cx("flex flex-col gap-5", className)}>
@@ -75,15 +78,28 @@ export function Sidebar({ className }: { className?: string }) {
       <GoalTracker className="xl:hidden" />
 
       <Panel tone="line" radius={18} className="flex items-center gap-3.5 bg-cream/60 p-3.5">
-        <FoxAvatar variant={ME.avatar} className="size-[66px] shrink-0 rounded-lg" />
+        <FoxAvatar variant="fox-blueprint" className="size-[66px] shrink-0 rounded-lg" />
         <div className="min-w-0">
-          <p className="truncate text-[1rem] leading-tight font-extrabold text-navy">{ME.name}</p>
-          <p className="hand truncate text-[0.8rem] text-navy-soft">{ME.handle}</p>
+          <p className="truncate text-[1rem] leading-tight font-extrabold text-navy">{viewer.name}</p>
+          <p className="hand truncate text-[0.8rem] text-navy-soft">
+            {viewer.joinedWeek ? `Joined week ${viewer.joinedWeek}` : "Half Life"}
+          </p>
           <button
             type="button"
+            disabled={signingOut}
+            onClick={async () => {
+              setSigningOut(true);
+              try {
+                await signOut();
+                router.push("/login");
+                router.refresh();
+              } finally {
+                setSigningOut(false);
+              }
+            }}
             className="label mt-2 inline-flex items-center gap-1.5 text-sky-deep transition-colors hover:text-coral"
           >
-            Log out <IconLogout className="text-[0.95rem]" />
+            {signingOut ? "Signing out…" : "Log out"} <IconLogout className="text-[0.95rem]" />
           </button>
         </div>
       </Panel>

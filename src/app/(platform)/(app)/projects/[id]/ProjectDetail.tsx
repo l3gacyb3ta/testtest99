@@ -5,7 +5,6 @@ import { FoxAvatar, WeekScene } from "@/components/platform/art";
 import { IconChevronLeft, IconClock, IconFilm, IconPencil } from "@/components/platform/icons";
 import { Markdown } from "@/components/platform/Markdown";
 import { Chip, Panel } from "@/components/platform/ui";
-import { ME } from "@/lib/data";
 import { fmtDate, fmtHours, projectEvents, projectStats, type ProjectEvent } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 
@@ -27,17 +26,25 @@ function BackLink() {
  * body differ. Lining them up is what lets the column read as a chronology
  * rather than two feeds interleaved.
  */
-function EventRow({ event, theme }: { event: ProjectEvent; theme: string }) {
+function EventRow({
+  event,
+  theme,
+  author,
+}: {
+  event: ProjectEvent;
+  theme: string;
+  author: string;
+}) {
   const reel = event.kind === "reel";
 
   return (
     <Panel tone="line" radius={18} as="li" className="bg-paper px-4 py-4 sm:px-5">
       <div className="flex items-start gap-3">
-        <FoxAvatar variant={ME.avatar} className="size-9 shrink-0 rounded-lg" />
+        <FoxAvatar variant="fox-blueprint" className="size-9 shrink-0 rounded-lg" />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-[0.92rem] leading-tight font-extrabold text-navy">{ME.name}</span>
+            <span className="text-[0.92rem] leading-tight font-extrabold text-navy">{author}</span>
             <span className="text-[0.88rem] leading-tight text-navy-soft">
               {reel ? "posted" : "added to the journal"}
             </span>
@@ -85,7 +92,7 @@ function EventRow({ event, theme }: { event: ProjectEvent; theme: string }) {
 }
 
 export function ProjectDetail({ id }: { id: string }) {
-  const { projects, weeks, stateOf, weekOf, hydrated } = useStore();
+  const { projects, weeks, stateOf, weekOf, hydrated, viewer } = useStore();
   const project = projects.find((p) => p.id === id);
 
   // The save is read from localStorage after mount, so on the server and on
@@ -175,7 +182,7 @@ export function ProjectDetail({ id }: { id: string }) {
       ) : (
         <ol className="grid gap-3">
           {events.map((event) => (
-            <EventRow key={event.id} event={event} theme={week.theme} />
+            <EventRow key={event.id} event={event} theme={week.theme} author={viewer.name} />
           ))}
         </ol>
       )}

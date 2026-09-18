@@ -4,7 +4,8 @@ import { IconFlame, IconTrophy } from "@/components/platform/icons";
 import { PageSign } from "@/components/platform/PageSign";
 import { Panel } from "@/components/platform/ui";
 import { cx } from "@/lib/cx";
-import { LEADERBOARD } from "@/lib/data";
+import { requireSessionPage } from "@/lib/page-guards";
+import { getLeaderboard } from "@/lib/queries/community";
 
 export const metadata: Metadata = {
   title: "Leaderboard — Half Life",
@@ -21,8 +22,12 @@ const AVATARS: [string, string, string, string, string] = [
 
 const MEDAL = ["#f6c63f", "#c6cdd6", "#d59b63"];
 
-export default function LeaderboardPage() {
-  const top = LEADERBOARD[0];
+export const dynamic = "force-dynamic";
+
+export default async function LeaderboardPage() {
+  const { user } = await requireSessionPage();
+  const rows = await getLeaderboard(user.id);
+  const top = rows[0];
 
   return (
     <div className="mx-auto w-full max-w-[820px] px-4 pt-2 sm:px-8">
@@ -66,9 +71,9 @@ export default function LeaderboardPage() {
               </tr>
             </thead>
             <tbody>
-              {LEADERBOARD.map((row, i) => (
+              {rows.map((row, i) => (
                 <tr
-                  key={row.handle}
+                  key={row.name + row.rank}
                   className={cx(
                     "border-b border-dashed border-line/60 last:border-0",
                     row.you && "bg-mint/60",
@@ -94,7 +99,7 @@ export default function LeaderboardPage() {
                           {row.you && <span className="label ml-2 text-teal-deep">you</span>}
                         </span>
                         <span className="hand block truncate text-[0.78rem] text-navy-soft">
-                          {row.handle}
+                          {row.ships === 1 ? "1 week shipped" : `${row.ships} weeks shipped`}
                         </span>
                       </span>
                     </span>

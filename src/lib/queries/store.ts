@@ -2,7 +2,7 @@ import "server-only"
 import prisma from "@/lib/prisma"
 import { HardwareExperience, Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
-import { getProgramSettings, effectiveDateFor } from "@/lib/program"
+import { getProgramSettings, effectiveDateFor, weekNumberForDate } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
 import { rollUpHours } from "@/lib/hours"
 import { DEFAULT_GOAL_ID } from "@/lib/config/printers"
@@ -45,6 +45,8 @@ export interface CheckpointSnapshot {
 }
 
 export interface StoreSnapshot {
+  /** Who is signed in. Display fields only — never an email or a Slack id. */
+  viewer: { name: string; image: string | null; joinedWeek: number | null }
   experience: Experience | null
   /** Whether the first checkpoint has been completed. */
   onboardingDone: boolean
@@ -98,6 +100,9 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
       prisma.user.findUniqueOrThrow({
         where: { id: userId },
         select: {
+          name: true,
+          image: true,
+          joinedProgramAt: true,
           hardwareExperience: true,
           onboardingCompletedAt: true,
           printerGoalId: true,
@@ -265,6 +270,13 @@ export async function getStoreSnapshot(userId: string): Promise<StoreSnapshot> {
   }
 
   return {
+    viewer: {
+      name: user.name ?? "You",
+      image: user.image,
+      joinedWeek: user.joinedProgramAt
+        ? weekNumberForDate(settings.eventStartDate, user.joinedProgramAt)
+        : null,
+    },
     experience: user.hardwareExperience ? EXPERIENCE[user.hardwareExperience] : null,
     onboardingDone: user.onboardingCompletedAt !== null,
     projects: projects.flatMap((project) => {

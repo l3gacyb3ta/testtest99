@@ -55,7 +55,7 @@ export function ReelCapture({
 
   if (objectKey) {
     return (
-      <Panel tone="teal" radius={16} className="flex items-center gap-3 bg-teal-pale px-4 py-3">
+      <Panel tone="teal" radius={16} className="flex items-center gap-3 bg-cream px-4 py-3">
         <IconFilm className="shrink-0 text-[1.4rem] text-teal-deep" />
         <p className="min-w-0 flex-1 text-[0.9rem] leading-snug font-semibold text-navy">
           {label} is uploaded and ready to post.

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { IconChevronDown, IconChevronUp } from "@/components/platform/icons";
 import { ReelCard } from "@/components/platform/reels/ReelCard";
 import { cx } from "@/components/platform/ui";
-import { REELS } from "@/lib/data";
+import { useFeed } from "./useFeed";
 
 /**
  * One reel at a time, snapping. The scroll lives in this container rather than
@@ -20,8 +20,9 @@ export function ReelViewer() {
   // the same stale index. Navigation moves this cursor immediately instead.
   const cursor = useRef(0);
 
-  // REELS plus the sign-off slide at the end.
-  const last = REELS.length;
+  const feed = useFeed();
+  // The reels plus the sign-off slide at the end.
+  const last = feed.items.length;
 
   // Assigning scrollTop rather than asking for `behavior: "smooth"`: inside a
   // mandatory-snap container the animated form is dropped outright by some
@@ -87,7 +88,7 @@ export function ReelViewer() {
           ref={scroller}
           className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
         >
-          {REELS.map((reel, i) => (
+          {feed.items.map((reel, i) => (
             <div
               key={reel.id}
               data-slide={i}
@@ -97,7 +98,7 @@ export function ReelViewer() {
               className="snap-item flex h-full items-center justify-center py-3"
             >
               <div className="aspect-9/16 w-full">
-                <ReelCard reel={reel} className="lift-shadow h-full" />
+                <ReelCard reel={reel} onPatch={feed.patch} className="lift-shadow h-full" />
               </div>
             </div>
           ))}
@@ -124,7 +125,7 @@ export function ReelViewer() {
             icon={<IconChevronUp className="text-xl" />}
           />
           <p className="hand text-[0.72rem] leading-none text-navy-soft tabular-nums">
-            {Math.min(index + 1, REELS.length)}/{REELS.length}
+            {Math.min(index + 1, feed.items.length)}/{feed.items.length}
           </p>
           <NavButton
             label="Next reel"
