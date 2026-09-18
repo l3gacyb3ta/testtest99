@@ -6,6 +6,18 @@ export interface ApiErrorBody {
   error: { code: ApiErrorCode; message: string; details?: unknown }
 }
 
+/**
+ * A successful response is the payload ITSELF. There is no `data` envelope.
+ *
+ * Worth stating because failures are not symmetrical — `fail()` wraps, in
+ * `{ error: { code, message } }` — and the asymmetry invites a client to
+ * assume both are wrapped. Three of them did, and the phone handoff and the
+ * staff composer's upload spent their whole lives throwing "cannot read
+ * properties of undefined (reading 'id')" as a result.
+ *
+ * If this ever grows an envelope, it has to grow one everywhere in the same
+ * commit; half the callers reading `payload.data` is the state that hides.
+ */
 export function ok<T>(data: T, init?: ResponseInit): NextResponse<T> {
   return NextResponse.json(data, init)
 }

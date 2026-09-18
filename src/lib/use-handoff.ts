@@ -15,6 +15,14 @@ import { useCallback, useEffect, useRef, useState } from "react"
  * Polling rather than a socket: this waits minutes at most, ends on its own,
  * and a websocket would be a deployment concern for something idle 99% of the
  * time.
+ *
+ * ## The response shape
+ *
+ * A successful response from this API is the payload itself. There is no `data`
+ * envelope — `ok()` in lib/api.ts calls `NextResponse.json(body)` directly, and
+ * only `fail()` wraps, in `{ error: { code, message } }`. Reading `payload.data`
+ * here is how this feature spent its whole life throwing "cannot read
+ * properties of undefined".
  */
 
 export interface MintedHandoff {
@@ -60,16 +68,14 @@ export function useHandoff(onReady: (objectKey: string) => void) {
         try {
           const res = await fetch(`/api/handoff/${id}`)
           if (!res.ok) return
-          const payload = (await res.json()) as {
-            data: { state: string; objectKey?: string }
-          }
-          if (payload.data.state === "ready" && payload.data.objectKey) {
+          const status = (await res.json()) as { state: string; objectKey?: string }
+          if (status.state === "ready" && status.objectKey) {
             stop()
             setStatus("ready")
-            ready.current(payload.data.objectKey)
+            ready.current(status.objectKey)
             // Tell the server we have it, so nothing keeps this row live.
             void fetch(`/api/handoff/${id}`, { method: "POST" })
-          } else if (payload.data.state === "expired") {
+          } else if (status.state === "expired") {
             stop()
             setStatus("expired")
           }
@@ -94,10 +100,10 @@ export function useHandoff(onReady: (objectKey: string) => void) {
         setStatus("idle")
         return
       }
-      const payload = (await res.json()) as { data: MintedHandoff }
-      setMinted(payload.data)
+      const handoff = (await res.json()) as MintedHandoff
+      setMinted(handoff)
       setStatus("waiting")
-      poll(payload.data.id)
+      poll(handoff.id)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not make a code")
       setStatus("idle")

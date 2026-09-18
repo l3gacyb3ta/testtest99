@@ -78,7 +78,9 @@ export function PostComposer({
           setError(payload.error?.message ?? `Upload failed (${uploaded.status})`)
           return
         }
-        const { data } = (await uploaded.json()) as { data: { objectKey: string } }
+        // No `data` envelope: ok() returns the payload itself, and only a
+        // failure is wrapped. See lib/api.ts.
+        const data = (await uploaded.json()) as { objectKey: string }
         objectKey = data.objectKey
       }
 
