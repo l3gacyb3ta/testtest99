@@ -20,6 +20,8 @@ export const submitSchema = z
   .object({
     phase: phaseSchema,
     notes: boundedText(4000).optional(),
+    /** R2 keys for evidence handed in with the submission. */
+    attachmentKeys: z.array(z.string().max(500)).max(10).default([]),
   })
   .strict()
 

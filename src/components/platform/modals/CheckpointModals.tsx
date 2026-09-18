@@ -14,7 +14,6 @@ import {
   IconFilm,
   IconMic,
   IconPlus,
-  IconUpload,
   IconWarning,
 } from "@/components/platform/icons";
 import { countImages, Markdown } from "@/components/platform/Markdown";
@@ -28,60 +27,9 @@ import {
 } from "@/lib/curriculum";
 import { MIN_HOURS_PER_WEEK, paceTarget, printerById, weekAsk } from "@/lib/config/printers";
 import { useStore } from "@/lib/store";
+import { ReelCapture } from "@/components/platform/reels/ReelCapture";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
-
-const CLIPS = [
-  { id: "c1", name: "kicad-session-01.mov", minutes: 48, thumb: "pcb" },
-  { id: "c2", name: "bench-cam-2140.mp4", minutes: 72, thumb: "bread" },
-  { id: "c3", name: "routing-final.mov", minutes: 35, thumb: "cad" },
-];
-
-function fmt(mins: number) {
-  const h = Math.floor(mins / 60);
-  const m = Math.round((mins % 60) * 100) / 100;
-  return h > 0 ? `${h}h ${m.toString().padStart(2, "0")}m` : `${m}m`;
-}
-
-function DropZone({
-  icon: Icon,
-  title,
-  hint,
-  filled,
-  onToggle,
-}: {
-  icon: typeof IconUpload;
-  title: string;
-  hint: string;
-  filled: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={filled}
-      className={cx(
-        "sketch flex w-full flex-col items-center justify-center gap-2 rounded-2xl px-6 py-8 text-center transition-colors",
-        filled ? "bg-mint" : "bg-white hover:bg-violet-pale/50",
-      )}
-      style={
-        {
-          "--sk-color": filled ? "var(--color-teal)" : "var(--color-violet)",
-          "--sk-radius": "18px",
-        } as React.CSSProperties
-      }
-    >
-      {filled ? (
-        <IconCheck className="text-[1.75rem] text-teal-deep" />
-      ) : (
-        <Icon className="text-[1.75rem] text-violet" />
-      )}
-      <span className="text-[0.95rem] font-extrabold text-navy">{filled ? "Attached" : title}</span>
-      <span className="max-w-[40ch] text-[0.82rem] leading-snug text-navy-soft">{hint}</span>
-    </button>
-  );
-}
 
 /* ================================================================== *
  * Journal + timelapse
@@ -107,7 +55,8 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // is what decides whether wrapping up is on the table yet.
 
   const [tab, setTab] = useState<"journal" | "timelapse">("journal");
-  const [picked, setPicked] = useState<string[]>(CLIPS[0] ? [CLIPS[0].id] : []);
+  // R2 object keys for the timelapses backing this session.
+  const [picked, setPicked] = useState<string[]>([]);
   const [body, setBody] = useState("");
   const [preview, setPreview] = useState(false);
   // Free text, not a number: a controlled number input that coerces as you
@@ -125,7 +74,6 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const sessionMinutes = Math.round(claimed * 60);
   const needPhotos = photosRequired(claimed);
   const shots = countImages(body);
-  const clipMinutes = CLIPS.filter((c) => picked.includes(c.id)).reduce((n, c) => n + c.minutes, 0);
 
   const longEnough = body.trim().length >= 200;
   const enoughPhotos = shots >= needPhotos;
@@ -140,7 +88,7 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         ? `${200 - body.trim().length} more characters in your entry.`
         : !enoughPhotos
           ? `${needPhotos - shots} more ${needPhotos - shots === 1 ? "image" : "images"} in your entry for ${fmtH(claimed)}.`
-          : "Pick the timelapse that belongs to this session."
+          : "Add the timelapse that backs this session."
     : null;
 
   const hours = weekHours(week.id);
@@ -334,54 +282,52 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
         </div>
       ) : (
         <div>
-          <ModalTitle sub="Pick the recordings that belong to this session. These are the lapses already captured on your machine — the hours you log are the ones you enter on the journal tab.">
-            Select your timelapses
+          <ModalTitle sub="A timelapse is what turns the hours you claimed into something anyone can check. Film it on the machine you are working at, or scan a code and record on your phone.">
+            Add your timelapses
           </ModalTitle>
 
           <div className="grid gap-2.5">
-            {CLIPS.map((c) => {
-              const on = picked.includes(c.id);
-              return (
+            {picked.map((key, index) => (
+              <div
+                key={key}
+                className="sketch flex items-center gap-3.5 rounded-2xl bg-violet-pale p-2.5"
+                style={
+                  {
+                    "--sk-color": "var(--color-violet)",
+                    "--sk-radius": "16px",
+                  } as React.CSSProperties
+                }
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-violet text-white">
+                  <IconCheck className="text-[0.9rem]" strokeWidth={3.4} />
+                </span>
+                <span className="hand min-w-0 flex-1 truncate text-[0.9rem] font-semibold text-navy">
+                  Timelapse {index + 1}
+                </span>
                 <button
-                  key={c.id}
                   type="button"
-                  onClick={() => setPicked((p) => (on ? p.filter((x) => x !== c.id) : [...p, c.id]))}
-                  aria-pressed={on}
-                  className={cx(
-                    "sketch flex items-center gap-3.5 rounded-2xl p-2.5 text-left transition-colors",
-                    on ? "bg-violet-pale" : "bg-white hover:bg-violet-pale/50",
-                  )}
-                  style={
-                    {
-                      "--sk-color": on ? "var(--color-violet)" : "var(--color-line)",
-                      "--sk-radius": "16px",
-                    } as React.CSSProperties
-                  }
+                  onClick={() => setPicked((p) => p.filter((x) => x !== key))}
+                  className="label text-navy-soft transition-colors hover:text-coral-deep"
                 >
-                  <span className="relative block w-20 shrink-0 overflow-hidden rounded-lg">
-                    <ReelScene scene={c.thumb} className="block aspect-[4/3] w-full" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="hand block truncate text-[0.9rem] font-semibold text-navy">{c.name}</span>
-                    <span className="block text-[0.8rem] text-navy-soft tabular-nums">{fmt(c.minutes)} of footage</span>
-                  </span>
-                  <span
-                    className={cx(
-                      "grid size-6 shrink-0 place-items-center rounded-full border-2",
-                      on ? "border-violet bg-violet text-white" : "border-line-strong text-transparent",
-                    )}
-                  >
-                    <IconCheck className="text-[0.8rem]" strokeWidth={3.4} />
-                  </span>
+                  Remove
                 </button>
-              );
-            })}
+              </div>
+            ))}
+
+            <ReelCapture
+              objectKey={null}
+              folder="timelapses"
+              label="This timelapse"
+              onCaptured={(key) => {
+                if (key) setPicked((p) => (p.includes(key) ? p : [...p, key]));
+              }}
+            />
           </div>
 
           <p className="mt-4 text-center text-[0.82rem] text-navy-soft tabular-nums">
             {picked.length === 0
-              ? "Nothing picked yet."
-              : `${fmt(clipMinutes)} of footage on ${picked.length === 1 ? "1 clip" : `${picked.length} clips`}.`}
+              ? "Nothing added yet."
+              : `${picked.length === 1 ? "1 timelapse" : `${picked.length} timelapses`} attached.`}
           </p>
         </div>
       )}
@@ -393,10 +339,10 @@ export function JournalModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Reel
  * ================================================================== */
 export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, complete, stateOf, weekOf } = useStore();
+  const { setOpenCheckpoint, postReel, stateOf, weekOf } = useStore();
   const week = weekOf(checkpoint.weekId);
   const done = stateOf(checkpoint.id).done;
-  const [clip, setClip] = useState(false);
+  const [clip, setClip] = useState<string | null>(null);
   const [caption, setCaption] = useState("");
 
   return (
@@ -418,7 +364,8 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             variant="solid"
             disabled={!clip || caption.trim().length < 8}
             onClick={() => {
-              complete(checkpoint.id, { artefacts: 1, caption: caption.trim() });
+              if (!clip) return;
+              postReel(checkpoint.id, caption.trim(), clip);
               setOpenCheckpoint(null);
             }}
           >
@@ -441,13 +388,16 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <p className="mt-1.5 text-[0.92rem] leading-snug text-navy">{checkpoint.reelBrief}</p>
           </div>
 
-          <DropZone
-            icon={IconCamera}
-            title="Record or drop a clip"
-            hint="Vertical, 30 to 60 seconds, filmed on whatever you have. No editing required."
-            filled={clip}
-            onToggle={() => setClip((v) => !v)}
-          />
+          <div className="grid gap-2">
+            <p className="label flex items-center gap-2 text-navy-soft">
+              <IconCamera className="text-base" /> Your clip
+            </p>
+            <p className="text-[0.88rem] leading-snug text-navy-soft">
+              Vertical, 30 to 60 seconds, filmed on whatever you have. No editing
+              required.
+            </p>
+            <ReelCapture objectKey={clip} onCaptured={setClip} />
+          </div>
 
           <Field label="Caption" hint="One line. Say what changed." id="reel-caption">
             <input
@@ -614,8 +564,17 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Submit gate
  * ================================================================== */
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, complete, projects, setProjectTier, weekOf, weekHours, coins, goalId } =
-    useStore();
+  const {
+    setOpenCheckpoint,
+    submitPhase,
+    postReel,
+    projects,
+    setProjectTier,
+    weekOf,
+    weekHours,
+    printerFund,
+    goalId,
+  } = useStore();
   const week = weekOf(checkpoint.weekId);
   const isBuild = week.phase === "build";
   const files = isBuild ? SUBMIT_FILES_BUILD : SUBMIT_FILES_DESIGN;
@@ -626,17 +585,28 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   // earlier week pays for a thin one, so this reads the running total against
   // the pace rather than this week against its target.
   const goal = printerById(goalId);
-  const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - coins));
+  const owed = Math.max(0, Math.ceil(paceTarget(goal, week.id) - printerFund));
 
   const project = projects.find((p) => p.weekId === (isBuild ? week.id - 5 : week.id)) ?? projects[0];
 
   const [step, setStep] = useState(1);
   const [checked, setChecked] = useState<string[]>([]);
-  const [cart, setCart] = useState(false);
+  // R2 object keys, not flags: what these ask for is evidence, and a boolean
+  // was letting the form take a file and drop it on the floor.
+  const [cart, setCart] = useState<string | null>(null);
   const [tier, setTier] = useState<1 | 2 | 3>(project?.tier ?? 1);
-  const [clip, setClip] = useState(false);
+  const [clip, setClip] = useState<string | null>(null);
   const [works, setWorks] = useState<"yes" | "no" | null>(null);
   const [writeup, setWriteup] = useState("");
+
+  // The closing reel is a reel like any other and goes on the trail under its
+  // own key, so the week's timeline shows it where it happened rather than
+  // swallowing it inside the submission.
+  const reelCheckpointId = `w${week.id}-reel-submission`;
+  const closingCaption = isBuild
+    ? `Week ${week.id}: ${week.theme} built.`
+    : `Week ${week.id}: ${week.theme} designed.`;
+  const buildNotes = works === "no" && writeup.trim() ? writeup.trim() : undefined;
 
   const total = isBuild ? 2 : 3;
   const bomTotal = useMemo(() => BOM_ROWS.reduce((n, r) => n + r.qty * r.unit, 0), []);
@@ -673,9 +643,20 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           ? cart && !tierBlocked
           : clip && !tierBlocked;
 
+  /**
+   * Handing a week in, in the order the pieces depend on each other.
+   *
+   * The tier first, because it is what the reviewer will be deciding against.
+   * Then the closing reel, so the submission a reviewer opens already has the
+   * video attached rather than one arriving behind it. The submission last.
+   */
   function submit() {
     if (project) setProjectTier(project.id, tier);
-    complete(checkpoint.id, { artefacts: files.length });
+    if (clip) postReel(reelCheckpointId, closingCaption, clip);
+    submitPhase(checkpoint.id, {
+      notes: isBuild ? buildNotes : undefined,
+      attachmentKeys: cart ? [cart] : [],
+    });
     setOpenCheckpoint(null);
   }
 
@@ -828,13 +809,20 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
           </Panel>
 
           <div className="mt-4">
-            <DropZone
-              icon={IconCart}
-              title="Screenshot of your cart"
-              hint="The checkout page with the total visible. Any vendor."
-              filled={cart}
-              onToggle={() => setCart((v) => !v)}
-            />
+            <div className="grid gap-2">
+              <p className="label flex items-center gap-2 text-navy-soft">
+                <IconCart className="text-base" /> Screenshot of your cart
+              </p>
+              <p className="text-[0.88rem] leading-snug text-navy-soft">
+                The checkout page with the total visible. Any vendor.
+              </p>
+              <ReelCapture
+                objectKey={cart}
+                onCaptured={setCart}
+                folder="sessions"
+                label="Your cart screenshot"
+              />
+            </div>
           </div>
 
           <div className="mt-6">
@@ -933,17 +921,18 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             {isBuild ? "Show it working" : "Final submission reel"}
           </ModalTitle>
 
-          <DropZone
-            icon={IconCamera}
-            title={isBuild ? "Drop your demo video" : "Drop your closing reel"}
-            hint={
-              isBuild
+          <div className="grid gap-2">
+            <p className="label flex items-center gap-2 text-navy-soft">
+              <IconCamera className="text-base" />{" "}
+              {isBuild ? "Your demo video" : "Your closing reel"}
+            </p>
+            <p className="text-[0.88rem] leading-snug text-navy-soft">
+              {isBuild
                 ? "Point the camera at the thing, turn it on, and talk over it."
-                : "Pan across the schematic, the layout, and the render."
-            }
-            filled={clip}
-            onToggle={() => setClip((v) => !v)}
-          />
+                : "Pan across the schematic, the layout, and the render."}
+            </p>
+            <ReelCapture objectKey={clip} onCaptured={setClip} />
+          </div>
 
           {isBuild && (
             <div className="mt-6">

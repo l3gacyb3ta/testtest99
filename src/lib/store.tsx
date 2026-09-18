@@ -123,6 +123,13 @@ interface Ctx {
   addProject: (p: Omit<Project, "id">) => void;
   setProjectTier: (id: string, tier: 1 | 2 | 3) => void;
   complete: (id: string, patch?: Partial<CheckpointState>) => void;
+  /** Post the reel a checkpoint is asking for. The video is already uploaded. */
+  postReel: (id: string, caption: string, objectKey: string) => void;
+  /** Hand a week in, with its notes and whatever evidence it collected. */
+  submitPhase: (
+    id: string,
+    extra?: { notes?: string; attachmentKeys?: string[] },
+  ) => void;
   logSession: (
     id: string,
     minutes: number,
@@ -363,6 +370,49 @@ export function StoreProvider({
       // the onboarding API as its steps are answered. Both arrive back through
       // the snapshot, so there is nothing to send here.
       router.refresh();
+    },
+    [patchCheckpoint, routeOf, router],
+  );
+
+  /**
+   * Post a reel against the node that asked for it.
+   *
+   * `checkpointKey` is what binds the post to the node, and it has to: the 10h
+   * and the 20h reel are both PROGRESS, so counting posts by kind would tick
+   * the 20h node the moment the 10h one landed.
+   */
+  const postReel = useCallback(
+    (id: string, caption: string, objectKey: string) => {
+      patchCheckpoint(id, { caption, artefacts: 1 });
+      const route = routeOf(id);
+      void send("/api/posts", {
+        // Three occasions, three kinds: the pitch at the start of a design
+        // week, the ones that mark ten hours, and the one that closes a week
+        // inside Submit.
+        kind: id.endsWith("-reel-idea")
+          ? "IDEA"
+          : id.endsWith("-reel-submission")
+            ? "SUBMISSION"
+            : "PROGRESS",
+        caption,
+        objectKey,
+        checkpointKey: id,
+        themeProjectId: route?.projectId ?? null,
+      }).finally(() => router.refresh());
+    },
+    [patchCheckpoint, routeOf, router],
+  );
+
+  const submitPhase = useCallback(
+    (id: string, extra: { notes?: string; attachmentKeys?: string[] } = {}) => {
+      patchCheckpoint(id, {});
+      const route = routeOf(id);
+      if (!route) return;
+      void send(`/api/projects/${route.projectId}/submit`, {
+        phase: route.phase,
+        ...(extra.notes ? { notes: extra.notes } : {}),
+        attachmentKeys: extra.attachmentKeys ?? [],
+      }).finally(() => router.refresh());
     },
     [patchCheckpoint, routeOf, router],
   );
@@ -676,6 +726,8 @@ export function StoreProvider({
     addProject,
     setProjectTier,
     complete,
+    postReel,
+    submitPhase,
     logSession,
     stateOf,
     isUnlocked,

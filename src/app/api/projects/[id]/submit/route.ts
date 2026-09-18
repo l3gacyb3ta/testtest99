@@ -23,6 +23,7 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     id,
     parsed.data.phase,
     sanitizeOptional(parsed.data.notes),
+    parsed.data.attachmentKeys,
   )
 
   await logAudit({

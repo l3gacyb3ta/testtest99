@@ -688,6 +688,15 @@ model PhaseSubmission {
 
   notes String? @db.Text
 
+  /// R2 object keys for evidence handed in with the submission — the cart
+  /// screenshot a design week asks for, and anything else the form collects.
+  ///
+  /// Keys, not URLs: they are minted at read time so the bucket or the CDN in
+  /// front of it can move without rewriting a row. An array rather than a child
+  /// table because nothing queries into it; the reviewer reads the whole list
+  /// or none of it.
+  attachmentKeys String[] @default([])
+
   /// Frozen at submit time. Together with the theme's scheduled week this
   /// answers "did they do week 3's theme in week 5". Analytics only — no gate
   /// reads these.

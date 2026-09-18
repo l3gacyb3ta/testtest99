@@ -111,6 +111,7 @@ export async function submitPhase(
   themeProjectId: string,
   phase: Phase,
   notes: string | null,
+  attachmentKeys: string[] = [],
 ) {
   const project = await prisma.themeProject.findFirst({
     where: { id: themeProjectId, userId, deletedAt: null },
@@ -122,6 +123,14 @@ export async function submitPhase(
 
   const eligible = canSubmitPhase(project, phase)
   if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
+
+  // Uploads are keyed `<folder>/<userId>/<uuid>`, so anything whose second
+  // segment is not this user is a key from somewhere else — a submission must
+  // not be able to file someone else's evidence, or a reviewer's own upload,
+  // as its own. `..` is refused for the same reason it is on posts.
+  const ownKeys = attachmentKeys.filter(
+    (key) => key.split("/")[1] === userId && !key.includes(".."),
+  )
 
   const breakdown = await getHoursBreakdown(themeProjectId, phase)
   if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0) {
@@ -161,6 +170,7 @@ export async function submitPhase(
         themeProjectId,
         phase,
         notes,
+        attachmentKeys: ownKeys,
         submittedInWeek,
         scheduledWeek,
         // Analytics only. Nothing gates on lateness — a late joiner has to be
