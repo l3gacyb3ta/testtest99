@@ -74,6 +74,27 @@ export function buildObjectKey(userId: string, folder: string, ext: string): str
   return `${folder}/${userId}/${randomUUID()}.${ext}`
 }
 
+/**
+ * Does this key belong to this user?
+ *
+ * Every key this app mints is `<folder>/<userId>/<uuid>.<ext>`, so the owner is
+ * the second segment. Anything else came from somewhere else.
+ *
+ * This has to be checked wherever a client hands a key back, because keys are
+ * not secrets: the feed returns a full `videoUrl` for every reel, so any
+ * participant can read another participant's key and offer it as their own.
+ * Without this, someone could attach a stranger's timelapse to their journal as
+ * evidence for hours they did not work — which is the one thing the timelapse
+ * rule exists to make hard.
+ *
+ * `..` is refused separately. It cannot appear in a minted key, and a key that
+ * contains one is trying to be a path rather than a name.
+ */
+export function isOwnedKey(userId: string, key: string): boolean {
+  if (key.includes("..")) return false
+  return key.split("/")[1] === userId
+}
+
 export async function putObject(
   key: string,
   body: Buffer,

@@ -4,6 +4,7 @@ import { Phase, PhaseStatus } from "@/app/generated/prisma/enums"
 import type { ThemeProject } from "@/app/generated/prisma/client"
 import { HttpError } from "@/lib/errors"
 import { getHoursBreakdown } from "@/lib/hours"
+import { isOwnedKey } from "@/lib/uploads/r2"
 import {
   effectiveDateFor,
   getProgramSettings,
@@ -124,13 +125,8 @@ export async function submitPhase(
   const eligible = canSubmitPhase(project, phase)
   if (!eligible.ok) throw new HttpError(eligible.code, eligible.message)
 
-  // Uploads are keyed `<folder>/<userId>/<uuid>`, so anything whose second
-  // segment is not this user is a key from somewhere else — a submission must
-  // not be able to file someone else's evidence, or a reviewer's own upload,
-  // as its own. `..` is refused for the same reason it is on posts.
-  const ownKeys = attachmentKeys.filter(
-    (key) => key.split("/")[1] === userId && !key.includes(".."),
-  )
+  // A submission must not be able to file someone else's evidence as its own.
+  const ownKeys = attachmentKeys.filter((key) => isOwnedKey(userId, key))
 
   const breakdown = await getHoursBreakdown(themeProjectId, phase)
   if (breakdown.journalEntryCount === 0 && breakdown.hackatimeHours === 0) {

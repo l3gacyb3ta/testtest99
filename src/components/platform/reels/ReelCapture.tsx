@@ -110,12 +110,15 @@ export function ReelCapture({
       />
 
       {showQr && handoff.minted && handoff.status === "waiting" && (
-        <Panel tone="line" radius={16} className="grid justify-items-center gap-2 bg-paper p-4">
+        <Panel tone="line" radius={16} className="grid justify-items-center gap-3 bg-paper p-5">
           {/* Server-rendered SVG from our own origin — the token is never sent
-              to a third-party QR service. */}
+              to a third-party QR service.
+              The SVG carries its own width, so it is forced to the box rather
+              than trusted to fit: at its natural 200px it overflowed and sat on
+              top of the caption. */}
           <div
             aria-label="QR code linking to the upload page"
-            className="size-[180px]"
+            className="w-[180px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
             dangerouslySetInnerHTML={{ __html: handoff.minted.qrSvg }}
           />
           <p className="hand text-center text-[0.85rem] text-navy-soft">

@@ -4,7 +4,7 @@ import { PostKind, PostStatus } from "@/app/generated/prisma/enums"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { HttpError } from "@/lib/errors"
 import { sanitize } from "@/lib/sanitize"
-import { publicUrlFor } from "@/lib/uploads/r2"
+import { isOwnedKey, publicUrlFor } from "@/lib/uploads/r2"
 import { currentWeekNumber } from "@/lib/program"
 import { cursorArgs, pageResult } from "@/lib/pagination"
 
@@ -192,8 +192,10 @@ export interface CreatePostInput {
  * entirely.
  */
 function assertOwnedKey(userId: string, key: string, field: string): void {
-  const prefix = `${POST_UPLOAD_FOLDER}/${userId}/`
-  if (!key.startsWith(prefix) || key.includes("..")) {
+  // Ownership plus the folder: a reel's video has to be in the posts folder, so
+  // a key that is genuinely yours but was uploaded as session evidence cannot
+  // be re-filed as a reel.
+  if (!isOwnedKey(userId, key) || !key.startsWith(`${POST_UPLOAD_FOLDER}/`)) {
     throw new HttpError("VALIDATION_FAILED", `That ${field} is not one of your uploads`)
   }
 }

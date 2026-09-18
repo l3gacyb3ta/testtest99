@@ -6,6 +6,7 @@ import { PhaseStatus } from "@/app/generated/prisma/enums"
 import { sessionCreateSchema } from "@/lib/schemas/session"
 import { sanitize, sanitizeHtml } from "@/lib/sanitize"
 import { recomputeStreak } from "@/lib/streak"
+import { isOwnedKey } from "@/lib/uploads/r2"
 import { paginationQuery, cursorArgs, pageResult } from "@/lib/pagination"
 import { stampSessionTiming } from "@/lib/submissions"
 import { getSubmissionAccess, SUBMISSIONS_CLOSED_MESSAGE } from "@/lib/program"
@@ -66,6 +67,21 @@ export const POST = withRoute(async (req: Request, { params }: Params) => {
     data.phase === "DESIGN" ? project.designStatus : project.buildStatus
   if (phaseStatus === PhaseStatus.in_review) {
     return fail("PHASE_LOCKED", "This phase is in review — unsubmit before logging more work")
+  }
+
+  // Evidence has to be the claimant's own. Keys are not secrets — the feed
+  // hands out a full video URL for every reel — so without this someone could
+  // attach a stranger's timelapse as proof of hours they did not work, which is
+  // the one thing the timelapse rule exists to make hard.
+  //
+  // Rejected rather than quietly dropped: a participant who thinks they
+  // attached a clip and finds it missing at review has been failed silently.
+  const foreign = [
+    ...data.media.map((m) => m.objectKey),
+    ...data.timelapses.flatMap((t) => (t.objectKey ? [t.objectKey] : [])),
+  ].filter((key) => !isOwnedKey(gate.user.id, key))
+  if (foreign.length > 0) {
+    return fail("VALIDATION_FAILED", "Those uploads are not yours")
   }
 
   const timing = await stampSessionTiming(new Date())

@@ -79,8 +79,11 @@ export function ReelCard({
       likedByMe: next,
       likeCount: reel.likeCount + (next ? 1 : -1),
     });
+    // PUT, not POST: a like is idempotent — the body says which state you want,
+    // not "add one" — and the route is declared that way. Sending POST got a
+    // silent 405 and left the optimistic count standing until the next refresh.
     void fetch(`/api/posts/${reel.id}/like`, {
-      method: "POST",
+      method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ liked: next }),
     })

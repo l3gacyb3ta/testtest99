@@ -22,7 +22,8 @@
     "verify:feed": "tsx --conditions=react-server scripts/verify-feed.ts",
     "verify:uploads": "tsx --conditions=react-server scripts/verify-uploads.ts",
     "verify:handoff": "tsx --conditions=react-server scripts/verify-handoff.ts",
-    "verify:store": "tsx --conditions=react-server scripts/verify-store.ts"
+    "verify:store": "tsx --conditions=react-server scripts/verify-store.ts",
+    "verify:contracts": "tsx --conditions=react-server scripts/verify-contracts.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",
