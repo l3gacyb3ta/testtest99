@@ -86,6 +86,13 @@ export function ReelViewer() {
       <div className="relative mx-auto h-full w-[min(100%,26rem,calc((var(--frame)-1.5rem)*9/16))]">
         <div
           ref={scroller}
+          // `overflow-anchor: none` because the sign-off slide renders before
+          // the first page arrives, and the reels are then inserted ABOVE it.
+          // Scroll anchoring reads that as content growing over the reader and
+          // helpfully holds their position — which meant opening the
+          // Doomscroller landed on "that is everything" instead of the newest
+          // reel, with the feed sitting unseen above it.
+          style={{ overflowAnchor: "none" }}
           className="snap-y-feed no-scrollbar h-full overflow-y-auto overscroll-contain"
         >
           {feed.items.map((reel, i) => (
@@ -103,16 +110,25 @@ export function ReelViewer() {
             </div>
           ))}
 
-          <div
-            data-slide={last}
-            ref={(el) => {
-              slides.current[last] = el;
-            }}
-            className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
-          >
-            <p className="hand text-[1.05rem] text-navy">that is everything.</p>
-            <p className="hand text-[0.9rem] text-navy-soft">go build something.</p>
-          </div>
+          {/* Only once there is something to be at the end OF. Rendering it
+              while the first page is still in the air is what let the reels
+              arrive above the reader. */}
+          {!feed.loading && (
+            <div
+              data-slide={last}
+              ref={(el) => {
+                slides.current[last] = el;
+              }}
+              className="snap-item flex h-full flex-col items-center justify-center gap-2 py-3 text-center"
+            >
+              <p className="hand text-[1.05rem] text-navy">
+                {feed.items.length === 0 ? "nothing here yet." : "that is everything."}
+              </p>
+              <p className="hand text-[0.9rem] text-navy-soft">
+                {feed.items.length === 0 ? "post the first reel." : "go build something."}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Hugging the frame rather than the page edge, so the controls read as
