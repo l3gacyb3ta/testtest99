@@ -12,16 +12,21 @@ import { GoalTracker } from "./GoalTracker";
 export const NAV = [
   { href: "/", label: "Home", tourId: "nav-home" },
   { href: "/doomscroller", label: "Doomscroller", tourId: "nav-doomscroller" },
+  { href: "/projects", label: "Projects", tourId: "nav-projects" },
   { href: "/explore", label: "Explore", tourId: "nav-explore" },
   { href: "/shop", label: "Shop", tourId: "nav-shop" },
   { href: "/docs", label: "Docs", tourId: "nav-docs" },
-  { href: "/leaderboard", label: "Leaderboard", tourId: "nav-leaderboard" },
+  // `short` is what the phone tab bar uses. Only one label needs it: the
+  // labels are uppercase, and eleven uppercase characters do not fit a 60px
+  // cell at any size worth reading.
+  { href: "/leaderboard", label: "Leaderboard", short: "Ranks", tourId: "nav-leaderboard" },
 ] as const;
 
 /**
- * The phone tab bar divides into equal cells, and at six of them "Leaderboard"
- * no longer fits its own cell on a 360px screen. The Doomscroller gets in
- * through the header link below lg instead, so the rhythm of the bar survives.
+ * The phone tab bar divides into equal cells. The Doomscroller gets in through
+ * the header link below lg instead of taking one, which keeps the bar at six,
+ * and six 60px cells on a 360px screen is exactly where "Leaderboard" stops
+ * fitting — hence `short` on that one entry.
  */
 export const TAB_NAV = NAV.filter((item) => item.href !== "/doomscroller");
 

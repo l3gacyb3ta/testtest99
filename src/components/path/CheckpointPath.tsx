@@ -47,6 +47,15 @@ const offsetOf = (full: number, beats: number, extra = "") =>
 /** Hours, two decimals at most and never a trailing zero. */
 const fmtH = (h: number) => `${Math.round(h * 100) / 100}h`;
 
+/**
+ * Checkpoints that bring something into existence rather than record it. Going
+ * through onboarding or the project form a second time would mint a second
+ * project for a week that already has one, and every lookup in the app finds a
+ * week's project with `.find` — so the duplicate would not replace the first,
+ * it would sit behind it, unreachable and counting for nothing.
+ */
+const ONE_TIME: Checkpoint["kind"][] = ["onboarding", "project"];
+
 function nodeTone(kind: Checkpoint["kind"], done: boolean, unlocked: boolean) {
   if (!unlocked) return "puck-locked";
   // The onboarding puck keeps its gold once it is finished. It is the landmark
@@ -71,9 +80,13 @@ function CheckpointNode({
   /** One half of a fork: both arms are live, and neither is the recommendation. */
   choice?: boolean;
 }) {
-  const { stateOf, isUnlocked, setOpenCheckpoint, phase } = useStore();
+  const { stateOf, isUnlocked, lockReason, setOpenCheckpoint, phase } = useStore();
   const st = stateOf(checkpoint.id);
   const unlocked = isUnlocked(checkpoint.id);
+  // Done and not for doing again. It keeps its finished colours rather than
+  // taking the locked ones: this is a thing achieved, not a thing withheld.
+  const settled = st.done && ONE_TIME.includes(checkpoint.kind);
+  const locked = !unlocked ? lockReason(checkpoint.id) : null;
   const Icon = st.done ? IconCheck : unlocked ? KIND_ICON[checkpoint.kind] : IconLock;
   // Gold stays gold after completion, so the icon on it has to stay navy.
   const gold = checkpoint.kind === "onboarding";
@@ -87,7 +100,7 @@ function CheckpointNode({
       // paint in DOM order, which already puts each callout over the node
       // above it, and --lead keeps the first one clear of the banner.
       className={cx(
-        "absolute flex flex-col items-center",
+        "group absolute flex flex-col items-center",
         isBeat(checkpoint) ? "w-[var(--node-sm)]" : "w-[var(--node)]",
       )}
       style={{ top, left, transform: "translateX(-50%)" }}
@@ -124,13 +137,52 @@ function CheckpointNode({
         </div>
       )}
 
+      {/* Why this one is shut. It hangs where the "Start here" callout hangs,
+          in sand rather than navy — the trail already uses that shape to speak
+          about a node, and a locked node is the other half of the same
+          sentence. The two never appear together: a locked checkpoint is never
+          the current one. */}
+      {locked && (
+        <div className="pointer-events-none absolute bottom-[calc(100%_+_10px)] z-20 w-max max-w-[min(13rem,42vw)] opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <div
+            className="sketch rounded-2xl bg-sand px-3.5 py-2.5 text-left"
+            style={
+              {
+                "--sk-color": "var(--color-sand-deep)",
+                "--sk-radius": "14px",
+              } as React.CSSProperties
+            }
+          >
+            <p className="text-[0.74rem] leading-snug font-semibold text-navy">
+              {checkpoint.blurb}
+            </p>
+            <p className="hand mt-1.5 flex items-start gap-1.5 text-[0.72rem] leading-snug text-navy-soft">
+              <IconLock className="mt-px shrink-0 text-[0.8rem]" />
+              {locked}
+            </p>
+            <span
+              aria-hidden="true"
+              className="absolute top-full left-1/2 -ml-2 size-0 border-x-8 border-t-[9px] border-x-transparent border-t-sand"
+            />
+          </div>
+        </div>
+      )}
+
       <button
         type="button"
         data-tour={checkpoint.kind === "onboarding" ? "first-checkpoint" : undefined}
-        disabled={!unlocked}
+        disabled={!unlocked || settled}
         onClick={() => setOpenCheckpoint(checkpoint.id)}
-        aria-label={`${checkpoint.title} — ${status}`}
-        className={cx("puck", nodeTone(checkpoint.kind, st.done, unlocked))}
+        aria-label={
+          locked ? `${checkpoint.title} — ${status}. ${locked}` : `${checkpoint.title} — ${status}`
+        }
+        className={cx(
+          "puck",
+          nodeTone(checkpoint.kind, st.done, unlocked),
+          // The puck's own disabled rule reads as refusal. A finished
+          // checkpoint is not refusing anything.
+          settled && "cursor-default",
+        )}
       >
         {(isCurrent || choice) && (
           <span aria-hidden="true" className={cx("halo", gold && "halo-gold")} />
@@ -219,6 +271,13 @@ const FORK_AT = [24, 76];
  * because entries and milestones take different-sized strides — but the
  * left-right swing still comes from the node's place in the line.
  *
+ * A stride is sized by the node it leaves, never by the one it arrives at.
+ * That is the only version that cannot collide: what has to be cleared is the
+ * height of the node behind you — its puck, its label, and the hours under a
+ * finished entry — and a milestone is half as tall again as a beat. Sizing on
+ * arrival instead puts a beat's short stride under a milestone's tall label,
+ * and the label lands on the next puck.
+ *
  * A week past its tier floor ends in a fork: two checkpoints on one row,
  * pinned left and right instead of taking the swing. The fork is always the
  * last row, which is what lets every row before it keep using its own index
@@ -237,12 +296,12 @@ function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }
   let full = 0;
   let beats = 0;
   for (const [i, row] of rows.entries()) {
-    const beat = row.every(isBeat);
     if (i > 0) {
-      if (beat) beats += 1;
+      // The stride belongs to the row we are stepping off, not this one.
+      if (placed[i - 1].beat) beats += 1;
       else full += 1;
     }
-    placed.push({ row, full, beats, beat });
+    placed.push({ row, full, beats, beat: row.every(isBeat) });
   }
 
   const leftOf = (i: number, j: number) =>
@@ -251,7 +310,7 @@ function WeekTrail({ week, currentId }: { week: Week; currentId: string | null }
   const dots: React.ReactNode[] = [];
   for (let i = 0; i < placed.length - 1; i += 1) {
     const next = placed[i + 1];
-    const stride = next.beat ? "var(--step-sm)" : "var(--step)";
+    const stride = placed[i].beat ? "var(--step-sm)" : "var(--step)";
     const size = placed[i].beat ? "var(--node-sm)" : "var(--node)";
     // Into a fork the run splits and each arm is drawn straight to its node;
     // down the chain the dots keep sampling the sine, so the curve they have
@@ -388,7 +447,7 @@ export function CheckpointPath() {
           /* An entry is a beat, not a milestone: smaller puck, shorter stride,
              so a twenty-entry week stays a trail instead of a corridor. */
           "--node-sm": "clamp(42px, 7.5vw, 54px)",
-          "--step-sm": "clamp(84px, 11vw, 96px)",
+          "--step-sm": "clamp(100px, 13vw, 116px)",
           /* Room between a week banner and its first puck for the callout
              that hangs above the current checkpoint, bob included. */
           "--lead": "clamp(70px, 9vw, 80px)",

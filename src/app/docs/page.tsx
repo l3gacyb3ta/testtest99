@@ -19,7 +19,7 @@ export default function DocsIndex() {
         label="DOCS"
         color="var(--color-teal)"
         ink="#ffffff"
-        sub="Five short pages. Read the first one before you start week 1 and you will not need the rest."
+        sub="Confused? Start here!"
       />
 
       <div className="grid gap-9">
@@ -41,7 +41,6 @@ export default function DocsIndex() {
                         {doc.summary}
                       </span>
                       <span className="hand mt-2 inline-flex items-center gap-1.5 text-[0.76rem] text-line-strong">
-                        <IconClock className="text-sm" /> {doc.minutes} min read
                       </span>
                     </span>
                     <IconArrowRight className="shrink-0 text-xl text-line-strong transition-transform duration-200 group-hover:translate-x-1 group-hover:text-teal-deep" />
@@ -54,7 +53,7 @@ export default function DocsIndex() {
       </div>
 
       <p className="hand py-10 text-center text-[0.86rem] text-navy-soft">
-        still stuck? ask in the slack. someone is always awake.
+        still stuck? chuck a question in #half-life-help on the Slack!
       </p>
     </div>
   );

@@ -18,7 +18,7 @@
  * Those banked hours are the same whatever tier you are on — the tier decides
  * how many funded hours sit underneath them, not how much you bank.
  */
-import { BUILD_HOURS, WEEK_META } from "./curriculum";
+import { BUILD_HOURS, TIERS, WEEK_META } from "./curriculum";
 
 export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc";
 
@@ -202,6 +202,22 @@ export const MAX_HOURS_PER_WEEK = Math.max(...PRINTERS.map((p) => p.hoursPerWeek
  * so that repricing the catalogue moves the gate with it.
  */
 export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek));
+
+/**
+ * What a design week asks of you, for a weekly banking pace and a tier.
+ *
+ * The pace is the whole of it: the tier only slides the funded block in or out
+ * underneath, since those hours pay for the project and bank nothing. So the
+ * ask is the pace plus however much further down tier 1's floor this tier sits.
+ *
+ * Every hours figure in the app is this function with a different pace — the
+ * goal's own pace for the target, MIN_HOURS_PER_WEEK for the floor that keeps
+ * the cheapest machine reachable. One formula, so a tier cannot mean one thing
+ * on the trail and another in the submit sheet.
+ */
+export function weekAsk(pace: number, fundingHours: number): number {
+  return pace + (fundingHours - TIERS[0].fundingHours);
+}
 
 /**
  * Coins that should be banked once `weekId` is behind you, to still land the

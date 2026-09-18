@@ -10,7 +10,13 @@ import {
   type ReactNode,
 } from "react";
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
-import { COINS_PER_HOUR, DEFAULT_GOAL_ID, MIN_HOURS_PER_WEEK, printerById } from "./printers";
+import {
+  COINS_PER_HOUR,
+  DEFAULT_GOAL_ID,
+  MIN_HOURS_PER_WEEK,
+  printerById,
+  weekAsk,
+} from "./printers";
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types";
 
 export type IntroPhase =
@@ -22,6 +28,10 @@ export type IntroPhase =
 
 export interface CheckpointState {
   done: boolean;
+  /** When it was completed, epoch ms. Undefined on saves written before this. */
+  at?: number;
+  /** A reel's caption, kept so the project timeline can show what was posted. */
+  caption?: string;
   /** Journal checkpoints accumulate minutes toward their target. */
   minutes: number;
   /** Reel / submit checkpoints record how many artefacts were attached. */
@@ -82,6 +92,8 @@ interface Ctx extends SaveShape {
   ) => void;
   stateOf: (id: string) => CheckpointState;
   isUnlocked: (id: string) => boolean;
+  /** Why a locked checkpoint is locked, phrased for the trail. Null if open. */
+  lockReason: (id: string) => string | null;
   currentCheckpointId: string | null;
   /** The trail, cut to the tier of each week's project. */
   weeks: Week[];
@@ -147,11 +159,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /**
+   * One project per week, and the week is what makes it that project: every
+   * lookup in the app asks for a week's project by `.find`. A second one for
+   * the same week would not replace the first, it would queue up behind it
+   * where nothing would ever read it, so a repeat is refused here as well as
+   * being unreachable in the trail.
+   */
   const addProject = useCallback((p: Omit<Project, "id">) => {
-    setSave((s) => ({
-      ...s,
-      projects: [...s.projects, { ...p, id: `p-${s.projects.length + 1}-${p.weekId}` }],
-    }));
+    setSave((s) => {
+      if (s.projects.some((existing) => existing.weekId === p.weekId)) return s;
+      return {
+        ...s,
+        projects: [...s.projects, { ...p, id: `p-${s.projects.length + 1}-${p.weekId}` }],
+      };
+    });
   }, []);
 
   const setProjectTier = useCallback((id: string, tier: 1 | 2 | 3) => {
@@ -166,7 +188,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const prev = { ...EMPTY, ...s.progress[id] };
       return {
         ...s,
-        progress: { ...s.progress, [id]: { ...prev, ...patch, done: true } },
+        progress: {
+          ...s.progress,
+          // The first completion is the one that dates it. Redoing a checkpoint
+          // should not move it up the project timeline past work that came
+          // after it.
+          [id]: { ...prev, ...patch, at: prev.at ?? Date.now(), done: true },
+        },
       };
     });
   }, []);
@@ -222,15 +250,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const build = meta.phase === "build";
         // Column 5 is the tier-1 week and is already floored to a flat 10 hours,
         // so every other tier is that plus the extra hours its grant funds.
-        const target = build
-          ? BUILD_HOURS
-          : goal.hoursPerWeek + (tier.fundingHours - TIERS[0].fundingHours);
-        // The same shape as the target, with the cheapest machine's pace in
-        // place of this goal's: the least a week can be worth and still leave
-        // a printer at the end of the season.
-        const submitHours = build
-          ? BUILD_HOURS
-          : MIN_HOURS_PER_WEEK + (tier.fundingHours - TIERS[0].fundingHours);
+        const target = build ? BUILD_HOURS : weekAsk(goal.hoursPerWeek, tier.fundingHours);
+        // The same ask at the cheapest machine's pace: the least a week can be
+        // worth and still leave a printer at the end of the season.
+        const submitHours = build ? BUILD_HOURS : weekAsk(MIN_HOURS_PER_WEEK, tier.fundingHours);
         // The trail is as long as the work was: every finished entry is a node,
         // and one more waits at the end for the entry about to be written. The
         // minutes come along because reels are placed where the clock crossed.
@@ -275,6 +298,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         id: `${id}-s${prev.log.length + 1}`,
         minutes,
         body,
+        at: Date.now(),
         ...evidence,
       };
 
@@ -365,6 +389,55 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [weeks, save.progress, weekHours],
   );
 
+  /**
+   * Why a checkpoint is shut, in the maker's terms. Null when it is open.
+   *
+   * It walks the same three rules as isUnlocked, in the same order, and lives
+   * next to it so the two cannot drift: a trail that says one thing and does
+   * another is worse than a trail that says nothing. Each branch names the one
+   * thing standing in the way rather than listing everything outstanding —
+   * only the first is actionable anyway.
+   */
+  const lockReason = useCallback(
+    (id: string): string | null => {
+      // Titles are node names, so they keep their capital. The verb follows
+      // the kind: you post a reel, you finish everything else.
+      const firstFinish = (c: Checkpoint) =>
+        c.kind === "reel" ? `Post ${c.title} first.` : `Finish ${c.title} first.`;
+
+      if (isUnlocked(id)) return null;
+
+      const done = (c: Checkpoint) => save.progress[c.id]?.done ?? false;
+      const wi = weeks.findIndex((w) => w.checkpoints.some((c) => c.id === id));
+      if (wi === -1) return null;
+
+      const prev = weeks[wi - 1];
+      if (prev) {
+        const prevSubmit = prev.checkpoints.find((c) => c.kind === "submit");
+        if (prevSubmit && !done(prevSubmit)) return `Submit week ${prev.id} first.`;
+      }
+
+      const week = weeks[wi];
+      const list = week.checkpoints;
+      const i = list.findIndex((c) => c.id === id);
+      const self = list[i];
+
+      if (self.atHours !== undefined) {
+        const hours = weekHours(week.id);
+        const owed = list
+          .slice(0, i)
+          .find((c) => c.kind !== "journal" && (c.atHours ?? 0) <= hours && !done(c));
+        if (owed) return firstFinish(owed);
+        const toGo = Math.round((self.atHours - hours) * 100) / 100;
+        return `Opens at ${self.atHours}h logged this week — ${toGo}h to go.`;
+      }
+
+      const blocker = list.slice(0, i).find((c) => !done(c));
+      return blocker ? firstFinish(blocker) : null;
+    },
+    [isUnlocked, weeks, save.progress, weekHours],
+  );
+
   const currentCheckpointId = useMemo(() => {
     const next = allCheckpoints.find(
       (c) => !(save.progress[c.id]?.done ?? false) && isUnlocked(c.id),
@@ -387,6 +460,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     logSession,
     stateOf,
     isUnlocked,
+    lockReason,
     currentCheckpointId,
     setOpenCheckpoint,
     setDoomscroller,

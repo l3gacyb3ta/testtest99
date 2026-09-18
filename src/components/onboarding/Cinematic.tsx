@@ -293,25 +293,37 @@ function WeekBanners({ refs }: { refs: React.RefObject<(HTMLDivElement | null)[]
           ref={(el) => {
             refs.current[i] = el;
           }}
-          className="torn absolute top-0 left-1/2 flex items-center gap-4 rounded px-6"
+          className="absolute top-0 left-1/2"
           style={{
             width: 760,
             height: BANNER_H,
             marginLeft: -380,
-            background: week.accent,
             transformOrigin: "center top",
             display: "none",
           }}
         >
-          <div className="min-w-0 flex-1">
-            <p className="label text-white/85">
-              Week {week.id}/10 · {week.phase === "design" ? "Design" : "Build"}
-            </p>
-            <p className="mt-0.5 truncate text-[1.6rem] leading-none font-extrabold tracking-[-0.025em] text-white">
-              {week.headline}
-            </p>
+          {/* The tear belongs to the plaque, never to the type. `.torn` is a
+              displacement filter, so on a container it drags the glyphs about
+              with the edges — and this one is re-scaled every frame by the
+              camera, which rasterises the filtered result at one size and
+              stretches it to another. The real trail's banner separates them
+              the same way. */}
+          <span
+            aria-hidden="true"
+            className="torn absolute inset-0 rounded"
+            style={{ background: week.accent }}
+          />
+          <div className="relative flex h-full items-center gap-4 px-6">
+            <div className="min-w-0 flex-1">
+              <p className="label text-white/85">
+                Week {week.id}/10 · {week.phase === "design" ? "Design" : "Build"}
+              </p>
+              <p className="mt-0.5 truncate text-[1.6rem] leading-none font-extrabold tracking-[-0.025em] text-white">
+                {week.headline}
+              </p>
+            </div>
+            <WeekScene theme={week.theme} className="h-14 w-auto shrink-0" />
           </div>
-          <WeekScene theme={week.theme} className="h-14 w-auto shrink-0" />
         </div>
       ))}
     </div>

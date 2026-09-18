@@ -11,6 +11,7 @@ import {
   IconFilm,
   IconFlame,
   IconHome,
+  IconPencil,
   IconTrophy,
 } from "@/components/icons";
 import { cx } from "@/components/ui";
@@ -22,6 +23,7 @@ import { Overlays } from "@/components/onboarding/Overlays";
 
 const MOBILE_ICONS = {
   "/": IconHome,
+  "/projects": IconPencil,
   "/explore": IconCompass,
   "/shop": IconBag,
   "/docs": IconBook,
@@ -157,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             const Icon = MOBILE_ICONS[item.href as keyof typeof MOBILE_ICONS];
             const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
-              <li key={item.href} data-tour={item.tourId} className="flex-1">
+              <li key={item.href} data-tour={item.tourId} className="min-w-0 flex-1">
                 <Link
                   href={item.href}
                   aria-current={active ? "page" : undefined}
@@ -167,7 +169,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   )}
                 >
                   <Icon className="text-[1.45rem]" />
-                  <span className="label text-[0.6rem] tracking-[0.06em]">{item.label}</span>
+                  <span className="label w-full truncate text-center text-[0.6rem] tracking-[0.06em]">
+                    {"short" in item ? item.short : item.label}
+                  </span>
                   <span
                     aria-hidden="true"
                     className={cx("h-1 w-6 rounded-full transition-colors", active ? "bg-coral" : "bg-transparent")}

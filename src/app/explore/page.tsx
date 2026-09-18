@@ -67,7 +67,7 @@ export default function ExplorePage() {
       <PageSign
         label="EXPLORE"
         color="var(--color-sky)"
-        sub="Every journal entry in the program, newest first. Read what broke for other people before it breaks for you."
+        sub="See what other teenagers around the world are building for Half Life!"
       />
 
       <div className="grid gap-6">

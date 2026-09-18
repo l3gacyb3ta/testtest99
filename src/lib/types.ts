@@ -37,6 +37,8 @@ export interface SessionLog {
   id: string;
   minutes: number;
   body: string;
+  /** When it was saved, epoch ms. The project timeline is ordered on this. */
+  at: number;
   /**
    * Timelapse clips picked for this session. The photo evidence is not listed
    * here: it is written into `body` as Markdown images, so the entry and the

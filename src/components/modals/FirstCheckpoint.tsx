@@ -283,7 +283,7 @@ export function FirstCheckpoint({ checkpointId }: { checkpointId: string }) {
       {/* ---------------- 5 — tiers ---------------- */}
       {step === 5 && (
         <div>
-          <ModalTitle sub="Tiers decide how much funding lands on your card and roughly how many hours the project should take. You can change tier any time before you submit the week.">
+          <ModalTitle sub="Tiers decide how much funding you receive and roughly how many hours the project should take. You can change tier any time before you submit your projects!">
             Choose a tier
           </ModalTitle>
           {tierLocked && (
@@ -335,7 +335,7 @@ export function FirstCheckpoint({ checkpointId }: { checkpointId: string }) {
         <div>
           <div className="mb-3 flex items-start justify-between gap-4">
             <div>
-              <ModalTitle sub="Every hour you log has to be backed by a journal entry and a timelapse.">
+              <ModalTitle sub="Every hour you log has to be backed by a journal entry or a timelapse.">
                 Tracking your time
               </ModalTitle>
             </div>

@@ -26,7 +26,7 @@ import {
   SUBMIT_FILES_DESIGN,
   TIERS,
 } from "@/lib/curriculum";
-import { paceTarget, printerById } from "@/lib/printers";
+import { MIN_HOURS_PER_WEEK, paceTarget, printerById, weekAsk } from "@/lib/printers";
 import { useStore } from "@/lib/store";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
@@ -418,7 +418,7 @@ export function ReelModal({ checkpoint }: { checkpoint: Checkpoint }) {
             variant="solid"
             disabled={!clip || caption.trim().length < 8}
             onClick={() => {
-              complete(checkpoint.id, { artefacts: 1 });
+              complete(checkpoint.id, { artefacts: 1, caption: caption.trim() });
               setOpenCheckpoint(null);
             }}
           >
@@ -614,7 +614,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
  * Submit gate
  * ================================================================== */
 export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
-  const { setOpenCheckpoint, complete, projects, setProjectTier, weekOf, coins, goalId } =
+  const { setOpenCheckpoint, complete, projects, setProjectTier, weekOf, weekHours, coins, goalId } =
     useStore();
   const week = weekOf(checkpoint.weekId);
   const isBuild = week.phase === "build";
@@ -642,14 +642,36 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
   const bomTotal = useMemo(() => BOM_ROWS.reduce((n, r) => n + r.qty * r.unit, 0), []);
   const allChecked = checked.length === files.length;
 
+  /**
+   * A tier is a claim about hours as much as about money: its funded block has
+   * to be covered, and the banking that buys the printer has to sit on top of
+   * it. Tier 2 funds thirteen hours, so thirteen hours pay for the project and
+   * nothing at all banks until the fourteenth — which is why the tier cannot be
+   * raised at the last moment on hours that were only ever enough for a
+   * smaller one.
+   *
+   * Two asks come out of that, and they are different numbers. The floor is
+   * the cheapest machine's pace, and below it the season cannot end in a
+   * printer at all, so it is a gate. The target is this maker's own goal, and
+   * it moves when they change what they are saving for — a P1S asks far more
+   * of a tier 2 week than an Ender does. Missing the target is a warning the
+   * sheet already gives; missing the floor is a refusal.
+   */
+  const hours = weekHours(week.id);
+  const tierFloor = (fundingHours: number) => weekAsk(MIN_HOURS_PER_WEEK, fundingHours);
+  const tierTarget = (fundingHours: number) => weekAsk(goal.hoursPerWeek, fundingHours);
+  const tierShort = (fundingHours: number) => Math.max(0, tierFloor(fundingHours) - hours);
+  const selectedTier = TIERS.find((t) => t.id === tier) ?? TIERS[0];
+  const tierBlocked = !isBuild && tierShort(selectedTier.fundingHours) > 0;
+
   const canAdvance =
     step === 1
       ? allChecked
       : isBuild
         ? clip && (works === "yes" || (works === "no" && writeup.trim().length >= 40))
         : step === 2
-          ? cart
-          : clip;
+          ? cart && !tierBlocked
+          : clip && !tierBlocked;
 
   function submit() {
     if (project) setProjectTier(project.id, tier);
@@ -817,19 +839,35 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
 
           <div className="mt-6">
             <p className="label mb-2 text-magenta">Finalise your tier</p>
+            <p className="mb-3 text-[0.82rem] leading-snug text-navy-soft">
+              A tier funds its own block of hours — {fmtH(TIERS[0].fundingHours)} on tier 1,{" "}
+              {fmtH(TIERS[1].fundingHours)} on tier 2, {fmtH(TIERS[2].fundingHours)} on tier 3 — and
+              only the hours above that block bank toward a{" "}
+              <span className="font-bold text-navy">{goal.name}</span>. You have{" "}
+              <span className="font-bold text-navy tabular-nums">{fmtH(hours)}</span> this week.
+            </p>
             <div className="grid gap-2.5 sm:grid-cols-3">
               {TIERS.map((t) => {
                 const on = tier === t.id;
                 const over = bomTotal > t.funding;
+                const short = tierShort(t.fundingHours);
+                const behind = Math.max(0, tierTarget(t.fundingHours) - hours);
                 return (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => setTier(t.id)}
                     aria-pressed={on}
+                    // A tier you have not worked the hours for is not an
+                    // option, so it does not behave like one.
+                    disabled={short > 0}
                     className={cx(
                       "sketch rounded-2xl px-4 py-3 text-left transition-colors",
-                      on ? "bg-violet-pale" : "bg-white hover:bg-black/[.03]",
+                      short > 0
+                        ? "cursor-not-allowed bg-black/[.03]"
+                        : on
+                          ? "bg-violet-pale"
+                          : "bg-white hover:bg-black/[.03]",
                     )}
                     style={
                       {
@@ -838,13 +876,43 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                       } as React.CSSProperties
                     }
                   >
-                    <span className="block text-[0.95rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand block text-[0.86rem] text-teal-deep">${t.funding} funded</span>
-                    <span className="mt-1 block text-[0.76rem] leading-snug text-navy-soft">
-                      {over
-                        ? `Over by $${(bomTotal - t.funding).toFixed(2)}`
-                        : `$${(t.funding - bomTotal).toFixed(2)} of headroom`}
+                    <span
+                      className={cx(
+                        "block text-[0.95rem] font-extrabold",
+                        short > 0 ? "text-navy-soft" : "text-navy",
+                      )}
+                    >
+                      Tier {t.id}
                     </span>
+                    <span
+                      className={cx(
+                        "hand block text-[0.86rem]",
+                        short > 0 ? "text-navy-soft" : "text-teal-deep",
+                      )}
+                    >
+                      ${t.funding} funded · {fmtH(t.fundingHours)}
+                    </span>
+
+                    {/* The hours are the gate, so they lead. The cart only
+                        says whether the money fits inside the tier once the
+                        tier is actually available to you. */}
+                    <span
+                      className={cx(
+                        "mt-1 block text-[0.76rem] leading-snug",
+                        short > 0 ? "text-coral-deep" : behind > 0 ? "text-navy-soft" : "text-teal-deep",
+                      )}
+                    >
+                      {short > 0
+                        ? `${fmtH(short)} short — tier ${t.id} needs ${fmtH(tierFloor(t.fundingHours))}`
+                        : behind > 0
+                          ? `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name} — ${fmtH(behind)} to go`
+                          : `${fmtH(tierTarget(t.fundingHours))} for a ${goal.name} — you have ${fmtH(hours)}`}
+                    </span>
+                    {short === 0 && over && (
+                      <span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
+                        Cart over by ${(bomTotal - t.funding).toFixed(2)}
+                      </span>
+                    )}
                   </button>
                 );
               })}
