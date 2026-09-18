@@ -23,7 +23,8 @@
     "verify:uploads": "tsx --conditions=react-server scripts/verify-uploads.ts",
     "verify:handoff": "tsx --conditions=react-server scripts/verify-handoff.ts",
     "verify:store": "tsx --conditions=react-server scripts/verify-store.ts",
-    "verify:contracts": "tsx --conditions=react-server scripts/verify-contracts.ts"
+    "verify:contracts": "tsx --conditions=react-server scripts/verify-contracts.ts",
+    "verify:pii": "tsx --conditions=react-server scripts/verify-pii.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",

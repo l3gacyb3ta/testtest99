@@ -15,6 +15,12 @@ import { getThemeDef } from "@/lib/config/program"
  * `select` leaks the whole user table, so these queries name every column they
  * want rather than spreading a row.
  *
+ * Object keys are deliberately NOT here. R2 serves them publicly, so a key is
+ * a capability to fetch that file — and the journal's photographs already ride
+ * inside the body as Markdown, which is the copy this page renders. Shipping
+ * the keys as well put every participant's session media into every other
+ * participant's page payload for nothing.
+ *
  * Journal bodies are shown as written. Participants write them knowing a
  * reviewer will read them, and the program already publishes reels to the
  * Doomscroller, so the audience is peers either way — but it is a real choice
@@ -33,7 +39,6 @@ export interface JournalRow {
   /** YYYY-MM-DD in the program timezone — what the day grouping reads. */
   day: string
   when: string
-  imageKeys: string[]
 }
 
 export interface LeaderRow {
@@ -68,7 +73,6 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
             user: { select: { name: true, image: true, currentStreak: true } },
           },
         },
-        media: { select: { objectKey: true } },
       },
     }),
     getProgramSettings(),
@@ -88,7 +92,6 @@ export async function getJournalFeed(): Promise<JournalRow[]> {
         session.effectiveDate ??
         effectiveDateFor(session.createdAt, settings.programTimezone),
       when: session.createdAt.toISOString(),
-      imageKeys: session.media.map((m) => m.objectKey),
     }
   })
 }
