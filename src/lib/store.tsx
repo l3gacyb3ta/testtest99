@@ -122,6 +122,14 @@ interface Ctx {
   setPhase: (p: IntroPhase) => void;
   setTourStep: (n: number) => void;
   setExperience: (e: Experience) => void;
+  /** Walk the whole first checkpoint through the onboarding state machine. */
+  completeOnboarding: (answers: {
+    experience: Experience;
+    title: string;
+    description: string;
+    starterProjectId: string | null;
+    requestedTier: 1 | 2 | 3 | null;
+  }) => void;
   addProject: (p: Omit<Project, "id">) => void;
   setProjectTier: (id: string, tier: 1 | 2 | 3) => void;
   complete: (id: string, patch?: Partial<CheckpointState>) => void;
@@ -265,6 +273,54 @@ export function StoreProvider({
         step: "experience",
         experience: EXPERIENCE_ANSWER[experience],
       }).finally(() => router.refresh());
+    },
+    [router],
+  );
+
+  /**
+   * Finishing the first checkpoint.
+   *
+   * The server's onboarding flow is a state machine that refuses a step ahead
+   * of the furthest one reached — that refusal is what stops anyone arriving at
+   * a funded project without having been asked what they are building. So the
+   * six answers the modal collected have to be replayed in order, one request
+   * each, rather than posted as a single blob.
+   *
+   * Sequential rather than parallel for the same reason: fired together they
+   * would race, and every one but the first would be rejected as out of turn.
+   */
+  const completeOnboarding = useCallback(
+    (answers: {
+      experience: Experience;
+      title: string;
+      description: string;
+      starterProjectId: string | null;
+      requestedTier: 1 | 2 | 3 | null;
+    }) => {
+      setFacts((f) => ({ ...f, experience: answers.experience, onboardingDone: true }));
+      void (async () => {
+        await send("/api/onboarding", {
+          step: "experience",
+          experience: EXPERIENCE_ANSWER[answers.experience],
+        });
+        await send("/api/onboarding", { step: "week" });
+        await send("/api/onboarding", {
+          step: "project",
+          title: answers.title,
+          description: answers.description,
+        });
+        await send("/api/onboarding", {
+          step: "idea",
+          starterProjectId: answers.starterProjectId,
+        });
+        await send("/api/onboarding", {
+          step: "tier",
+          requestedTier: answers.requestedTier,
+        });
+        // The tutorial is the one step the comp marks dismissible, and this is
+        // the finish button rather than the dismiss link — so it was read.
+        await send("/api/onboarding", { step: "tracking", dismissed: false });
+      })().finally(() => router.refresh());
     },
     [router],
   );
@@ -725,6 +781,7 @@ export function StoreProvider({
     setPhase,
     setTourStep,
     setExperience,
+    completeOnboarding,
     addProject,
     setProjectTier,
     complete,

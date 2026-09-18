@@ -47,7 +47,7 @@ function CheckpointModal({ id }: { id: string }) {
   if (!cp) return null;
   switch (cp.kind) {
     case "onboarding":
-      return <FirstCheckpoint checkpointId={cp.id} />;
+      return <FirstCheckpoint />;
     case "journal":
       return <JournalModal checkpoint={cp} />;
     case "reel":

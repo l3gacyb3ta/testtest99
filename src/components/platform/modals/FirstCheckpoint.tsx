@@ -20,13 +20,18 @@ const EXPERIENCE: { id: Experience; label: string; hint: string }[] = [
 
 const TOTAL = 6;
 
-export function FirstCheckpoint({ checkpointId }: { checkpointId: string }) {
+/**
+ * The first checkpoint.
+ *
+ * It takes no checkpoint id any more: the node it stands for is derived from
+ * whether onboarding is finished, not ticked off by this component, so there is
+ * nothing here to name.
+ */
+export function FirstCheckpoint() {
   const {
     setOpenCheckpoint,
-    setExperience,
     experience,
-    addProject,
-    complete,
+    completeOnboarding,
     setPhase,
   } = useStore();
 
@@ -68,15 +73,16 @@ export function FirstCheckpoint({ checkpointId }: { checkpointId: string }) {
   }, [step, exp, name, desc, tier]);
 
   function finish() {
-    if (exp) setExperience(exp);
-    addProject({
-      name: name.trim(),
+    if (!exp) return;
+    completeOnboarding({
+      experience: exp,
+      title: name.trim(),
       description: desc.trim(),
-      weekId: 1,
-      tier: tier ?? 1,
-      starter: starter !== null,
+      starterProjectId: starter,
+      // Null is legal only when a starter project has already locked the choice
+      // to tier 1; the server rejects it from anyone who could still choose.
+      requestedTier: tierLocked ? null : tier,
     });
-    complete(checkpointId, { artefacts: 1 });
     setOpenCheckpoint(null);
     setPhase("tour");
   }

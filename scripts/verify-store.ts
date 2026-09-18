@@ -144,6 +144,46 @@ async function main() {
   // project, two weeks, and a design submission is not a build submission.
   check("but not the build week's", submitted.progress["w6-submit"], undefined)
 
+  // ── The first checkpoint ──────────────────────────────────────────────────
+  //
+  // The store replays the modal's six answers through the onboarding state
+  // machine one request at a time, because the machine refuses a step ahead of
+  // the furthest one reached. That refusal is what stops anyone arriving at a
+  // funded project without being asked what they are building — and it also
+  // means the store's sequence has to be exactly right, or onboarding never
+  // completes and the modal reappears forever with nothing in the log to say
+  // why. This replays that sequence in the order the store sends it.
+  const { submitStep } = await import("../src/lib/onboarding")
+
+  const fresh = await prisma.user.create({
+    data: {
+      email: `store-onboard-${stamp}@example.test`,
+      name: "Onboard Check",
+      verificationStatus: "verified",
+      joinedProgramAt: new Date(),
+    },
+  })
+  await materializeThemeProjects(fresh.id)
+
+  await submitStep(fresh.id, { step: "experience", experience: "A_LITTLE" })
+  await submitStep(fresh.id, { step: "week" })
+  await submitStep(fresh.id, {
+    step: "project",
+    title: "Blinky badge",
+    description: "My handle in copper.",
+  })
+  await submitStep(fresh.id, { step: "idea", starterProjectId: null })
+  await submitStep(fresh.id, { step: "tier", requestedTier: 2 })
+  await submitStep(fresh.id, { step: "tracking", dismissed: false })
+
+  const onboarded = await getStoreSnapshot(fresh.id)
+  check("the store's sequence completes onboarding", onboarded.onboardingDone, true)
+  check("which ticks the first checkpoint", onboarded.progress["w1-onboard"]?.done, true)
+  check("and the project it created is on the trail", onboarded.projects[0]?.name, "Blinky badge")
+  check("at the tier that was asked for", onboarded.projects[0]?.tier, 2)
+  check("the experience answer stuck", onboarded.experience, "little")
+
+  await prisma.user.delete({ where: { id: fresh.id } })
   await prisma.user.delete({ where: { id: user.id } })
 
   console.log(failures === 0 ? "\nAll store checks passed." : `\n${failures} check(s) failed.`)
