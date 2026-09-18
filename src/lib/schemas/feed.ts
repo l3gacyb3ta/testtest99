@@ -21,6 +21,16 @@ export const createPostSchema = z
     objectKey,
     thumbnailKey: objectKey.nullish(),
     themeProjectId: cuid.nullish(),
+    /**
+     * The trail node this reel answers, e.g. "w3-reel-2". Bounded and pattern-
+     * matched rather than free text: it is written straight into a column the
+     * trail reads back by key, so anything that is not a checkpoint id is a
+     * row nothing will ever find again.
+     */
+    checkpointKey: z
+      .string()
+      .regex(/^w([1-9]|10)-(reel-idea|reel-\d{1,2})$/, "Not a reel checkpoint")
+      .nullish(),
     contentType: boundedText(100).nullish(),
     byteSize: z.number().int().min(0).nullish(),
     durationSeconds: z.number().int().min(0).max(24 * 3600).nullish(),

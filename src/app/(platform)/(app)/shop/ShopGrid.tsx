@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store";
 const CATEGORIES = ["All", "Grants", "Tools", "Parts", "Swag"] as const;
 
 export function ShopGrid() {
-  const { coins } = useStore();
+  const { coins, printerFund } = useStore();
   const [cat, setCat] = useState<(typeof CATEGORIES)[number]>("All");
   const [owned, setOwned] = useState<string[]>([]);
 
@@ -44,7 +44,16 @@ export function ShopGrid() {
         {items.map((item) => {
           const has = owned.includes(item.id);
           const out = item.stock === "out";
-          const afford = coins >= item.price;
+          // Banked coins are legal tender for a printer and for nothing else, so
+          // what you can afford depends on what you are buying. Without this the
+          // shop would offer to sell someone a hoodie out of their printer fund.
+          //
+          // Keyed on the artwork because this grid is still on dummy items, and
+          // their "Grants" category covers the parts grants as well as the
+          // machines. Once it reads the real catalogue this becomes the
+          // ShopItemCategory.PRINTER the ledger already enforces.
+          const purse = item.art === "printer" ? printerFund : coins;
+          const afford = purse >= item.price;
           return (
             <Panel
               key={item.id}

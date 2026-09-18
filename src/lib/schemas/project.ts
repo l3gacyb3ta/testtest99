@@ -8,6 +8,11 @@ export const projectUpdateSchema = z
     githubRepo: httpsUrl.nullable().optional(),
     coverImageKey: z.string().max(500).nullable().optional(),
     artifactLinks: z.array(z.object({ label: boundedText(80, 1), url: httpsUrl })).max(10).optional(),
+    /**
+     * The tier the participant is ASKING for. Never the assigned one: that is
+     * a reviewer's decision at design approval, because it is parts money.
+     */
+    requestedTier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   })
   .strict()
 

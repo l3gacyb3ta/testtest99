@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -10,14 +11,45 @@ import {
   type ReactNode,
 } from "react";
 import { BUILD_HOURS, TIERS, WEEK_META, checkpointsFor } from "./curriculum";
+import { DESIGN_WEEKS } from "./config/program";
 import {
-  COINS_PER_HOUR,
-  DEFAULT_GOAL_ID,
   MIN_HOURS_PER_WEEK,
   printerById,
   weekAsk,
 } from "./config/printers";
+import type { StoreSnapshot } from "./queries/store";
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types";
+
+/**
+ * The trail's store, backed by the database.
+ *
+ * ## The split
+ *
+ * Facts come from the server, as a `StoreSnapshot` loaded once per navigation
+ * by the `(app)` layout: projects, checkpoint states, coins, streak, goal.
+ * Ceremony stays in `localStorage`: whether the cinematic has played, how far
+ * the tab tour got, whether the Doomscroller rail is open. Nobody else ever
+ * needs to read the ceremony, and a new laptop replaying the intro is a feature
+ * rather than a bug.
+ *
+ * ## Why the derivation did not change
+ *
+ * Everything below `weeks` — the shape of a week, which node is live, what is
+ * locked and why — is computed exactly as it was when the data was a toy, by
+ * `curriculum.checkpointsFor`. The server says which checkpoints are done and
+ * with what; it does not say what a week looks like. A second checkpoint engine
+ * on the server would have been a second answer to "have I finished this week",
+ * and the first time the two disagreed the trail would have lied to someone
+ * about work they had really done.
+ *
+ * ## Writes
+ *
+ * Every mutation posts to the API and then asks Next to re-render the layout,
+ * which reloads the snapshot. Each one also patches local state first, because
+ * a round trip to Postgres between clicking a node and seeing it fill is long
+ * enough to feel broken — and if the request fails the refresh puts the truth
+ * back.
+ */
 
 export type IntroPhase =
   | "cinematic" // the fly-through
@@ -40,38 +72,45 @@ export interface CheckpointState {
   log: SessionLog[];
 }
 
-interface SaveShape {
-  version: 3;
+/**
+ * What the browser owns: the first-run ceremony, and nothing else.
+ *
+ * Kept apart from the facts deliberately. If any of this lived on the server,
+ * signing in on a second device would drop you into the middle of a tab tour
+ * you had already finished, and a schema migration would be needed to change
+ * the order of the intro.
+ */
+interface Ceremony {
+  version: 4;
   phase: IntroPhase;
-  experience: Experience | null;
-  projects: Project[];
-  progress: Record<string, CheckpointState>;
-  coins: number;
-  streak: number;
   doomscrollerOpen: boolean;
-  /** The printer every banked coin is aimed at. See lib/printers. */
-  goalId: string;
 }
 
-const KEY = "halflife.save.v3";
+const KEY = "halflife.ceremony.v4";
 
 const EMPTY: CheckpointState = { done: false, minutes: 0, artefacts: 0, log: [] };
 
-function seededSave(): SaveShape {
-  return {
-    version: 3,
-    phase: "cinematic",
-    experience: null,
-    projects: [],
-    progress: {},
-    coins: 0,
-    streak: 50,
-    doomscrollerOpen: true,
-    goalId: DEFAULT_GOAL_ID,
-  };
+function seededCeremony(): Ceremony {
+  return { version: 4, phase: "cinematic", doomscrollerOpen: true };
 }
 
-interface Ctx extends SaveShape {
+interface Ctx {
+  phase: IntroPhase;
+  doomscrollerOpen: boolean;
+  experience: Experience | null;
+  projects: Project[];
+  progress: Record<string, CheckpointState>;
+  /** Ordinary coins — what the shop will take for anything but a printer. */
+  coins: number;
+  /** The printer fund: earned, ring-fenced, and spendable on a printer only. */
+  bankedCoins: number;
+  /** Both pots. A printer can be paid for out of either, so this is the goal. */
+  printerFund: number;
+  streak: number;
+  /** The printer every banked coin is aimed at. See config/printers. */
+  goalId: string;
+  /** Whether the first checkpoint has been completed. */
+  onboardingDone: boolean;
   hydrated: boolean;
   /** id of the checkpoint whose modal is open, if any */
   openCheckpoint: string | null;
@@ -109,8 +148,55 @@ interface Ctx extends SaveShape {
 
 const StoreContext = createContext<Ctx | null>(null);
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [save, setSave] = useState<SaveShape>(seededSave);
+/**
+ * Post JSON and reload the snapshot.
+ *
+ * Errors are swallowed on purpose. Every caller has already patched local state
+ * optimistically, and the `router.refresh()` in the `finally` reloads the
+ * server's version either way — so a failed write corrects itself on screen
+ * instead of leaving the trail showing something that did not happen.
+ */
+async function send(path: string, body: unknown, method = "POST"): Promise<boolean> {
+  try {
+    const res = await fetch(path, {
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** The hardware-experience answer, in the enum the API speaks. */
+const EXPERIENCE_ANSWER = {
+  first: "FIRST_TIME",
+  little: "A_LITTLE",
+  some: "A_GOOD_AMOUNT",
+  lots: "ITS_LIFE",
+} as const;
+
+export function StoreProvider({
+  snapshot,
+  children,
+}: {
+  snapshot: StoreSnapshot;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+
+  // Server state as the starting point, patched locally while a write is in
+  // flight. Re-seeded from props during render rather than in an effect: an
+  // effect would paint one frame of stale data every time a refresh lands.
+  const [facts, setFacts] = useState<StoreSnapshot>(snapshot);
+  const [seen, setSeen] = useState<StoreSnapshot>(snapshot);
+  if (seen !== snapshot) {
+    setSeen(snapshot);
+    setFacts(snapshot);
+  }
+
+  const [ceremony, setCeremony] = useState<Ceremony>(seededCeremony);
   const [hydrated, setHydrated] = useState(false);
   const [openCheckpoint, setOpenCheckpoint] = useState<string | null>(null);
   const [tourStep, setTourStep] = useState(0);
@@ -124,98 +210,195 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  // Reading the persisted save is exactly the external-system sync an effect is
-  // for: it cannot run during render without breaking SSR hydration, since the
-  // server has no localStorage and must render the seeded state.
+  // Reading the persisted ceremony is exactly the external-system sync an effect
+  // is for: it cannot run during render without breaking SSR hydration, since
+  // the server has no localStorage and must render the seeded state.
   useEffect(() => {
-    let next: SaveShape | null = null;
+    let next: Ceremony | null = null;
     try {
       const raw = window.localStorage.getItem(KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as SaveShape;
-        if (parsed && parsed.version === 3) next = { ...seededSave(), ...parsed };
+        const parsed = JSON.parse(raw) as Ceremony;
+        if (parsed && parsed.version === 4) next = { ...seededCeremony(), ...parsed };
       }
     } catch {
       /* storage unavailable — run from the seed */
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating from localStorage
-    if (next) setSave(next);
+    if (next) setCeremony(next);
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(KEY, JSON.stringify(save));
+      window.localStorage.setItem(KEY, JSON.stringify(ceremony));
     } catch {
       /* quota or private mode — the session still works, it just will not persist */
     }
-  }, [save, hydrated]);
+  }, [ceremony, hydrated]);
 
-  const setPhase = useCallback((phase: IntroPhase) => setSave((s) => ({ ...s, phase })), []);
+  // Someone who has already finished the first checkpoint must never be shown
+  // the intro again, whatever a stale or cleared localStorage says. The server
+  // is what knows, so it gets the final word.
+  const phase: IntroPhase =
+    facts.onboardingDone && ceremony.phase !== "tour" ? "done" : ceremony.phase;
+
+  const setPhase = useCallback(
+    (next: IntroPhase) => setCeremony((c) => ({ ...c, phase: next })),
+    [],
+  );
 
   const setExperience = useCallback(
-    (experience: Experience) => setSave((s) => ({ ...s, experience })),
+    (experience: Experience) => {
+      setFacts((f) => ({ ...f, experience }));
+      void send("/api/onboarding", {
+        step: "experience",
+        experience: EXPERIENCE_ANSWER[experience],
+      }).finally(() => router.refresh());
+    },
+    [router],
+  );
+
+  /**
+   * Naming a week's project.
+   *
+   * Not creating one: all five theme projects exist from the moment someone
+   * signs up, because the review queue, the grant pipeline and the hours
+   * rollup all key off them. So this fills in the row that is already there —
+   * which is also why a second project for the same week is refused rather
+   * than queued up behind the first where nothing would ever read it.
+   */
+  const addProject = useCallback(
+    (p: Omit<Project, "id">) => {
+      const id = facts.projectIdByWeek[p.weekId];
+      if (!id) return;
+      setFacts((f) =>
+        f.projects.some((existing) => existing.weekId === p.weekId)
+          ? f
+          : { ...f, projects: [...f.projects, { ...p, id }] },
+      );
+      void send(
+        `/api/projects/${id}`,
+        { title: p.name, description: p.description, requestedTier: p.tier },
+        "PATCH",
+      ).finally(() => router.refresh());
+    },
+    [facts.projectIdByWeek, router],
+  );
+
+  /**
+   * `requestedTier`, never `tier`.
+   *
+   * The assigned tier is a reviewer's decision at design approval, because it
+   * is parts money. This is the participant saying which one they are aiming
+   * at, and the API refuses to write anything else.
+   */
+  const setProjectTier = useCallback(
+    (id: string, tier: 1 | 2 | 3) => {
+      setFacts((f) => ({
+        ...f,
+        projects: f.projects.map((p) => (p.id === id ? { ...p, tier } : p)),
+      }));
+      void send(`/api/projects/${id}`, { requestedTier: tier }, "PATCH").finally(() =>
+        router.refresh(),
+      );
+    },
+    [router],
+  );
+
+  /** The project and phase a checkpoint id belongs to. */
+  const routeOf = useCallback(
+    (checkpointId: string): { projectId: string; phase: "DESIGN" | "BUILD" } | null => {
+      const weekId = Number(/^w(\d+)-/.exec(checkpointId)?.[1]);
+      if (!weekId) return null;
+      const designWeek = weekId > DESIGN_WEEKS ? weekId - DESIGN_WEEKS : weekId;
+      const projectId = facts.projectIdByWeek[designWeek];
+      if (!projectId) return null;
+      return { projectId, phase: weekId > DESIGN_WEEKS ? "BUILD" : "DESIGN" };
+    },
+    [facts.projectIdByWeek],
+  );
+
+  const patchCheckpoint = useCallback(
+    (id: string, patch: Partial<CheckpointState>) =>
+      setFacts((f) => {
+        const prev = { ...EMPTY, ...f.progress[id] };
+        return {
+          ...f,
+          progress: {
+            ...f.progress,
+            // The first completion is the one that dates it. Redoing a
+            // checkpoint should not move it up the project timeline past work
+            // that came after it.
+            [id]: { ...prev, ...patch, at: prev.at ?? Date.now(), done: true },
+          },
+        };
+      }),
     [],
   );
 
   /**
-   * One project per week, and the week is what makes it that project: every
-   * lookup in the app asks for a week's project by `.find`. A second one for
-   * the same week would not replace the first, it would queue up behind it
-   * where nothing would ever read it, so a repeat is refused here as well as
-   * being unreachable in the trail.
+   * Mark a checkpoint done.
+   *
+   * Which write that means depends on the node, because the trail's nodes are
+   * derived from real records rather than stored as a list of ticks: a reel is
+   * a post, a submission is a submission, and the first checkpoint is the
+   * onboarding flow's own business.
    */
-  const addProject = useCallback((p: Omit<Project, "id">) => {
-    setSave((s) => {
-      if (s.projects.some((existing) => existing.weekId === p.weekId)) return s;
-      return {
-        ...s,
-        projects: [...s.projects, { ...p, id: `p-${s.projects.length + 1}-${p.weekId}` }],
-      };
-    });
-  }, []);
+  const complete = useCallback(
+    (id: string, patch: Partial<CheckpointState> = {}) => {
+      patchCheckpoint(id, patch);
 
-  const setProjectTier = useCallback((id: string, tier: 1 | 2 | 3) => {
-    setSave((s) => ({
-      ...s,
-      projects: s.projects.map((p) => (p.id === id ? { ...p, tier } : p)),
-    }));
-  }, []);
+      const route = routeOf(id);
+      if (route && /-submit$/.test(id)) {
+        void send(`/api/projects/${route.projectId}/submit`, { phase: route.phase }).finally(
+          () => router.refresh(),
+        );
+        return;
+      }
 
-  const complete = useCallback((id: string, patch: Partial<CheckpointState> = {}) => {
-    setSave((s) => {
-      const prev = { ...EMPTY, ...s.progress[id] };
-      return {
-        ...s,
-        progress: {
-          ...s.progress,
-          // The first completion is the one that dates it. Redoing a checkpoint
-          // should not move it up the project timeline past work that came
-          // after it.
-          [id]: { ...prev, ...patch, at: prev.at ?? Date.now(), done: true },
-        },
-      };
-    });
-  }, []);
+      // Reels are posted by the reel modal, which has to upload the video
+      // before there is anything to post; the first checkpoint is written by
+      // the onboarding API as its steps are answered. Both arrive back through
+      // the snapshot, so there is nothing to send here.
+      router.refresh();
+    },
+    [patchCheckpoint, routeOf, router],
+  );
 
   const setDoomscroller = useCallback(
-    (doomscrollerOpen: boolean) => setSave((s) => ({ ...s, doomscrollerOpen })),
+    (doomscrollerOpen: boolean) => setCeremony((c) => ({ ...c, doomscrollerOpen })),
     [],
   );
 
-  const setGoal = useCallback((goalId: string) => setSave((s) => ({ ...s, goalId })), []);
+  const setGoal = useCallback(
+    (goalId: string) => {
+      setFacts((f) => ({ ...f, goalId }));
+      void send("/api/me", { printerGoalId: goalId }, "PATCH").finally(() => router.refresh());
+    },
+    [router],
+  );
 
+  /**
+   * Replay the first run.
+   *
+   * Ceremony only. It cannot un-log a session or un-post a reel, and pretending
+   * otherwise would be the more surprising behaviour: the trail comes back
+   * exactly as it was, with the intro playing over it.
+   */
   const reset = useCallback(() => {
     try {
       window.localStorage.removeItem(KEY);
     } catch {
       /* nothing to clear */
     }
-    setSave(seededSave());
+    setCeremony(seededCeremony());
     setTourStep(0);
     setOpenCheckpoint(null);
   }, []);
+
+  const save = facts;
 
   // Saves written before a field existed would otherwise hand back a record
   // with holes in it, so every read is filled out from EMPTY.
@@ -284,7 +467,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const allCheckpoints = useMemo(() => weeks.flatMap((w) => w.checkpoints), [weeks]);
 
-  /** One saved journal: the entry, the time claimed, and the evidence for it. */
+  /**
+   * One saved journal: the entry, the time claimed, and the evidence for it.
+   *
+   * Note what this does NOT do any more: credit coins. Hours are paid for when
+   * a reviewer approves the phase, not when they are claimed — otherwise the
+   * currency is self-issued, and a week could be spent in the shop before
+   * anyone had looked at it. The trail still moves immediately, because the
+   * node is the entry rather than the payment.
+   */
   const logSession = useCallback(
     (
       id: string,
@@ -292,38 +483,44 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       body: string,
       evidence: Pick<SessionLog, "clips"> = { clips: [] },
     ) => {
-    setSave((s) => {
-      const prev = { ...EMPTY, ...s.progress[id] };
-      const entry: SessionLog = {
-        id: `${id}-s${prev.log.length + 1}`,
-        minutes,
-        body,
-        at: Date.now(),
-        ...evidence,
-      };
+      setFacts((f) => {
+        const prev = { ...EMPTY, ...f.progress[id] };
+        const entry: SessionLog = {
+          id: `${id}-s${prev.log.length + 1}`,
+          minutes,
+          body,
+          at: Date.now(),
+          ...evidence,
+        };
+        return {
+          ...f,
+          progress: {
+            ...f.progress,
+            [id]: {
+              ...prev,
+              done: true,
+              at: prev.at ?? Date.now(),
+              minutes: prev.minutes + minutes,
+              log: [...prev.log, entry],
+            },
+          },
+        };
+      });
 
-      // Coins come from banked hours and nothing else. The hours below the
-      // week's funded line are what the grant already paid for, so they earn
-      // nothing — which is why this counts the week, not just this checkpoint.
-      const week = weeks.find((w) => w.checkpoints.some((c) => c.id === id));
-      const before = week
-        ? week.checkpoints.reduce((n, c) => n + (s.progress[c.id]?.minutes ?? 0), 0)
-        : prev.minutes;
-      const funded = (week?.bankedFrom ?? 0) * 60;
-      const banked =
-        Math.max(0, before + minutes - funded) - Math.max(0, before - funded);
-
-      return {
-        ...s,
-        coins: s.coins + Math.round((banked / 60) * COINS_PER_HOUR),
-        progress: {
-          ...s.progress,
-          [id]: { ...prev, minutes: prev.minutes + minutes, log: [...prev.log, entry] },
-        },
-      };
-    });
+      const route = routeOf(id);
+      if (!route) return;
+      void send(`/api/projects/${route.projectId}/sessions`, {
+        phase: route.phase,
+        // The journal's first line stands in for a title. The form asks for one
+        // piece of writing, and inventing a second field to satisfy the column
+        // would put a box on screen that exists only because of the schema.
+        title: body.trim().split("\n")[0]?.slice(0, 200) || "Work session",
+        content: body,
+        hoursClaimed: Math.round((minutes / 60) * 100) / 100,
+        timelapses: evidence.clips.map((objectKey) => ({ objectKey })),
+      }).finally(() => router.refresh());
     },
-    [weeks],
+    [routeOf, router],
   );
 
   const weekOf = useCallback(
@@ -337,17 +534,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [weeks],
   );
 
+  /**
+   * What a week is worth, for every gate that asks.
+   *
+   * Journalled entries plus whatever arrived another way — Hackatime link time,
+   * and any hours a reviewer adjusted. The two are added here rather than
+   * folded into the entries upstream because reels are placed where the JOURNAL
+   * crossed ten hours: fold Hackatime in and a progress reel lands on a node
+   * the participant never wrote.
+   */
   const weekHours = useCallback(
     (weekId: number) => {
       const week = weeks.find((w) => w.id === weekId);
       if (!week) return 0;
       const mins = week.checkpoints.reduce(
-        (n, c) => n + (save.progress[c.id]?.minutes ?? 0),
+        (n, c) => n + (facts.progress[c.id]?.minutes ?? 0),
         0,
       );
-      return mins / 60;
+      return mins / 60 + (facts.offBookHours[weekId] ?? 0);
     },
-    [weeks, save.progress],
+    [weeks, facts.progress, facts.offBookHours],
   );
 
   /**
@@ -454,7 +660,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [allCheckpoints, save.progress, isUnlocked]);
 
   const value: Ctx = {
-    ...save,
+    ...facts,
+    phase,
+    doomscrollerOpen: ceremony.doomscrollerOpen,
+    // A printer can be paid for out of either pot, so the goal tracker reads
+    // the total. Everything else in the shop takes `coins` alone.
+    printerFund: facts.coins + facts.bankedCoins,
     hydrated,
     openCheckpoint,
     tourStep,

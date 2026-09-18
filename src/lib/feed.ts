@@ -171,6 +171,8 @@ export interface CreatePostInput {
   objectKey: string
   thumbnailKey?: string | null
   themeProjectId?: string | null
+  /** The trail node this reel answers, e.g. "w3-reel-2". Null off the trail. */
+  checkpointKey?: string | null
   contentType?: string | null
   byteSize?: number | null
   durationSeconds?: number | null
@@ -221,6 +223,7 @@ export async function createPost(input: CreatePostInput): Promise<FeedItem> {
     data: {
       userId: input.userId,
       themeProjectId: input.themeProjectId ?? null,
+      checkpointKey: input.checkpointKey ?? null,
       kind: input.kind,
       caption,
       objectKey: input.objectKey,

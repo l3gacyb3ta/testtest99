@@ -205,6 +205,7 @@ enum AuditAction {
   USER_COMMENT_POST
   USER_DELETE_COMMENT
   USER_ADVANCE_ONBOARDING
+  USER_SET_PRINTER_GOAL
   USER_COMPLETE_ONBOARDING
 
   // Review
@@ -817,6 +818,19 @@ model Post {
   kind    PostKind @default(FREEFORM)
   caption String   @db.Text
 
+  /// The checkpoint on the trail this reel was posted for, e.g. "w3-reel-2".
+  ///
+  /// The trail asks for a reel at fixed points — the idea at the start of a
+  /// design week, then one every ten hours logged — and those nodes have to be
+  /// told apart. `kind` cannot do it: the 10h and the 20h reel are both
+  /// PROGRESS, so counting them would mark the 20h node done the moment the
+  /// 10h one was posted.
+  ///
+  /// Null for anything posted outside the trail, which is most of the feed.
+  /// Not unique: re-posting a reel for a node is allowed, and the newest one
+  /// wins when the trail reads it back.
+  checkpointKey String?
+
   /// R2 keys, namespaced by user id so abuse is traceable and orphans are
   /// findable.
   objectKey    String
@@ -866,6 +880,8 @@ model Post {
   @@index([status, publishedAt(sort: Desc)])
   /// "Has this project posted its idea reel yet" — the checkpoint lookup.
   @@index([themeProjectId, kind])
+  /// The trail's lookup: which nodes this participant has posted a reel for.
+  @@index([userId, checkpointKey])
   @@index([userId, createdAt])
   @@index([themeProjectId])
   @@map("post")

@@ -85,6 +85,10 @@ export const PATCH = withRoute(async (req: Request, { params }: Params) => {
         ? { description: sanitizeOptional(data.description) }
         : {}),
       ...(data.githubRepo !== undefined ? { githubRepo: data.githubRepo } : {}),
+      // `requestedTier`, never `tier`. The assigned tier is a reviewer's call at
+      // design approval because it decides parts money, and letting this route
+      // write it would let anyone grant themselves $120.
+      ...(data.requestedTier !== undefined ? { requestedTier: data.requestedTier } : {}),
       ...(data.coverImageKey !== undefined ? { coverImageKey: data.coverImageKey } : {}),
       ...(data.artifactLinks !== undefined
         ? {

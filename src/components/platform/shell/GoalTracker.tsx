@@ -14,7 +14,11 @@ import { useStore } from "@/lib/store";
  * slot has to be told which one it is.
  */
 export function GoalTracker({ className }: { className?: string }) {
-  const { coins, goalId } = useStore();
+  // The printer fund, not the spendable pot. A printer can be paid for out of
+  // either, and most of what is aimed at it is banked — a meter reading the
+  // spendable pot alone would sit near zero all season while the money for the
+  // machine piled up out of sight.
+  const { printerFund, goalId } = useStore();
   const [open, setOpen] = useState(false);
   const goal = printerById(goalId);
 
@@ -44,10 +48,10 @@ export function GoalTracker({ className }: { className?: string }) {
       </p>
       <Meter
         className="mt-3 @min-[16rem]:mt-4"
-        value={coins}
+        value={printerFund}
         max={goal.coins}
         tone="teal"
-        label={`${coins.toLocaleString()} / ${goal.coins.toLocaleString()}`}
+        label={`${printerFund.toLocaleString()} / ${goal.coins.toLocaleString()}`}
       />
 
       <GoalModal open={open} onClose={() => setOpen(false)} />

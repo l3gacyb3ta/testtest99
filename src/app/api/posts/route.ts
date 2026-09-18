@@ -23,6 +23,7 @@ export const POST = withRoute(async (req: Request) => {
     objectKey: parsed.data.objectKey,
     thumbnailKey: parsed.data.thumbnailKey ?? null,
     themeProjectId: parsed.data.themeProjectId ?? null,
+    checkpointKey: parsed.data.checkpointKey ?? null,
     contentType: parsed.data.contentType ?? null,
     byteSize: parsed.data.byteSize ?? null,
     durationSeconds: parsed.data.durationSeconds ?? null,
