@@ -2,6 +2,7 @@ import { ok, fail, withRoute } from "@/lib/api"
 import { completeHandoff } from "@/lib/handoff"
 import { AuditAction, logAudit } from "@/lib/audit"
 import { resolveHandoff } from "@/lib/handoff"
+import { isUploadConfigured } from "@/lib/uploads/r2"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -15,6 +16,13 @@ export const maxDuration = 60
  * from the handoff's OWNER rather than from anything in this request.
  */
 export const POST = withRoute(async (req: Request) => {
+  // Checked here as well as at mint time: a deployment can lose its bucket
+  // between the QR being generated and the phone finishing a recording, and
+  // the phone should be told that rather than handed a 500.
+  if (!isUploadConfigured()) {
+    return fail("NOT_CONFIGURED", "File uploads are not configured on this deployment")
+  }
+
   const form = await req.formData().catch(() => null)
   if (!form) return fail("INVALID_BODY", "Expected a multipart form")
 

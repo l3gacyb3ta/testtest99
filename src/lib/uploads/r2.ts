@@ -1,6 +1,7 @@
 import "server-only"
 import { randomUUID } from "node:crypto"
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3"
+import { HttpError } from "@/lib/errors"
 
 const DEFAULT_MAX_UPLOAD_BYTES = 104_857_600
 
@@ -100,13 +101,46 @@ export async function putObject(
   body: Buffer,
   contentType: string,
 ): Promise<void> {
-  await client().send(
-    new PutObjectCommand({
-      Bucket: process.env.S3_BUCKET_NAME,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    }),
+  try {
+    await client().send(
+      new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      }),
+    )
+  } catch (err) {
+    throw asConfigError(err)
+  }
+}
+
+/**
+ * Credentials the bucket rejected are an operator problem, not a user one.
+ *
+ * Without this they surface as an unhandled exception and the participant is
+ * told "Something went wrong" — which happened, with a Cloudflare API token
+ * pasted into `S3_ACCESS_KEY_ID`, and the phone only found out AFTER the video
+ * had been recorded and uploaded. A 503 saying uploads are misconfigured is
+ * both true and actionable; the detail stays in the server log, because the
+ * message the bucket returns names the credential.
+ *
+ * Only client-side faults are translated. A network blip or a bucket outage is
+ * genuinely transient and should keep its own error and its retry semantics.
+ */
+function asConfigError(err: unknown): unknown {
+  const fault = (err as { $fault?: string })?.$fault
+  const name = (err as { name?: string })?.name
+  const credentialFault =
+    fault === "client" &&
+    ["InvalidArgument", "InvalidAccessKeyId", "SignatureDoesNotMatch", "AccessDenied", "NoSuchBucket"].includes(
+      name ?? "",
+    )
+  if (!credentialFault) return err
+  console.error("[uploads] the bucket rejected our credentials:", err)
+  return new HttpError(
+    "NOT_CONFIGURED",
+    "File uploads are misconfigured on this deployment. Nothing you did caused this.",
   )
 }
 
