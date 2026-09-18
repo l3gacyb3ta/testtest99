@@ -1,4 +1,4 @@
-import { DESIGN_WEEKS } from "./printers";
+import { DESIGN_WEEKS } from "./config/printers";
 import type { Project, SessionLog, Week } from "./types";
 
 /**

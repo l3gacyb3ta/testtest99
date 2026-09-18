@@ -3,7 +3,8 @@ import { Permission } from "@/lib/permissions"
 import { getProgramSettings, currentWeekNumber } from "@/lib/program"
 import { findUnsyncedApprovals } from "@/lib/airtable/sync"
 import { THEMES, TOTAL_WEEKS } from "@/lib/config/program"
-import { TIERS, requiredHoursFor } from "@/lib/config/tiers"
+import { TIERS } from "@/lib/config/tiers"
+import { PRINTERS, submitFloorFor } from "@/lib/config/printers"
 import { EmptyState, PageHeader, Panel, Table } from "@/app/components/ui"
 import { ProgramSettingsForm } from "@/app/components/forms/ProgramSettingsForm"
 import { ActionButton } from "@/app/components/forms/ActionButton"
@@ -78,20 +79,39 @@ export default async function AdminProgramPage() {
         {/* Tier values are code, not data: editing them is a pull request, and
             every review freezes the numbers it used, so changing them never
             rewrites anyone's history. */}
-        <Table head={["Tier", "Grant", "Funded hours", "Banked hours", "Required"]}>
+        <Table head={["Tier", "Grant", "Funded hours", "Submit floor"]}>
           {TIERS.map((tier) => (
             <tr key={tier.id}>
               <td>{tier.name}</td>
               <td>${tier.grantUsd}</td>
               <td>{tier.fundingHours}h</td>
-              <td>{tier.bankHours}h</td>
-              <td>{requiredHoursFor(tier)}h</td>
+              <td>{submitFloorFor(tier.fundingHours)}h</td>
             </tr>
           ))}
         </Table>
         <p className="hl-hint">
-          Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts;
-          banked hours are forced savings that can only ever be spent on a printer.
+          Edit these in <code>lib/config/tiers.ts</code>. Funded hours buy parts.
+          The submit floor is the funded hours plus enough banking to keep the
+          cheapest machine reachable — hand a week in under it and the season
+          cannot end in a printer.
+        </p>
+
+        <h2>Printer goals</h2>
+        <Table head={["Printer", "Coins", "Banked hours / design week", "Tier 1 ask"]}>
+          {PRINTERS.map((printer) => (
+            <tr key={printer.id}>
+              <td>{printer.name}</td>
+              <td>{printer.coins}</td>
+              <td>{printer.bankedHours}h</td>
+              <td>{printer.hoursPerWeek}h</td>
+            </tr>
+          ))}
+        </Table>
+        <p className="hl-hint">
+          Banking is paced by the machine, not the tier: every tier banks the
+          same hours for the same printer. Edit these in{" "}
+          <code>lib/config/printers.ts</code>, which is the budget spreadsheet
+          transcribed — the season lands exactly on each price.
         </p>
       </Panel>
     </div>

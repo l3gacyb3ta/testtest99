@@ -12,16 +12,18 @@ export const CREDIT_NAME_SINGULAR = "coin"
 /**
  * One coin is one dollar, and an hour of work is worth five of them.
  *
- * This single rate drives both halves of the economy: design hours beyond the
- * tier's funding hours, and every build hour. Changing it moves the printer
- * out of reach of someone doing the minimum — see PRINTER_FLOOR_COINS.
+ * This single rate drives the whole economy: design hours beyond the tier's
+ * funding hours, and every build hour. It is the budget sheet's $5, and every
+ * printer price in ./printers.ts is paced against it, so changing it moves
+ * every machine in the catalogue out of reach at once.
  */
 export const COINS_PER_HOUR = 5
 
 /**
- * Ceiling on coins minted from one project's hours. `approvedHours` can come
- * from a reviewer typing into a box, and a fat-fingered 1000 should not mint
- * five thousand coins.
+ * Ceiling on SPENDABLE coins minted from one project's hours. `approvedHours`
+ * can come from a reviewer typing into a box, and a fat-fingered 1000 should
+ * not mint five thousand coins. The banked half needs no cap: it is bounded by
+ * the goal's weekly banking rate by construction.
  */
 export const MAX_COINS_PER_PROJECT = 250
 
@@ -29,28 +31,17 @@ export const MAX_COINS_PER_PROJECT = 250
 export const THEME_COMPLETION_BONUS = 25
 
 /**
- * Coins the entry-level printer costs, and the target the forced-savings rule
- * is sized against.
+ * A build week is the same five hours for everyone, split into two sittings.
  *
- * The arithmetic this has to keep working: five design weeks at Tier 1 bank
- * 5 × 2h × COINS_PER_HOUR = 50, and five build weeks at roughly 5h each add
- * 5 × 5h × COINS_PER_HOUR = 125. 50 + 125 = 175. If you change COINS_PER_HOUR,
- * a tier's bankHours, or this price, check that identity still holds or the
- * minimum path stops landing on a printer.
- *
- * The real prices live on the seeded ShopItem rows; this constant exists so
- * the dashboard can show progress toward "a printer" before the participant
- * has picked one.
+ * None of it is funded — the parts were bought with the design week's grant —
+ * so every one of these hours banks. This is the `5 hours * 5 build weeks * $5`
+ * term the budget sheet subtracts from a machine's price before it works out
+ * what the design weeks have to carry, which is why it lives here rather than
+ * in the curriculum: the printer catalogue depends on it.
  */
-export const PRINTER_FLOOR_COINS = 175
+export const BUILD_BLOCKS = [2, 3] as const
+export const BUILD_HOURS: number = BUILD_BLOCKS.reduce((n, h) => n + h, 0)
 
-/**
- * Themes shipped before printer UPGRADES unlock.
- *
- * The printer itself is bought with coins and is not gated on this — the
- * forced-savings rule is what guarantees someone can afford one. Upgrades bolt
- * onto a printer, so buying one before finishing is meaningless.
- */
 export const THEMES_REQUIRED_FOR_PRINTER = 5
 
 /** Fallbacks used only when seeding a fresh ProgramSettings row. */

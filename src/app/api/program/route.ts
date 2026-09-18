@@ -1,6 +1,7 @@
 import { ok, withRoute } from "@/lib/api"
 import { currentWeekNumber, getProgramSettings, weekDateRange } from "@/lib/program"
 import { THEMES, TOTAL_WEEKS, scheduleForWeek } from "@/lib/config/program"
+import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 
 export const dynamic = "force-dynamic"
@@ -31,7 +32,7 @@ export const GET = withRoute(async () => {
       name: t.name,
       grantUsd: t.grantUsd,
       fundingHours: t.fundingHours,
-      bankHours: t.bankHours,
+      submitFloorHours: submitFloorFor(t.fundingHours),
       blurb: t.blurb,
     })),
   })

@@ -35,7 +35,8 @@ export interface OnboardingView {
     name: string
     grantUsd: number
     fundingHours: number
-    bankHours: number
+    /** Funded hours plus the banking the cheapest machine needs. */
+    submitFloorHours: number
     blurb: string
   }[]
 }
@@ -243,8 +244,9 @@ export function OnboardingFlow({ initial }: Readonly<{ initial: OnboardingView }
                 >
                   <p style={{ marginTop: 0 }}>{tier.blurb}</p>
                   <p className="hl-hint">
-                    {tier.fundingHours}h of work funds the parts, plus {tier.bankHours}h that go
-                    to your printer fund.
+                    {tier.fundingHours}h of work funds the parts. Everything above
+                    that banks toward your printer, so a week is {tier.submitFloorHours}h
+                    before you can hand it in.
                   </p>
                   <Button
                     variant={chosen ? "primary" : "default"}

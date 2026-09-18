@@ -26,7 +26,7 @@ import {
   SUBMIT_FILES_DESIGN,
   TIERS,
 } from "@/lib/curriculum";
-import { MIN_HOURS_PER_WEEK, paceTarget, printerById, weekAsk } from "@/lib/printers";
+import { MIN_HOURS_PER_WEEK, paceTarget, printerById, weekAsk } from "@/lib/config/printers";
 import { useStore } from "@/lib/store";
 import type { Checkpoint } from "@/lib/types";
 import { Modal, ModalTitle } from "./Modal";
@@ -590,7 +590,7 @@ export function ProjectModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     <span className="text-[0.98rem] font-extrabold text-navy">
                       Tier {t.id}
                     </span>
-                    <span className="hand text-[0.86rem] text-teal-deep">${t.funding}+ funding</span>
+                    <span className="hand text-[0.86rem] text-teal-deep">${t.grantUsd}+ funding</span>
                     <span className="hand text-[0.8rem] text-navy-soft">· {t.hours}+ </span>
                   </span>
                 </OptionRow>
@@ -849,7 +849,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
             <div className="grid gap-2.5 sm:grid-cols-3">
               {TIERS.map((t) => {
                 const on = tier === t.id;
-                const over = bomTotal > t.funding;
+                const over = bomTotal > t.grantUsd;
                 const short = tierShort(t.fundingHours);
                 const behind = Math.max(0, tierTarget(t.fundingHours) - hours);
                 return (
@@ -890,7 +890,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                         short > 0 ? "text-navy-soft" : "text-teal-deep",
                       )}
                     >
-                      ${t.funding} funded · {fmtH(t.fundingHours)}
+                      ${t.grantUsd} funded · {fmtH(t.fundingHours)}
                     </span>
 
                     {/* The hours are the gate, so they lead. The cart only
@@ -910,7 +910,7 @@ export function SubmitModal({ checkpoint }: { checkpoint: Checkpoint }) {
                     </span>
                     {short === 0 && over && (
                       <span className="hand mt-1 block text-[0.74rem] leading-snug text-coral-deep">
-                        Cart over by ${(bomTotal - t.funding).toFixed(2)}
+                        Cart over by ${(bomTotal - t.grantUsd).toFixed(2)}
                       </span>
                     )}
                   </button>

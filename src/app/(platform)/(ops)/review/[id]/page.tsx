@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { requirePermissionPage } from "@/lib/page-guards"
 import { Permission } from "@/lib/permissions"
 import { getSubmissionDetail } from "@/lib/queries/review"
+import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 import {
   Badge,
@@ -214,7 +215,7 @@ export default async function ReviewDetailPage({ params }: Props) {
             name: t.name,
             grantUsd: t.grantUsd,
             fundingHours: t.fundingHours,
-            bankHours: t.bankHours,
+            submitFloorHours: submitFloorFor(t.fundingHours),
           }))}
           currentTier={project.tier}
           computedHours={breakdown.computedTotal}

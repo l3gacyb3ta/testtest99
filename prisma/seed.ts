@@ -2,6 +2,7 @@ import "dotenv/config"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "../src/app/generated/prisma/client"
 import { ShopItemCategory } from "../src/app/generated/prisma/enums"
+import { PRINTERS } from "../src/lib/config/printers"
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
@@ -28,38 +29,24 @@ async function main() {
 
   const items = [
     // ── Printers ─────────────────────────────────────────────────────────────
-    // The only category banked coins can be spent on, and the reason the
-    // forced-savings rule exists. `requiresPrinterQualified` is false: you buy
-    // a printer with coins you earned, and the minimum path is sized to reach
-    // the cheapest one (see PRINTER_FLOOR_COINS in lib/config/program.ts).
-    {
-      id: "printer-entry",
-      name: "Entry-level 3D printer",
-      description:
-        "Your own printer, assembled and ready. The one the program is sized so everyone can reach.",
-      priceCredits: 175,
+    // Generated from the goal catalogue rather than typed out here, because the
+    // catalogue IS the budget spreadsheet: a machine's price, the hours a design
+    // week has to bank to reach it, and what the shop charges for it all have to
+    // be the same number. Typing them separately is how someone ends up saving
+    // for 219 coins against a shelf tag that says 250.
+    //
+    // `requiresPrinterQualified` is false: you buy a printer with coins you
+    // earned, and every week's submit floor is sized so the cheapest one stays
+    // reachable. Upgrades are the things gated on finishing.
+    ...PRINTERS.map((printer, index) => ({
+      id: `printer-${printer.id}`,
+      name: printer.name,
+      description: printer.blurb,
+      priceCredits: printer.coins,
       category: ShopItemCategory.PRINTER,
       requiresPrinterQualified: false,
-      sortOrder: 1,
-    },
-    {
-      id: "printer-a1-mini",
-      name: "Bambu A1 Mini",
-      description: "Faster, quieter and better supported than the entry-level machine.",
-      priceCredits: 250,
-      category: ShopItemCategory.PRINTER,
-      requiresPrinterQualified: false,
-      sortOrder: 2,
-    },
-    {
-      id: "printer-a1",
-      name: "Bambu A1",
-      description: "The full-size A1. A bigger build volume and the same toolhead.",
-      priceCredits: 375,
-      category: ShopItemCategory.PRINTER,
-      requiresPrinterQualified: false,
-      sortOrder: 3,
-    },
+      sortOrder: index + 1,
+    })),
 
     // ── Upgrades and consumables ─────────────────────────────────────────────
     {

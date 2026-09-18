@@ -1,10 +1,9 @@
 import "server-only"
 import prisma from "@/lib/prisma"
-import { ShopItemCategory } from "@/app/generated/prisma/enums"
 import { getBalances } from "@/lib/currency"
 import { effectiveDateFor, getProgramSettings } from "@/lib/program"
 import { streakAsOf } from "@/lib/streak"
-import { PRINTER_FLOOR_COINS } from "@/lib/config/program"
+import { DEFAULT_GOAL_ID, printerById } from "@/lib/config/printers"
 
 /**
  * Everything the app shell renders on every page: the two counters, the
@@ -30,7 +29,7 @@ export interface ShellData {
 }
 
 export async function getShell(userId: string): Promise<ShellData> {
-  const [user, balances, settings, printers] = await Promise.all([
+  const [user, balances, settings] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: {
@@ -38,26 +37,23 @@ export async function getShell(userId: string): Promise<ShellData> {
         image: true,
         currentStreak: true,
         lastStreakDate: true,
+        printerGoalId: true,
       },
     }),
     prisma.$transaction((tx) => getBalances(tx, userId)),
     getProgramSettings(),
-    prisma.shopItem.findMany({
-      where: { active: true, category: ShopItemCategory.PRINTER },
-      orderBy: { priceCredits: "asc" },
-      select: { name: true, priceCredits: true },
-    }),
   ])
 
   // A printer can be paid for out of both pots, so progress is the total.
   const have = balances.total
 
-  // Show the cheapest printer they cannot yet afford — that is the one the
-  // number is actually about. Once they can afford everything, show the best
-  // one, so the card reads as an achievement rather than an empty target.
-  const next = printers.find((p) => p.priceCredits > have) ?? printers[printers.length - 1]
-  const price = next?.priceCredits ?? PRINTER_FLOOR_COINS
-  const label = next?.name ?? "a 3D printer"
+  // The machine they picked, not the one they can nearly afford. This used to
+  // guess at the cheapest printer still out of reach, which meant the card
+  // silently changed what it was promising every time someone earned enough to
+  // cross a price — and it is the goal, not the guess, that paces their week.
+  const goal = printerById(user.printerGoalId ?? DEFAULT_GOAL_ID)
+  const price = goal.coins
+  const label = goal.name
 
   return {
     user: { name: user.name, image: user.image },

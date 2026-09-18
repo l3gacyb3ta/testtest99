@@ -18,7 +18,8 @@
  * Those banked hours are the same whatever tier you are on — the tier decides
  * how many funded hours sit underneath them, not how much you bank.
  */
-import { BUILD_HOURS, TIERS, WEEK_META } from "./curriculum";
+import { BUILD_HOURS, COINS_PER_HOUR, DESIGN_WEEKS, TOTAL_WEEKS } from "./program";
+import { ENTRY_TIER } from "./tiers";
 
 export type PrinterKind = "bedslinger" | "corexy" | "resin" | "cnc";
 
@@ -158,13 +159,17 @@ const SHEET: SheetRow[] = [
   },
 ];
 
-/** The coins one banked hour is worth. The sheet's $5, at a coin to the dollar. */
-export const COINS_PER_HOUR = 5;
+/**
+ * The coins one banked hour is worth — the sheet's $5, at a coin to the dollar.
+ * Re-exported rather than restated so the catalogue and the ledger cannot
+ * disagree about what an hour is worth.
+ */
+export { COINS_PER_HOUR };
 
-/** The season, counted off the curriculum rather than restated here. */
-export const BUILD_WEEKS = WEEK_META.filter((w) => w.phase === "build").length;
-export const DESIGN_WEEKS = WEEK_META.length - BUILD_WEEKS;
-export const SEASON_WEEKS = WEEK_META.length;
+/** The season, counted off the program schedule rather than restated here. */
+export const SEASON_WEEKS = TOTAL_WEEKS;
+export const BUILD_WEEKS = TOTAL_WEEKS - DESIGN_WEEKS;
+export { DESIGN_WEEKS };
 
 /**
  * What the build half banks for everyone, whichever machine is on the wall:
@@ -216,7 +221,7 @@ export const MIN_HOURS_PER_WEEK = Math.min(...PRINTERS.map((p) => p.hoursPerWeek
  * on the trail and another in the submit sheet.
  */
 export function weekAsk(pace: number, fundingHours: number): number {
-  return pace + (fundingHours - TIERS[0].fundingHours);
+  return pace + (fundingHours - ENTRY_TIER.fundingHours);
 }
 
 /**
@@ -247,4 +252,22 @@ export function printerById(id: string): PrinterGoal {
 export function weeksToGo(goal: PrinterGoal, coins: number): number {
   const fromDesign = Math.max(0, goal.coins - coins - BUILD_WEEK_COINS);
   return Math.min(DESIGN_WEEKS, Math.ceil(fromDesign / goal.coinsPerWeek));
+}
+
+/**
+ * The least a design week at this tier can be worth and still leave a printer
+ * reachable — the ask at the cheapest machine's pace.
+ *
+ * This is the gate on submitting a design week. Handing one in below it is not
+ * "a slightly thinner week", it is a week that has put the season out of reach
+ * of every machine in the catalogue, which is the one outcome the program does
+ * not offer.
+ */
+export function submitFloorFor(fundingHours: number): number {
+  return weekAsk(MIN_HOURS_PER_WEEK, fundingHours);
+}
+
+/** What a design week at this tier asks of someone saving for this machine. */
+export function weekAskFor(goal: PrinterGoal, fundingHours: number): number {
+  return weekAsk(goal.hoursPerWeek, fundingHours);
 }

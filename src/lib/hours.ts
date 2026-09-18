@@ -3,7 +3,8 @@ import prisma from "@/lib/prisma"
 import { HoursSource, Phase } from "@/app/generated/prisma/enums"
 import { fetchProjectSeconds } from "@/lib/hackatime"
 import { getTierOrThrow, type TierId } from "@/lib/config/tiers"
-import { COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
+import { BUILD_HOURS, COINS_PER_HOUR, MAX_COINS_PER_PROJECT } from "@/lib/config/program"
+import type { PrinterGoal } from "@/lib/config/printers"
 
 export interface HoursBreakdown {
   /** Sum over MANUAL sessions of (hoursApproved ?? hoursClaimed). */
@@ -200,50 +201,84 @@ export type CoinSplit = {
 /**
  * Coins minted by an approved DESIGN phase.
  *
- * The tier's hours come in two layers and the order matters:
+ * The hours come in three layers and the order matters:
  *
- *   [0, fundingHours)                    → dollars, not coins. This is the
- *                                          parts grant; it buys the BOM.
- *   [fundingHours, +bankHours)           → BANKED coins. The forced savings.
- *   [fundingHours + bankHours, ∞)        → spendable coins.
+ *   [0, fundingHours)                     → dollars, not coins. The parts
+ *                                           grant; it buys the BOM.
+ *   [fundingHours, +goal.bankedHours)     → BANKED coins. The printer fund.
+ *   [fundingHours + goal.bankedHours, ∞)  → spendable coins.
  *
- * So a Tier 1 design approved at 8h mints 0 spendable and 2h × 5 = 10 banked,
- * and the same design approved at 11h mints 10 banked and 15 spendable. Under-
- * shooting is handled by the same arithmetic rather than a special case: an
- * approval at 7h banks one hour's worth, because `min` clamps it.
+ * The middle band is sized by the PRINTER, not by the tier. That is the whole
+ * shape of the economy: a tier decides how many hours the project itself eats,
+ * and the machine on the wall decides how many have to bank on top. So a Tier 1
+ * and a Tier 3 saving for the same printer bank the same amount each week —
+ * Tier 3 just works more hours underneath it.
  *
- * Spendable coins are capped: `approvedHours` can come from a reviewer typing
- * into a box, and a fat-fingered 1000 should not mint five thousand coins. The
- * banked half needs no cap — it is bounded by `bankHours` by construction.
+ * Undershooting needs no special case: an approval below the funded line banks
+ * nothing and the participant falls behind their own pace, which is exactly
+ * what the goal tracker is for.
+ *
+ * Spendable coins are capped, because `approvedHours` can come from a reviewer
+ * typing into a box and a fat-fingered 1000 should not mint five thousand
+ * coins. Banked coins are not: they are bounded by `goal.bankedHours` already,
+ * and they cannot buy anything but a printer.
  */
-export function designCoinsFor(tierId: TierId | number, approvedHours: number): CoinSplit {
+export function designCoinsFor(
+  tierId: TierId | number,
+  goal: PrinterGoal,
+  approvedHours: number,
+): CoinSplit {
   const tier = getTierOrThrow(tierId)
   const beyondFunding = Math.max(0, approvedHours - tier.fundingHours)
-  const bankedHours = Math.min(beyondFunding, tier.bankHours)
+  const bankedHours = Math.min(beyondFunding, goal.bankedHours)
   const spendableHours = beyondFunding - bankedHours
-
-  const banked = Math.floor(bankedHours * COINS_PER_HOUR)
-  const spendable = Math.min(
-    Math.floor(spendableHours * COINS_PER_HOUR),
-    MAX_COINS_PER_PROJECT,
-  )
-  return { banked, spendable, total: banked + spendable }
+  return split(bankCoins(bankedHours), spendCoins(spendableHours))
 }
 
 /**
  * Coins minted by an approved BUILD phase.
  *
- * Every hour counts, with no funding floor subtracted: the build has no BOM to
- * pay for — the parts were bought with the design's grant — so the hours are
- * the participant's to keep. This is the half of the economy that gets someone
- * from the 50 banked coins five Tier 1 designs produce up to a printer.
+ * A build week has no BOM to pay for — the parts were bought with the design
+ * week's grant — so there is no funded block to clear and the hours bank from
+ * the first one. The first `BUILD_HOURS` of them are the flat contribution the
+ * budget sheet subtracts from every machine's price before pacing the rest
+ * against the design weeks, so that much banks for everyone whatever they are
+ * saving for; anything beyond it is the participant's to spend.
+ *
+ * This half of the economy is what carries someone from what five design weeks
+ * bank to an actual printer: five build weeks at five hours is 125 coins, which
+ * is more than half the cheapest machine.
  */
 export function buildCoinsFor(approvedHours: number): CoinSplit {
-  const spendable = Math.min(
-    Math.floor(Math.max(0, approvedHours) * COINS_PER_HOUR),
-    MAX_COINS_PER_PROJECT,
-  )
-  return { banked: 0, spendable, total: spendable }
+  const hours = Math.max(0, approvedHours)
+  const bankedHours = Math.min(hours, BUILD_HOURS)
+  const spendableHours = hours - bankedHours
+  return split(bankCoins(bankedHours), spendCoins(spendableHours))
+}
+
+function split(banked: number, spendable: number): CoinSplit {
+  return { banked, spendable, total: banked + spendable }
+}
+
+/** Spendable hours to coins, floored and capped. */
+function spendCoins(hours: number): number {
+  return Math.min(Math.floor(hours * COINS_PER_HOUR), MAX_COINS_PER_PROJECT)
+}
+
+/**
+ * Banked hours to banked coins, rounded UP.
+ *
+ * Up rather than down because the budget sheet paces in fractional hours — the
+ * Ender asks 3.76 a week, the A1 Mini 4.64 — and coins are whole. Flooring
+ * 4.64 * 5 = 23.2 to 23 loses a coin a week, which over five design weeks
+ * leaves an A1 Mini saver one coin short of the machine they were told they
+ * were on track for. Rounding up costs a handful of coins that can only ever
+ * be spent on a printer, and keeps the promise the goal tracker makes.
+ *
+ * Checked against the whole catalogue by `verify:ledger`.
+ */
+function bankCoins(hours: number): number {
+  return Math.ceil(hours * COINS_PER_HOUR)
 }
 
 function round2(n: number): number {

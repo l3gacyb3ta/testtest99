@@ -11,7 +11,7 @@ import {
   printerById,
   weeksToGo,
   type PrinterGoal,
-} from "@/lib/printers";
+} from "@/lib/config/printers";
 import { useStore } from "@/lib/store";
 import { Modal, ModalTitle } from "./Modal";
 

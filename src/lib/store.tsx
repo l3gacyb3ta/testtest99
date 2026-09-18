@@ -16,7 +16,7 @@ import {
   MIN_HOURS_PER_WEEK,
   printerById,
   weekAsk,
-} from "./printers";
+} from "./config/printers";
 import type { Checkpoint, Experience, Project, SessionLog, Week } from "./types";
 
 export type IntroPhase =

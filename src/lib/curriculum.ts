@@ -1,4 +1,14 @@
-import type { Checkpoint, Phase, Tier, WeekMeta } from "./types";
+import type { Checkpoint, Phase, WeekMeta } from "./types";
+
+/**
+ * Tiers and the build-week ask are program configuration, not curriculum, and
+ * the ledger reads them too. They are re-exported here because every component
+ * on the trail already reaches for them through this module, and one of the
+ * two copies that used to exist would eventually have drifted from the other.
+ */
+export { BUILD_BLOCKS, BUILD_HOURS } from "./config/program";
+export { TIERS } from "./config/tiers";
+export type { Tier } from "./config/tiers";
 
 /**
  * Ten weeks: five design weeks, then the same five themes built for real.
@@ -109,10 +119,6 @@ const THEMES: ThemeSeed[] = [
 ];
 
 const cp = (c: Checkpoint): Checkpoint => c;
-
-/** A build week is the same five hours for everyone: two, then three. */
-export const BUILD_BLOCKS = [2, 3];
-export const BUILD_HOURS = BUILD_BLOCKS.reduce((n, h) => n + h, 0);
 
 /** Every week's fixed half — everything that does not depend on the tier. */
 export const WEEK_META: WeekMeta[] = [
@@ -315,47 +321,6 @@ export function checkpointsFor(
 
   return out;
 }
-
-/**
- * A tier decides how much of a week is funded and how big a project is
- * expected to be. It decides nothing about the machine at the end of the
- * season — that is bought with banked coins, and banking is what you do with
- * the hours above the funded block, at the same five coins an hour on every
- * tier. Bank the four hours a week the submit floor asks for and you finish
- * with an Ender 3 V3 SE, whether the projects were tier 1 or tier 3; bank
- * 12.56 a week and you finish with a Bambu P1S, on tier 1 as readily as on
- * tier 3. Every goal is reachable from every tier — the tier only moves how
- * many funded hours sit underneath the banking.
- */
-export const TIERS: [Tier, Tier, Tier] = [
-  {
-    id: 1,
-    funding: 30,
-    hours: "6–8 hours of work",
-    toBank: "6 hours fund the project, the rest banks at 5 coins an hour",
-    fundingHours: 6,
-    detail:
-      "The right pick if this is your first board, model or circuit. Parts are cheap, the scope is one evening of soldering, and nothing here needs a tool you do not already have.",
-  },
-  {
-    id: 2,
-    funding: 65,
-    hours: "13–15 hours of work",
-    toBank: "13 hours fund the project, the rest banks at 5 coins an hour",
-    fundingHours: 13,
-    detail:
-      "For a project with a real enclosure, a handful of ICs, or a part you have to wait on. Most people land here by week three.",
-  },
-  {
-    id: 3,
-    funding: 120,
-    hours: "24+ hours of work",
-    toBank: "24 hours fund the project, the rest banks at 5 coins an hour",
-    fundingHours: 24,
-    detail:
-      "Four-layer boards, motorised anything, or a build that needs two revisions to work. Pick this only if you have shipped something before.",
-  },
-];
 
 export const STARTER_IDEAS = [
   {

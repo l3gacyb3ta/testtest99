@@ -7,6 +7,7 @@ import {
   isBeginner,
   weekIntroFor,
 } from "@/lib/config/onboarding"
+import { submitFloorFor } from "@/lib/config/printers"
 import { TIERS } from "@/lib/config/tiers"
 import { PageHeader } from "@/app/components/ui"
 import { OnboardingFlow, type OnboardingView } from "@/app/components/forms/OnboardingFlow"
@@ -62,7 +63,7 @@ export default async function OnboardingPage() {
       name: t.name,
       grantUsd: t.grantUsd,
       fundingHours: t.fundingHours,
-      bankHours: t.bankHours,
+      submitFloorHours: submitFloorFor(t.fundingHours),
       blurb: t.blurb,
     })),
   }

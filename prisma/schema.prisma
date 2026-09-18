@@ -101,9 +101,10 @@ enum CoinBucket {
 /// ledger has to remember to include the twin, and lib/currency.ts carries a
 /// long comment about the one that forgot and overcounted forever.
 enum LedgerKind {
-  DESIGN_BANKED_HOURS    // a tier's bankHours, forced into the printer fund
-  DESIGN_EXCESS_HOURS    // design hours beyond funding + bank, freely spendable
-  BUILD_HOURS            // every approved build hour; no BOM to fund
+  DESIGN_BANKED_HOURS    // the goal's weekly banking, forced into the printer fund
+  DESIGN_EXCESS_HOURS    // design hours beyond funding + banking, freely spendable
+  BUILD_BANKED_HOURS     // a build week's flat contribution to the printer fund
+  BUILD_HOURS            // build hours beyond that, freely spendable
   BOM_SAVINGS            // dollars left unspent on the parts order
   THEME_COMPLETION_BONUS // flat award for shipping a theme (design + build approved)
   PARTS_TOP_UP           // negative; extra parts money charged against coins
@@ -290,6 +291,20 @@ model User {
   joinedProgramAt DateTime?
 
   hardwareExperience HardwareExperience?
+
+  /// The printer this participant is saving for, as an id from the catalogue in
+  /// lib/config/printers.ts.
+  ///
+  /// It is a plain string rather than a relation or an enum because the
+  /// catalogue is priced from a budget spreadsheet and is expected to be
+  /// re-priced between seasons; a machine leaving the catalogue must not fail a
+  /// migration or orphan a row. Null means they have not chosen, and reads fall
+  /// back to the default goal.
+  ///
+  /// This is economically load-bearing: it sets how many hours a design week
+  /// has to bank, and so what every design approval mints into the printer
+  /// fund. See lib/hours.ts.
+  printerGoalId String?
 
   /// How far through the first checkpoint this participant has got.
   ///
@@ -756,10 +771,17 @@ model SubmissionReview {
   frozenGrantUsd         Int?
   frozenBankedCoins      Int?
   frozenSpendableCoins   Int?
-  /// The tier's hour split as it stood at review time. `frozenTier` alone is
-  /// not enough to reconstruct a payout once the tier table has been edited.
+  /// The hour split as it stood at review time. `frozenTier` alone is not
+  /// enough to reconstruct a payout once the tier table has been edited.
+  ///
+  /// `frozenFundingHours` comes from the tier. `frozenBankHours` comes from the
+  /// PRINTER the participant was saving for, not from the tier — banking is
+  /// paced by the machine — so `frozenPrinterGoalId` records which one, and the
+  /// two together are what make a payout reconstructable after either table has
+  /// moved under it.
   frozenFundingHours     Float?
   frozenBankHours        Float?
+  frozenPrinterGoalId    String?
 
   createdAt DateTime @default(now())
 

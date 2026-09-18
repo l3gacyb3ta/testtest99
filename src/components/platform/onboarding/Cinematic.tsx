@@ -13,7 +13,7 @@ import {
 } from "@/components/platform/icons";
 import { Button, cx } from "@/components/platform/ui";
 import { BUILD_HOURS, WEEK_META, checkpointsFor } from "@/lib/curriculum";
-import { MIN_HOURS_PER_WEEK } from "@/lib/printers";
+import { MIN_HOURS_PER_WEEK } from "@/lib/config/printers";
 
 /**
  * The fly-through plays before anyone has picked a tier, so it previews the
@@ -28,7 +28,7 @@ const WEEKS = WEEK_META.map((meta) => ({
     meta.phase === "build" ? BUILD_HOURS : MIN_HOURS_PER_WEEK,
   ),
 }));
-import { printerById, type PrinterGoal } from "@/lib/printers";
+import { printerById, type PrinterGoal } from "@/lib/config/printers";
 import { useStore } from "@/lib/store";
 
 /**

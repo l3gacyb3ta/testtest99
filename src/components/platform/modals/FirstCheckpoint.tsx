@@ -322,7 +322,7 @@ export function FirstCheckpoint({ checkpointId }: { checkpointId: string }) {
                 >
                   <span className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
                     <span className="text-[1rem] font-extrabold text-navy">Tier {t.id}</span>
-                    <span className="hand text-[0.88rem] text-teal-deep">${t.funding} funded</span>
+                    <span className="hand text-[0.88rem] text-teal-deep">${t.grantUsd} funded</span>
                     <span className="hand text-[0.82rem] text-navy-soft">· {t.hours}</span>
                     {isSuggested && <Chip tone="gold">Suggested for you</Chip>}
                     {locked && <Chip tone="muted">Locked</Chip>}
