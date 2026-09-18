@@ -1,8 +1,8 @@
 ---
 name: Half Life
-description: A ten-week hardware programme from Hack Club — a marketing world and a platform world, deliberately unalike.
+description: A ten-week hardware programme from Hack Club — a marketing world, a platform world, and the staff console, deliberately unalike.
 colors:
-  # ── Landing page (src/app/(site)) ──────────────────────────────────────────
+  # ── Landing page (src/app/(site)/globals.css) ──────────────────────────────
   hl-ink: "#31222c"
   hl-paper: "#ededed"
   hl-cyan: "#8ed3dc"
@@ -17,24 +17,52 @@ colors:
   hl-indigo: "#34316c"
   hl-yellow: "#A2C4DA"
   hl-yellow-pale: "#EBF7FF"
-  # ── Platform (src/app/(platform)) ──────────────────────────────────────────
-  surface: "#fcf7f7"
-  surface-raised: "#ffffff"
-  surface-sunken: "#f2ecec"
-  border: "#cacedd"
-  ink: "#100f30"
-  ink-strong: "#1c1a59"
-  ink-muted: "#696e82"
-  accent: "#52b4d5"
-  accent-bright: "#61cdf1"
-  accent-media: "#51bce1"
+  # ── Platform (src/app/(platform)/globals.css) ──────────────────────────────
+  cream: "#fcf7f7"
+  paper: "#ffffff"
+  navy: "#1c1a59"
+  navy-soft: "#4a4785"
+  ink: "#262a2d"
+  sky: "#52b4d5"
+  sky-deep: "#2e8cae"
+  sky-pale: "#cfeaf4"
   teal: "#06ae97"
-  teal-soft: "#75d0c9"
+  teal-deep: "#048372"
+  teal-mid: "#75d0c9"
   mint: "#aef2dd"
   magenta: "#b21b9b"
-  node-upcoming: "#fbe3d0"
-  coin: "#fba62f"
-  flame: "#f35757"
+  coral: "#f35757"
+  coral-deep: "#c73b3b"
+  orange: "#fba62f"
+  orange-deep: "#d07f0e"
+  violet: "#a47cc0"
+  violet-deep: "#7b519b"
+  violet-pale: "#ece2f2"
+  sand: "#f4dfc6"
+  sand-deep: "#cdae8a"
+  gold: "#f6c63f"
+  gold-deep: "#c9930f"
+  gold-pale: "#fdf1cc"
+  line: "#c8c3d6"
+  line-strong: "#9a94b4"
+  # ── Staff console (src/app/(platform)/ops.css) ─────────────────────────────
+  # The platform's earlier system, kept whole for admin, review and login
+  # rather than half-translated. It redefines four names it shares with the
+  # platform, which is why it is scoped to the (ops) route group.
+  ops-surface: "#fcf7f7"
+  ops-surface-raised: "#ffffff"
+  ops-surface-sunken: "#f2ecec"
+  ops-border: "#cacedd"
+  ops-ink: "#100f30"
+  ops-ink-strong: "#1c1a59"
+  ops-ink-muted: "#696e82"
+  ops-accent: "#52b4d5"
+  ops-accent-bright: "#61cdf1"
+  ops-teal: "#06ae97"
+  ops-mint: "#aef2dd"
+  ops-magenta: "#b21b9b"
+  ops-coin: "#fba62f"
+  ops-flame: "#f35757"
 typography:
   site-display:
     fontFamily: "Urbanist, ui-sans-serif, system-ui, sans-serif"
@@ -65,20 +93,29 @@ typography:
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
+  # The hand-lettered voice. The comp names COMICO, which is not on Google
+  # Fonts and ships no licensed file here; Shantell Sans is the substitute in
+  # use, and `--font-hand` is the one place to change that.
+  app-hand:
+    fontFamily: "Shantell Sans, Plus Jakarta Sans, ui-sans-serif, sans-serif"
+    fontWeight: 500
+    letterSpacing: "0.04em"
   app-label:
-    fontFamily: "Comico, Comic Sans MS, Chalkboard SE, sans-serif"
-    fontSize: "0.75rem"
-    letterSpacing: "0.03em"
-  app-counter:
-    fontFamily: "Comico, Comic Sans MS, Chalkboard SE, sans-serif"
-    fontSize: "1.875rem"
-    lineHeight: 1
+    fontFamily: "Shantell Sans, Plus Jakarta Sans, ui-sans-serif, sans-serif"
+    fontSize: "0.78rem"
+    fontWeight: 700
+    letterSpacing: "0.11em"
+    lineHeight: 1.25
+    textTransform: "uppercase"
 rounded:
   control: "4px"
   button: "8px"
   panel: "10px"
   rail: "14px"
   square: "0px"
+  # The platform's own radius, on every sketched border unless overridden.
+  hl: "16px"
+  hl-button: "12px"
 spacing:
   tight: "0.75rem"
   base: "1rem"
@@ -86,59 +123,91 @@ spacing:
   card: "1.4rem 1.5rem"
   gutter: "2.4rem"
 components:
-  button-primary:
-    backgroundColor: "{colors.accent-bright}"
-    textColor: "{colors.ink-strong}"
+  # ── Platform ───────────────────────────────────────────────────────────────
+  button-solid:
+    backgroundColor: "{colors.violet}"
+    textColor: "{colors.paper}"
+    borderColor: "{colors.violet-deep}"
+    borderWidth: "2px"
+    rounded: "{rounded.hl-button}"
+    height: "2.75rem"
+    padding: "0 1.25rem"
+    typography: "{typography.app-label}"
+  button-gold:
+    backgroundColor: "{colors.gold}"
+    textColor: "{colors.navy}"
+    borderColor: "{colors.gold-deep}"
+    borderWidth: "2px"
+    rounded: "{rounded.hl-button}"
+  button-teal:
+    backgroundColor: "{colors.teal}"
+    textColor: "{colors.paper}"
+    borderColor: "{colors.teal-deep}"
+    borderWidth: "2px"
+    rounded: "{rounded.hl-button}"
+  button-coral:
+    backgroundColor: "{colors.coral}"
+    textColor: "{colors.paper}"
+    borderColor: "{colors.coral-deep}"
+    borderWidth: "2px"
+    rounded: "{rounded.hl-button}"
+  button-outline:
+    backgroundColor: "transparent"
+    textColor: "{colors.navy}"
+    borderColor: "{colors.violet}"
+    borderWidth: "2px"
+    rounded: "{rounded.hl-button}"
+  # A drawn border on a pseudo-element, so the wobble never touches the content
+  # it frames. `.sketch` for an outline, `.torn` for a filled shape.
+  panel-sketch:
+    borderColor: "{colors.line}"
+    rounded: "{rounded.hl}"
+  # The checkpoint token: a rim disc behind, a face on top, an ambient shadow
+  # beneath, and a press that sinks the face onto the rim.
+  puck-upcoming:
+    backgroundColor: "{colors.sky}"
+    borderColor: "{colors.sky-deep}"
+    aspectRatio: "1 / 0.92"
+  puck-done:
+    backgroundColor: "{colors.teal}"
+    borderColor: "{colors.teal-deep}"
+    aspectRatio: "1 / 0.92"
+  puck-current:
+    backgroundColor: "{colors.gold}"
+    borderColor: "{colors.gold-deep}"
+    aspectRatio: "1 / 0.92"
+  puck-gate:
+    backgroundColor: "{colors.magenta}"
+    aspectRatio: "1 / 0.92"
+  puck-locked:
+    backgroundColor: "{colors.sand}"
+    borderColor: "{colors.sand-deep}"
+    aspectRatio: "1 / 0.92"
+  # ── Staff console ──────────────────────────────────────────────────────────
+  ops-button-primary:
+    backgroundColor: "{colors.ops-accent-bright}"
+    textColor: "{colors.ops-ink-strong}"
     rounded: "{rounded.button}"
     padding: "0.5rem 1.1rem"
-  button-primary-hover:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.ink-strong}"
-  button-default:
-    backgroundColor: "{colors.surface-raised}"
-    textColor: "{colors.ink-strong}"
+  ops-button-default:
+    backgroundColor: "{colors.ops-surface-raised}"
+    textColor: "{colors.ops-ink-strong}"
     rounded: "{rounded.button}"
     padding: "0.5rem 1.1rem"
-  button-default-hover:
-    backgroundColor: "{colors.mint}"
-  button-danger:
-    backgroundColor: "{colors.flame}"
-    textColor: "{colors.surface-raised}"
+  ops-button-danger:
+    backgroundColor: "{colors.ops-flame}"
+    textColor: "{colors.ops-surface-raised}"
     rounded: "{rounded.button}"
     padding: "0.5rem 1.1rem"
-  card:
+  ops-card:
     rounded: "{rounded.panel}"
     padding: "{spacing.card}"
-    textColor: "{colors.ink}"
-  input:
-    backgroundColor: "{colors.surface-raised}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.ops-ink}"
+  ops-input:
+    backgroundColor: "{colors.ops-surface-raised}"
+    textColor: "{colors.ops-ink}"
     rounded: "{rounded.button}"
     padding: "0.6rem 0.75rem"
-  nav-item:
-    textColor: "{colors.ink}"
-    typography: "{typography.app-title}"
-    padding: "0.55rem 0.25rem"
-  checkpoint-node-done:
-    backgroundColor: "{colors.accent}"
-    textColor: "{colors.surface-raised}"
-    width: "119px"
-    height: "104px"
-  checkpoint-node-current:
-    backgroundColor: "{colors.magenta}"
-    textColor: "{colors.surface-raised}"
-    width: "119px"
-    height: "104px"
-  checkpoint-node-upcoming:
-    backgroundColor: "{colors.node-upcoming}"
-    textColor: "{colors.ink-muted}"
-    width: "119px"
-    height: "104px"
-  checkpoint-node-locked:
-    backgroundColor: "{colors.surface-sunken}"
-    textColor: "{colors.ink-muted}"
-    width: "119px"
-    height: "104px"
 ---
 
 # Design System: Half Life
@@ -150,6 +219,14 @@ to understand before writing any screen. The marketing site sells a ten-week
 hardware programme to teenagers who have never soldered anything. The platform
 is where those same teenagers then work, for ten weeks, most days. A world that
 serves the first badly serves the second, so they were never merged.
+
+There is a third, which is not a world so much as a back room: the staff console
+under `(ops)` — admin, review, login — carries the platform's earlier design
+system in `ops.css`, kept whole rather than half-translated when the participant
+platform was rebuilt from the comp. Its tokens are prefixed `ops-` throughout
+this document. It shares four names with the platform (`ink`, `magenta`, `mint`,
+`teal`) and redefines them, which is exactly why it is scoped to that route
+group: loaded globally it would quietly repaint the trail.
 
 **Landing page — Creative North Star: "The Production Line"**
 
@@ -175,19 +252,23 @@ structure is a path you walk rather than a page you read.
 
 - Two grounds, never mixed: `#31222c` ink for the landing, `#fcf7f7` warm paper for the platform.
 - The landing has no shadows and no rounded corners; the platform has drawn edges and one solid drop.
+- The platform's borders are drawn, not declared: `.sketch` puts a wobbling marker outline on a pseudo-element so the line never touches the content it frames, and `.torn` applies the same displacement to a filled shape — which is how the week banners and page signs get their torn-tape edge.
+- Its checkpoint token is the `.puck`: a rim disc behind, a face on top, a real ambient shadow beneath, and a press that sinks the face onto the rim.
 - The platform's primary structure is a progress path, not a dashboard of cards.
 - Illustration is the programme's own: a cast of gato characters and five theme paintings, all die-cut stickers with a pale outline.
 - Secondary text is tinted from its surface, never neutral grey.
 
 ## Colors
 
-Two palettes, one per world. Nothing crosses between them.
+Three palettes. Nothing crosses between the landing and the platform; the staff
+console's is the platform's own ancestor and is named apart so the two cannot be
+confused for each other.
 
 ### Primary
 
 - **Programme Cyan** (`#8ed3dc`): the landing page's accent — primary CTA, focus ring, and the stroke on the process band's ground pattern.
-- **Signal Blue** (`#52b4d5`): the platform's accent. Links, focus rings, the caret, and the pressed state of the hanging sign.
-- **Sign Blue** (`#61cdf1`): the brighter face used for the page-title board and primary buttons, so the sign reads as lit rather than painted.
+- **Sky** (`#52b4d5`): the platform's accent. Links, focus rings, and the face of an unreached checkpoint.
+- **Violet** (`#a47cc0`): the platform's action colour — every primary button and the outline variant's border. Distinct from the accent on purpose: a page full of links and a page full of buttons should not read as the same surface.
 
 ### Secondary
 
@@ -255,12 +336,13 @@ three for body-size text until they are resolved.
 
 **Landing — Display:** Urbanist · **Body:** Open Sans · **Hand:** Masterpiece ·
 **Tagline:** Ubuntu.
-**Platform — Display and Body:** Plus Jakarta Sans · **Accent:** Comico.
+**Platform — Display and Body:** Plus Jakarta Sans · **Hand:** Shantell Sans.
 
 **Character:** The landing pairs a tight geometric display face with a neutral
 workhorse body, and keeps its brush face for identity alone. The platform runs
-one humanist sans for everything structural and reserves a comic hand for small
-uppercase labels and the two counters — the only place its voice gets loose.
+one humanist sans for everything structural and reserves a hand-lettered face
+for small uppercase labels and the two counters — the only place its voice gets
+loose.
 
 ### Hierarchy
 
@@ -268,8 +350,9 @@ uppercase labels and the two counters — the only place its voice gets loose.
 - **Headline** (Plus Jakarta 800, `clamp(1.5rem, 2.6vw, 2.5rem)`, 1.05): the week banner's "DESIGN YOUR PCB". Ceiling set so the longest theme name takes two lines, not three.
 - **Title** (Plus Jakarta 700, 1.375rem): nav items, participant names, reel authors.
 - **Body** (Plus Jakarta 400, 1rem, 1.5): everything else.
-- **Label** (Comico, 0.75rem, +0.03em, uppercase): "VIEW MORE", "LOG OUT", "YESTERDAY", timestamps.
-- **Counter** (Comico, 1.875rem): the coin and streak numerals only.
+- **Label** (`.label` — Shantell Sans 700, 0.78rem, +0.11em, uppercase): "VIEW MORE", "LOG OUT", "TODAY", every button, every timestamp.
+- **Hand** (`.hand` — Shantell Sans 500, +0.04em): the asides written in the margin — "that is everything. go build something."
+- **Counter**: the coin and streak numerals, set in the display face at label size rather than in the hand, so two digits stay legible at a glance.
 
 ### Named Rules
 
@@ -279,12 +362,11 @@ it ships one 400 weight whose strokes overhang their advances (`I` carries
 0.52em of ink on a 0.32em advance), so it is already heavy and a synthesised
 bold smears it. `font-synthesis-weight: none` is set for that reason.
 
-**The Comico Is Not Body Rule.** The platform's accent face is for uppercase
-labels and numerals. It is not on Google Fonts and no licensed file ships in
-this repo, so `--font-accent` currently falls back to a comic-ish system stack.
-Dropping the file into `public/fonts/` and restoring three lines in the
-platform layout switches every accent surface at once, because they all resolve
-through that one variable.
+**The Hand Is Not Body Rule.** The platform's hand-lettered face sets labels,
+asides and nothing longer. The comp names COMICO, which is not on Google Fonts
+and ships no licensed file here; Shantell Sans stands in, loaded in the platform
+root layout and reached everywhere through `--font-hand`. Swapping it is that
+one variable, because no component names a face directly.
 
 **The Metric Drift Rule.** Ubuntu is not a drop-in for Open Sans. Against the
 same fallback reference Next scales Open Sans to 105.15% and Ubuntu to 102.06%,
@@ -358,10 +440,12 @@ die-cut sticker with a pale outline baked into the art.
 
 ### Named Rules
 
-**The Drawn Edge Rule.** A platform border is drawn, not stroked. Use
-`.hl-wobbly` plus `<WobbleBorder/>` rather than a CSS border, and vary `seed`
-between adjacent cards. Two cards with the same wobble read as a repeated
-texture, which is the opposite of hand-made.
+**The Drawn Edge Rule.** A platform border is drawn, not stroked. Use `.sketch`
+(or `.sketch-2` / `.sketch-3`, which carry different seeds) rather than a CSS
+border, and vary which one between adjacent cards. Two cards with the same
+wobble read as a repeated texture, which is the opposite of hand-made. In the
+staff console the equivalent is `.hl-wobbly` plus `<WobbleBorder/>` with a
+`seed` prop.
 
 **The Filter Applies To The Edge Rule.** The displacement filter goes on the
 border element only, never on a container. Filtering an element that holds text
@@ -418,22 +502,27 @@ Future weeks sit at 55% opacity and come up to full on hover or focus.
 
 ### The hanging sign (signature)
 
-Page titles hang from two navy straps pinned above the content. The board is
-sign blue with a 2px navy outline; the straps are 10px wide, drawn behind it,
-and run up past its top edge. Used on every screen that is not the dashboard.
+Page titles hang from two navy straps pinned above the content. On the platform
+the board is a torn painted plate in the page's own accent — orange for the
+shop, sky for Explore, magenta for the leaderboard — so each destination is
+recognisable before a word of it is read. Used on every screen except the
+trail, which has the week banner instead. `PageSign` in the platform, the
+`.hl-sign` pair in the staff console.
 
 ### The week banner (signature)
 
-A band of torn painted paper carrying the week number in Comico and the
-headline in Plus Jakarta 800, with the week's theme illustration at its right.
-The tear is exported artwork, not a CSS mask: its surround is exactly the page
-ground, so it blends without one.
+A band of torn painted paper carrying the week number in the hand face and the
+headline in Plus Jakarta 800, with the week's theme illustration at its right
+and the week's checkpoint count on a pill. It pins to the top of the frame while
+that week's nodes flow beneath it and is then shoved off by the next one, which
+is what makes ten weeks read as a distance rather than a list.
 
 ### Doomscroller rail
 
-Sticky, 409px, 14px radius, drawn border, with a recessed white inner panel. Its
-title is Comico. Dismissal is per-browser and the panel is hidden during SSR so
-it never flashes in and out on hydration.
+Sticky, drawn border, with a recessed inner panel and a snap column of reels
+inside it. Its title is set in the hand face. Whether it is open is per-browser
+ceremony rather than a fact on the server, so a second device does not inherit
+a rail somebody closed on a laptop.
 
 ## Do's and Don'ts
 

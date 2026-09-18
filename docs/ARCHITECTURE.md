@@ -57,6 +57,47 @@ approved, and the `YSWS Project Submission` row for the Design stage is the one
 that carries `Requested Grant Amount`. The Build row is written at zero so the
 payout team has the full trail without a second payment.
 
+## Banking is paced by the printer, not by the tier
+
+A tier decides one thing: how many of a design week's hours the project itself
+eats. Everything above that funded block banks toward a machine, and how much
+has to bank each week is a property of the machine, not of the tier — so Tier 1
+and Tier 3 both reach a Bambu P1S, and Tier 3 simply has more funded hours
+underneath the same banking.
+
+It used to be a tier property (a fixed 2, 5 or 10 hours a week), which quietly
+made the expensive machines unreachable from Tier 1 and over-funded the cheap
+ones from Tier 3 — and sized the whole programme against a 175-coin printer that
+was not the price of anything. The cheapest machine on the budget sheet is
+$218.90.
+
+`lib/config/printers.ts` is that sheet transcribed, column for column, and the
+identity it has to keep is: five design weeks at a goal's banking rate, plus
+five build weeks of `BUILD_HOURS`, clears that goal's price. `verify:ledger`
+checks it for all eight machines, because the failure mode is a season that ends
+with no printer and no error message.
+
+Banked hours round UP to coins. The sheet paces in fractions and coins are
+whole; flooring costs a coin a week, which leaves an A1 Mini saver one coin
+short of the machine the goal tracker spent ten weeks promising them.
+
+## The trail is derived, not stored
+
+The platform's shape — how many nodes a week has, where the progress reels fall,
+which node is live, what is locked and why — is computed by one pure function
+(`lib/curriculum.ts`) from one map of checkpoint states. The server's only job
+is to say which checkpoints are done and with what; `lib/queries/store.ts` reads
+that map out of the projects, sessions, posts and submissions that already
+exist.
+
+There is deliberately no checkpoint table. It would be a second source of truth
+for "has this week had its idea reel", and the first time the two disagreed the
+trail would lie to someone about work they had really done.
+
+Reels bind to their node by `Post.checkpointKey` rather than by counting posts
+of a kind: the 10h and the 20h reel are both `PROGRESS`, so counting would tick
+the 20h node the moment the 10h one landed.
+
 ## Three hours sources, two ways to double-count
 
 - **Journal + Hackatime are additive**, so a session whose time is already
