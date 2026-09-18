@@ -92,7 +92,33 @@ async function main() {
       update: { name: item.name, description: item.description, sortOrder: item.sortOrder },
     })
   }
-  console.log(`shop items: ${items.length} present`)
+
+  /**
+   * Retire printers that have left the catalogue.
+   *
+   * This seed only ever added rows, which was fine while the printers were
+   * typed out here and never changed. Now that they are generated from the
+   * budget sheet, re-pricing one changes its id — and without this the shop
+   * ends up selling a Bambu A1 Mini at 250 coins next to a Bambu A1 Mini at
+   * 241, with the participant's goal tracker pointed at neither.
+   *
+   * Deactivated, never deleted: a ShopOrder points at its item, and someone's
+   * order history must not stop making sense because a machine was re-priced.
+   */
+  const live = new Set(items.map((item) => item.id))
+  const retired = await prisma.shopItem.updateMany({
+    where: {
+      active: true,
+      category: ShopItemCategory.PRINTER,
+      id: { notIn: [...live] },
+    },
+    data: { active: false },
+  })
+
+  console.log(
+    `shop items: ${items.length} present` +
+      (retired.count > 0 ? `, ${retired.count} off-catalogue printer(s) retired` : ""),
+  )
 }
 
 main()

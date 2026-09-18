@@ -21,7 +21,8 @@
     "verify:onboarding": "tsx --conditions=react-server scripts/verify-onboarding.ts",
     "verify:feed": "tsx --conditions=react-server scripts/verify-feed.ts",
     "verify:uploads": "tsx --conditions=react-server scripts/verify-uploads.ts",
-    "verify:handoff": "tsx --conditions=react-server scripts/verify-handoff.ts"
+    "verify:handoff": "tsx --conditions=react-server scripts/verify-handoff.ts",
+    "verify:store": "tsx --conditions=react-server scripts/verify-store.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1124.0",
