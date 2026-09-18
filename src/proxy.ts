@@ -22,6 +22,27 @@ function unauthorized(): NextResponse {
   })
 }
 
+/**
+ * Is there plausibly a session on this request?
+ *
+ * Cookie PRESENCE only — nothing here is validated, and nothing may be
+ * decided on it that matters. It picks which page to render at `/`, and the
+ * page it picks runs the real check: `(app)` is guarded by
+ * `requireSessionPage`, so a forged cookie buys a redirect to /login rather
+ * than a look at anyone's trail. Validating properly would mean a database
+ * round trip in front of every request on the site, including the static
+ * landing page, to save signed-in visitors one redirect.
+ *
+ * Both names are checked because better-auth adds the `__Secure-` prefix once
+ * the base URL is https, so the deployed cookie is not the one seen locally.
+ */
+function looksSignedIn(request: NextRequest): boolean {
+  return (
+    request.cookies.has("better-auth.session_token") ||
+    request.cookies.has("__Secure-better-auth.session_token")
+  )
+}
+
 export function proxy(request: NextRequest) {
   if (process.env.REQUIRE_BASICAUTH === "true") {
     const expectedUser = process.env.BASICAUTH_USERNAME
@@ -52,6 +73,23 @@ export function proxy(request: NextRequest) {
     const user = separator === -1 ? decoded : decoded.slice(0, separator)
     const pass = separator === -1 ? "" : decoded.slice(separator + 1)
     if (user !== expectedUser || pass !== expectedPass) return unauthorized()
+  }
+
+  /**
+   * `/` is the landing page to a stranger and the trail to a participant.
+   *
+   * A rewrite rather than a redirect, so the trail keeps the bare URL: the
+   * sidebar links home to `/`, and its active-tab styling reads `usePathname`,
+   * which a redirect to /dashboard would leave pointing at the wrong tab.
+   *
+   * Two route groups cannot both define `/` — the landing page lives in
+   * `(site)` with its own root layout and stylesheet, the trail in `(app)`
+   * with the platform's — so this is what joins them.
+   */
+  if (request.nextUrl.pathname === "/" && looksSignedIn(request)) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/dashboard"
+    return securityHeaders(NextResponse.rewrite(url))
   }
 
   return securityHeaders(NextResponse.next())

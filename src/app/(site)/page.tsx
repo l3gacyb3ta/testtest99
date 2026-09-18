@@ -1,8 +1,8 @@
-import BuildCarousel from "@/components/build-carousel";
-import Faq from "@/components/faq";
-import Hero from "@/components/hero";
-import Process from "@/components/process";
-import SiteFooter from "@/components/site-footer";
+import BuildCarousel from "@/components/site/build-carousel";
+import Faq from "@/components/site/faq";
+import Hero from "@/components/site/hero";
+import Process from "@/components/site/process";
+import SiteFooter from "@/components/site/site-footer";
 
 export default function Page() {
   return (

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 // The same stylesheet as the platform, so the phone page does not need a
 // second set of tokens to stay in step with.
-import "../(platform)/globals.css"
+import "../(platform)/ops.css"
 
 export const metadata: Metadata = {
   title: "Record for Half-Life",

@@ -327,7 +327,7 @@ export function checkpointsFor(
  * tier 3. Every goal is reachable from every tier — the tier only moves how
  * many funded hours sit underneath the banking.
  */
-export const TIERS: Tier[] = [
+export const TIERS: [Tier, Tier, Tier] = [
   {
     id: 1,
     funding: 30,

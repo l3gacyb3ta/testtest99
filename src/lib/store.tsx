@@ -327,7 +327,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const weekOf = useCallback(
-    (weekId: number): Week => weeks.find((w) => w.id === weekId) ?? weeks[0],
+    (weekId: number): Week => {
+      const week = weeks.find((w) => w.id === weekId) ?? weeks[0];
+      // The curriculum is a compile-time constant with ten weeks in it, so an
+      // empty list is a broken build rather than a state to render around.
+      if (!week) throw new Error("The curriculum has no weeks in it");
+      return week;
+    },
     [weeks],
   );
 
@@ -364,9 +370,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       const week = weeks[wi];
-      const list = week.checkpoints;
+      const list = week?.checkpoints ?? [];
       const i = list.findIndex((c) => c.id === id);
       const self = list[i];
+      if (!week || !self) return false;
 
       if (self.atHours !== undefined) {
         const hours = weekHours(week.id);
@@ -418,9 +425,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       const week = weeks[wi];
-      const list = week.checkpoints;
+      const list = week?.checkpoints ?? [];
       const i = list.findIndex((c) => c.id === id);
       const self = list[i];
+      if (!week || !self) return null;
 
       if (self.atHours !== undefined) {
         const hours = weekHours(week.id);

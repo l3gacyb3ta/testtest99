@@ -100,7 +100,7 @@ export function projectEvents(
 export function projectStats(events: ProjectEvent[]) {
   const sessions = events.filter((e) => e.kind === "session");
   const minutes = sessions.reduce((n, e) => n + (e.kind === "session" ? e.minutes : 0), 0);
-  const started = events.length > 0 ? events[events.length - 1].at : 0;
+  const started = events[events.length - 1]?.at ?? 0;
   return {
     sessions: sessions.length,
     reels: events.length - sessions.length,

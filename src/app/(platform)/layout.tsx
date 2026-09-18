@@ -1,47 +1,50 @@
-import type { Metadata } from "next"
-import { Plus_Jakarta_Sans } from "next/font/google"
-import { WobbleDefs } from "@/app/components/ui/Wobble"
-import "./globals.css"
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans, Shantell_Sans } from "next/font/google";
+import { SketchDefs } from "@/components/platform/art";
+import "./globals.css";
 
 /**
- * The comp's heading and body face, from the BRANDING frame. Everything on the
- * platform is set in it: nav items and names at Bold 22, body at Regular 16/22,
- * page titles at ExtraBold.
+ * The platform's root layout: fonts, tokens, and the filter definitions every
+ * hand-drawn edge in the app points at.
+ *
+ * Deliberately has no participant chrome. The sidebar, the Doomscroller rail
+ * and the store that feeds them live one level down in `(app)`, so the signed-
+ * out login page and the staff surfaces in `(ops)` can share this design
+ * system without inheriting a shell that assumes a session and a trail.
  */
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-jakarta",
   display: "swap",
-})
+});
 
-/*
- * The comp's second face is COMICO, used for small uppercase labels
- * ("VIEW MORE", "LOG OUT", "YESTERDAY", "The Doomscroller") and the coin and
- * streak counters.
- *
- * It is not on Google Fonts and no licensed file ships in this repo, so
- * `--font-accent` in globals.css falls back to a comic-ish system stack. To
- * use the real thing, drop the file in public/fonts/ and restore these three
- * lines — no other change is needed, because every accent surface already
- * resolves through that one variable:
- *
- *   import localFont from "next/font/local"
- *   const comico = localFont({ src: "../../../public/fonts/Comico.ttf", variable: "--font-comico", display: "swap" })
- *   // ...then add `comico.variable` to the <html> className below.
- */
+const hand = Shantell_Sans({
+  subsets: ["latin"],
+  variable: "--font-hand",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Half-Life",
-  description: "A 10-week hardware program from Hack Club.",
-}
+  title: "Half Life — ten weeks of hardware",
+  description:
+    "Design five hardware projects, then build all five. Ten weeks, real funding, and a 3D printer at the end.",
+};
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export const viewport: Viewport = {
+  themeColor: "#fcf7f7",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={jakarta.variable}>
+    <html lang="en" className={`${jakarta.variable} ${hand.variable}`}>
       <body>
-        <WobbleDefs />
+        <SketchDefs />
         {children}
       </body>
     </html>
-  )
+  );
 }
