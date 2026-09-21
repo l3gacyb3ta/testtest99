@@ -20,9 +20,11 @@ pnpm install
 ./dev.sh      # Postgres in Docker, migrated and seeded, then next dev
 ```
 
-Visual system is in [DESIGN.md](./DESIGN.md); the invariants worth knowing
-before changing anything are in [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md),
-and operating it is [docs/RUNBOOK.md](./docs/RUNBOOK.md).
+New here? [docs/BACKEND.md](./docs/BACKEND.md) is the handoff — the shape, the
+invariants, and the traps that have already bitten. Beyond it: the visual system
+is [DESIGN.md](./DESIGN.md), the reasoning behind the invariants is
+[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md), and operating it is
+[docs/RUNBOOK.md](./docs/RUNBOOK.md).
 
 ## What's where
 
